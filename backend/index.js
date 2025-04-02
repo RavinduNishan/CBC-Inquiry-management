@@ -10,17 +10,15 @@ import inquirymodel from "./models/inquirymodel.js";
 
 const app = express();
 
-// Middleware to parse JSON bodies
+//Middleware to parse JSON bodies
 app.use(express.json());
 app.use(
-cors({
-  origin: "5555",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization"],
- 
-})
-)
+    cors({
+      origin: "http://localhost:5173", // Change this to match your frontend URL
+      methods: ["GET", "POST", "PUT", "DELETE"],
+      credentials: true,
+    })
+  );
 app.get("/", (req, res) => {
     console.log(req);
     return res.status(200).send("Welcome to CBC Inquiry Management");
