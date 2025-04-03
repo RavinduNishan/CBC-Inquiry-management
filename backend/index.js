@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 
 import inquiryRoute from "./routes/inquiryRoute.js";
-import inquirymodel from "./models/inquirymodel.js";
+import userRoute from "./routes/userRoute.js";
 
 
 const app = express();
@@ -26,6 +26,7 @@ app.get("/", (req, res) => {
 
 
 app.use('/inquiry', inquiryRoute);
+app.use('/user', userRoute);
 
 // Database connection and server startup
 mongoose.connect(MONGODBURL)

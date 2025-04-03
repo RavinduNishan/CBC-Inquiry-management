@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
-import BackButton from '../components/BackButton';
-import Spinner from '../components/Spinner';
+import BackButton from '../../components/BackButton';
+import Spinner from '../../components/Spinner';
 import { useSnackbar } from 'notistack';
 
 const ResponseInquiry = () => {
@@ -42,6 +42,8 @@ const ResponseInquiry = () => {
   }, [id]);
 
   const handleAssign = () => {
+    if (inquiry.status === 'closed') return;
+    
     setLoading(true);
     axios
       .put(`http://localhost:5555/inquiry/${id}`, { 
@@ -60,6 +62,8 @@ const ResponseInquiry = () => {
   };
 
   const handleClose = () => {
+    if (inquiry.status === 'closed') return;
+    
     setLoading(true);
     axios
       .put(`http://localhost:5555/inquiry/${id}`, { 
@@ -81,6 +85,8 @@ const ResponseInquiry = () => {
   };
 
   const handleUpdate = () => {
+    if (inquiry.status === 'closed') return;
+    
     setLoading(true);
     const updatedInquiry = {
       ...inquiry,
@@ -146,10 +152,19 @@ const ResponseInquiry = () => {
     </div>
   );
 
+  const isClosed = inquiry.status === 'closed';
+
   return (
     <div className="p-4">
       <BackButton />
       <h1 className="text-3xl my-4">Respond to Inquiry</h1>
+      
+      {isClosed && (
+        <div className="bg-gray-100 border-l-4 border-gray-500 text-gray-700 p-4 mb-4">
+          <p className="font-bold">Note:</p>
+          <p>This inquiry is closed and cannot be modified.</p>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Inquiry Details Section */}
@@ -211,25 +226,12 @@ const ResponseInquiry = () => {
           <h2 className="text-xl font-semibold mb-4">Response Actions</h2>
           
           <div className="mb-4">
-            <label className="block text-gray-700 mb-2">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full border-2 border-gray-300 rounded-md p-2"
-            >
-              <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
-            </select>
-          </div>
-          
-          <div className="mb-4">
             <label className="block text-gray-700 mb-2">Assign To</label>
             <select
               value={assigned}
-              onChange={(e) => setAssigned(e.target.value)}
-              className="w-full border-2 border-gray-300 rounded-md p-2"
+              onChange={(e) => !isClosed && setAssigned(e.target.value)}
+              className={`w-full border-2 border-gray-300 rounded-md p-2 ${isClosed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              disabled={isClosed}
             >
               <option value="">Unassigned</option>
               {users.map(user => (
@@ -238,7 +240,10 @@ const ResponseInquiry = () => {
             </select>
             <button 
               onClick={handleAssign}
-              className="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full"
+              className={`mt-2 text-white px-4 py-2 rounded w-full ${
+                isClosed ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'
+              }`}
+              disabled={isClosed}
             >
               Assign
             </button>
@@ -248,23 +253,30 @@ const ResponseInquiry = () => {
             <label className="block text-gray-700 mb-2">Comments</label>
             <textarea
               value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              className="w-full border-2 border-gray-300 rounded-md p-2"
+              onChange={(e) => !isClosed && setComments(e.target.value)}
+              className={`w-full border-2 border-gray-300 rounded-md p-2 ${isClosed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               rows="5"
-              placeholder="Add your comments or notes here..."
+              placeholder={isClosed ? "Comments are locked for closed inquiries" : "Add your comments or notes here..."}
+              disabled={isClosed}
             ></textarea>
           </div>
           
           <div className="flex gap-4">
             <button 
               onClick={handleUpdate}
-              className="flex-1 bg-sky-500 text-white px-4 py-2 rounded hover:bg-sky-600"
+              className={`flex-1 text-white px-4 py-2 rounded ${
+                isClosed ? 'bg-gray-400 cursor-not-allowed' : 'bg-sky-500 hover:bg-sky-600'
+              }`}
+              disabled={isClosed}
             >
               Update
             </button>
             <button 
               onClick={handleClose}
-              className="flex-1 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+              className={`flex-1 text-white px-4 py-2 rounded ${
+                isClosed ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'
+              }`}
+              disabled={isClosed}
             >
               Close Inquiry
             </button>
