@@ -38,14 +38,18 @@ router.post("/", async (req, res) => {
     }
 });
 
-//get all Inquiries
+//get all users
+
 router.get("/", async (req, res) => {
     try {
-        const inquiries = await user.find({});
+        const users
+         = await user.find({});
         return res.status(200).json({
           success: true,
-          count: inquiries.length,
-          data: inquiries
+          count: users
+          .length,
+          data: users
+
 
         });
     } catch (error) {
@@ -54,14 +58,14 @@ router.get("/", async (req, res) => {
     }
 });
 
-//get inquiries by id
+//get users by id
 router.get("/:id", async (req, res) => {
     try {
-        const user = await user.findById(req.params.id);
+        const User = await user.findById(req.params.id);
 
-        if (!user) return res.status(404).json({ message: "user not found" });
+        if (!User) return res.status(404).json({ message: "user not found" });
 
-        return res.status(200).json(user);
+        return res.status(200).json(User);
     } catch (error) {
         console.log(error.message);
         return res.status(500).send({ message: error.message });
@@ -71,15 +75,15 @@ router.get("/:id", async (req, res) => {
 //update an existing user
 router.put("/:id", async (req, res) => {
     try {
-        const user = await user.findByIdAndUpdate(
+        const User = await user.findByIdAndUpdate(
             req.params.id,
             req.body,
             { new: true }
         );
 
-        if (!user) return res.status(404).json({ message: "user not found" });
+        if (!User) return res.status(404).json({ message: "user not found" });
 
-        return res.status(200).json(user);
+        return res.status(200).json({message: "user updated successfully" });
     } catch (error) {
         console.log(error.message);
         return res.status(500).send({ message: error.message });
@@ -89,9 +93,9 @@ router.put("/:id", async (req, res) => {
 // delete an user
 router.delete("/:id", async (req, res) => {
     try {
-        const user = await user.findByIdAndDelete(req.params.id);
+        const User = await user.findByIdAndDelete(req.params.id);
 
-        if (!user) return res.status(404).json({ message: "user not found" });
+        if (!User) return res.status(404).json({ message: "user not found" });
 
         return res.status(200).json({ message: "user deleted successfully" });
     } catch (error) {

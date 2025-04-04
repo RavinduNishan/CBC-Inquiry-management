@@ -8,8 +8,7 @@ const userschema = mongoose.Schema(
         accessLevel: { type: String, required: true},
         permissions: [String],
         status: {type: String},
-        password:{ type:String}
-        
+        password:{ type:String}  
     },
     { timestamps: true }
 );
