@@ -1,7 +1,11 @@
 import express from "express";
 import Inquiry from "../models/inquirymodel.js";
+import { protect } from "../middleware/authMiddleware.js";
+
 const router = express.Router();  
 
+// Apply protect middleware to all inquiry routes
+router.use(protect);
 
 //create a new inquiry
 router.post("/", async (req, res) => {
@@ -109,4 +113,4 @@ router.delete("/:id", async (req, res) => {
 });
 
 
-export default router; 
+export default router;

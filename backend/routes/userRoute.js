@@ -1,7 +1,68 @@
 import express from "express";
 import user from "../models/usermodel.js"; // Adjust the path as necessary
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { protect, admin } from "../middleware/authMiddleware.js";
+
 const router = express.Router();  
 
+// Generate JWT
+const generateToken = (id) => {
+  return jwt.sign({ id }, 'mysecretkey123', { // Replace with a proper secret key in config
+    expiresIn: '30d',
+  });
+};
+
+// Login user
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Check if user exists
+    const userFound = await user.findOne({ email });
+
+    if (!userFound) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Check if password matches
+    const isMatch = await bcrypt.compare(password, userFound.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Return user data and token
+    res.status(200).json({
+      _id: userFound._id,
+      name: userFound.name,
+      email: userFound.email,
+      phone: userFound.phone,
+      accessLevel: userFound.accessLevel,
+      status: userFound.status,
+      token: generateToken(userFound._id)
+    });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({ message: error.message });
+  }
+});
+
+// Get current user profile
+router.get("/profile", protect, async (req, res) => {
+  try {
+    const userProfile = await user.findById(req.user._id).select('-password');
+    
+    if (userProfile) {
+      res.status(200).json(userProfile);
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({ message: error.message });
+  }
+});
 
 //create a new user
 router.post("/", async (req, res) => {
@@ -17,6 +78,10 @@ router.post("/", async (req, res) => {
             return res.status(400).send({ message: "All required fields must be provided." });
         }
 
+        // Hash the password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
         // Create new user
         const newUser = await user.create({
             name: req.body.name,
@@ -25,8 +90,7 @@ router.post("/", async (req, res) => {
             accessLevel: req.body.accessLevel || "",
             permissions: req.body.permissions || [],
             status: req.body.status || "active",
-            password: req.body.password
-            
+            password: hashedPassword
         });
 
         return res.status(201).send(
@@ -39,18 +103,13 @@ router.post("/", async (req, res) => {
 });
 
 //get all users
-
-router.get("/", async (req, res) => {
+router.get("/", protect, async (req, res) => {
     try {
-        const users
-         = await user.find({});
+        const users = await user.find({});
         return res.status(200).json({
           success: true,
-          count: users
-          .length,
+          count: users.length,
           data: users
-
-
         });
     } catch (error) {
         console.log(error.message);
@@ -59,7 +118,7 @@ router.get("/", async (req, res) => {
 });
 
 //get users by id
-router.get("/:id", async (req, res) => {
+router.get("/:id", protect, async (req, res) => {
     try {
         const User = await user.findById(req.params.id);
 
@@ -73,7 +132,7 @@ router.get("/:id", async (req, res) => {
 });
 
 //update an existing user
-router.put("/:id", async (req, res) => {
+router.put("/:id", protect, async (req, res) => {
     try {
         const User = await user.findByIdAndUpdate(
             req.params.id,
@@ -91,7 +150,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // delete an user
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", protect, admin, async (req, res) => {
     try {
         const User = await user.findByIdAndDelete(req.params.id);
 
@@ -104,5 +163,4 @@ router.delete("/:id", async (req, res) => {
     }
 });
 
-
-export default router; 
+export default router;
