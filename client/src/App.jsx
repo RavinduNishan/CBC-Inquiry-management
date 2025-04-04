@@ -10,8 +10,8 @@ import  {LoginBlade}  from './components/dashboard/LoginBlade';
 import TableBlade from './components/dashboard/tableBlade';
 import UiElementsBlade from './components/dashboard/UiElimentsBlade';
 import Header from './components/dashboard/dashboardlayouts/Header';
-import Sidebar from './components/dashboard/dashboardlayouts/Sidebar'; 
-import MasterLayout from './components/dashboard/dashboardlayouts/master';
+// import Sidebar from './components/dashboard/dashboardlayouts/Sidebar'; 
+import Master from './components/dashboard/dashboardlayouts/Master';
 import CreateUser from './pages/user/createuser';
 
 
@@ -27,8 +27,8 @@ const App = () => {
             <Route path ="/dash/table" element={<TableBlade />}/>
             <Route path ="/dash/ui" element={<UiElementsBlade />}/>
             <Route path ="/dash/header" element={<Header />}/>
-            <Route path ="/dash/sidebar" element={<Sidebar />}/>
-            <Route path ="/dash/master" element={<MasterLayout />}/>
+            {/* <Route path ="/dash/sidebar" element={<Sidebar />}/> */}
+            <Route path ="/dash/master" element={<Master />}/>
             <Route path='/user/create' element={<CreateUser />}/>
         </Routes>
     );
