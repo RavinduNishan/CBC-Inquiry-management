@@ -12,6 +12,7 @@ import UiElementsBlade from './components/dashboard/UiElimentsBlade';
 import Header from './components/dashboard/dashboardlayouts/Header';
 import Sidebar from './components/dashboard/dashboardlayouts/Sidebar'; 
 import MasterLayout from './components/dashboard/dashboardlayouts/master';
+import CreateUser from './pages/user/createuser';
 
 
 const App = () => {
@@ -28,6 +29,7 @@ const App = () => {
             <Route path ="/dash/header" element={<Header />}/>
             <Route path ="/dash/sidebar" element={<Sidebar />}/>
             <Route path ="/dash/master" element={<MasterLayout />}/>
+            <Route path='/user/create' element={<CreateUser />}/>
         </Routes>
     );
 }

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
-const Header = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+const Header = ({ setSidebarOpen }) => {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 

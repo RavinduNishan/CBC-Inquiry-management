@@ -1,8 +1,10 @@
-import React from 'react';
-import Sidebar from './Sidebar'; // You'll need to create this component
-import Header from './Header';   // You'll need to create this component
+import React, { useState } from 'react';
+import Sidebar from './Sidebar';
+import Header from './Header';
 
 const MasterLayout = ({ children, title = '', description = '', language = 'en' }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Manage sidebar state
+
   return (
     <html lang={language}>
       <head>
@@ -19,11 +21,9 @@ const MasterLayout = ({ children, title = '', description = '', language = 'en' 
       </head>
       <body>
         <div className="flex h-screen bg-gray-200 font-roboto">
-          <Sidebar />
-          
+          <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} /> {/* Pass state */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            <Header />
-
+            <Header setSidebarOpen={setSidebarOpen} /> {/* Pass state to toggle sidebar */}
             <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-200">
               <div className="container mx-auto px-6 py-8">
                 {children}
@@ -34,6 +34,6 @@ const MasterLayout = ({ children, title = '', description = '', language = 'en' 
       </body>
     </html>
   );
-}
+};
 
 export default MasterLayout;
