@@ -340,7 +340,7 @@ const Master = () => {
               {loading ? (
                 <Spinner />
               ) : (
-                <UserTable users={users} />
+                <UserTable users={users} fetchUsers={fetchUsers} />
               )}
             </div>
           </>
