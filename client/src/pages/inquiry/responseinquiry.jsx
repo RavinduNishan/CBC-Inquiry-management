@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
-import BackButton from '../../components/BackButton';
 import Spinner from '../../components/Spinner';
 import { useSnackbar } from 'notistack';
 
@@ -147,7 +146,7 @@ const ResponseInquiry = () => {
 
   if (!inquiry) return (
     <div className="p-4">
-      <BackButton />
+      
       <div className="text-center mt-8">Inquiry not found or still loading...</div>
     </div>
   );
@@ -156,7 +155,7 @@ const ResponseInquiry = () => {
 
   return (
     <div className="p-4">
-      <BackButton />
+     
       <h1 className="text-3xl my-4">Respond to Inquiry</h1>
       
       {isClosed && (

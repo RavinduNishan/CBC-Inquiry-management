@@ -13,6 +13,8 @@ import UserTable from '../../User/UserTable';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import AuthContext from '../../../context/AuthContext';
+import loginImg from '../../../assets/loginImg.png';
+import CreateInquiry from '../../Inquiry/CreateInquiry';
 
 const Master = () => {
   const { user, logout, isAdmin } = useContext(AuthContext);
@@ -34,6 +36,7 @@ const Master = () => {
     confirmPassword: '',
   });
   const [error, setError] = useState('');
+  const [currentInquiryId, setCurrentInquiryId] = useState(null);
 
   // Check if user is authenticated
   useEffect(() => {
@@ -127,6 +130,12 @@ const Master = () => {
     navigate('/login');
   };
 
+  // Add this with your other functions
+  const handleRespond = (inquiryId) => {
+    setCurrentInquiryId(inquiryId);
+    setActiveMenu('responseInquiry');
+  };
+
   if (!user) {
     return null;
   }
@@ -139,10 +148,14 @@ const Master = () => {
         <div className='p-6 border-b border-gray-200'>
           <div className='flex items-center'>
             <div className='h-10 w-10 rounded-full bg-sky-600 flex items-center justify-center text-white font-bold text-xl'>
-              CBC
+              <img
+                src={loginImg}
+                alt="CBC Logo"
+                className="h-full w-full object-contain rounded-full"
+              />
             </div>
             <div className='ml-3'>
-              <h2 className='font-semibold text-gray-800'>CBC Management</h2>
+              <h2 className='font-semibold text-gray-800'>Inquiry Management</h2>
               <p className='text-xs text-gray-500'>Admin Portal</p>
             </div>
           </div>
@@ -151,7 +164,7 @@ const Master = () => {
         {/* Navigation */}
         <nav className='flex-1 pt-4 pb-4 overflow-y-auto'>
           <div className='px-4 mb-3'>
-            <p className='text-xs font-semibold text-gray-400 uppercase tracking-wider'>Main</p>
+            <p className='text-xs font-semibold text-gray-400 uppercase tracking-wider'>Inquiries</p>
           </div>
           <ul>
             <li className='px-3'>
@@ -164,7 +177,7 @@ const Master = () => {
                 onClick={() => setActiveMenu('dashboard')}
               >
                 <MdDashboard className={`mr-3 text-lg ${activeMenu === 'dashboard' ? 'text-sky-600' : 'text-gray-500'}`} />
-                Dashboard
+                My Inquiries
               </button>
             </li>
             <li className='px-3'>
@@ -180,7 +193,19 @@ const Master = () => {
                 Inquiries
               </button>
             </li>
-
+            <li className='px-3'>
+              <button 
+                className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
+                  activeMenu === 'createInquiry' 
+                    ? 'bg-sky-50 text-sky-600 font-medium' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                onClick={() => setActiveMenu('createInquiry')}
+              >
+                <MdOutlineAddBox className={`mr-3 text-lg ${activeMenu === 'createInquiry' ? 'text-sky-600' : 'text-gray-500'}`} />
+                Add Inquiry
+              </button>
+            </li>
             {isAdmin && (
               <>
                 <div className='px-4 mt-6 mb-3'>
@@ -254,6 +279,24 @@ const Master = () => {
 
       {/* Main content */}
       <div className='flex-1 p-6 overflow-auto'>
+        {activeMenu === 'createInquiry' && (
+          <>
+            <div className='flex justify-between items-center mb-6'>
+              <h1 className='text-2xl font-bold text-gray-800'>Create New Inquiry</h1>
+              <button
+                onClick={() => setActiveMenu('inquiries')}
+                className='bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg px-4 py-2 flex items-center text-sm font-medium transition-all duration-200 shadow-sm'
+              >
+                Back to Inquiry List
+              </button>
+            </div>
+            
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
+              <CreateInquiry />
+            </div>
+          </>
+        )}
+        
         {activeMenu === 'inquiries' && (
           <>
             <div className='flex justify-between items-center mb-6'>
@@ -306,9 +349,9 @@ const Master = () => {
               {loading ? (
                 <Spinner />
               ) : showType === 'table' ? (
-                <InquiryTable inquiries={inquiries} />
+                <InquiryTable inquiries={inquiries} onRespond={handleRespond} />
               ) : (
-                <InquiryCard inquiries={inquiries} />
+                <InquiryCard inquiries={inquiries} onRespond={handleRespond} />
               )}
             </div>
           </>
