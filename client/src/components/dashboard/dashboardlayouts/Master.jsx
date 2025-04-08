@@ -15,6 +15,7 @@ import { Fragment } from 'react';
 import AuthContext from '../../../context/AuthContext';
 import loginImg from '../../../assets/loginImg.png';
 import CreateInquiry from '../../Inquiry/CreateInquiry';
+import DashboardResponseInquiry from '../../Inquiry/DashboardResponseInquiry';
 
 const Master = () => {
   const { user, logout, isAdmin } = useContext(AuthContext);
@@ -134,6 +135,34 @@ const Master = () => {
   const handleRespond = (inquiryId) => {
     setCurrentInquiryId(inquiryId);
     setActiveMenu('responseInquiry');
+  };
+
+  // Improve the handleInquiriesUpdated function to ensure a complete refresh
+  const handleInquiriesUpdated = () => {
+    console.log("Refreshing inquiries after assignment...");
+    setLoading(true);
+    
+    // Clear existing inquiries first to ensure UI updates
+    setInquiries([]);
+    
+    // Add a small delay to ensure the database has time to update
+    setTimeout(() => {
+      // Then fetch fresh data
+      axios
+        .get('http://localhost:5555/inquiry', {
+          // Add cache-busting parameter to prevent stale data
+          params: { _t: new Date().getTime() }
+        })
+        .then((response) => {
+          console.log("Refreshed inquiries:", response.data.data);
+          setInquiries(response.data.data);
+          setLoading(false);
+        })
+        .catch((error) => {
+          console.error("Error refreshing inquiries:", error);
+          setLoading(false);
+        });
+    }, 500); // 500ms delay
   };
 
   if (!user) {
@@ -349,12 +378,27 @@ const Master = () => {
               {loading ? (
                 <Spinner />
               ) : showType === 'table' ? (
-                <InquiryTable inquiries={inquiries} onRespond={handleRespond} />
+                <InquiryTable 
+                  inquiries={inquiries} 
+                  onRespond={handleRespond} 
+                  onInquiriesUpdated={handleInquiriesUpdated}
+                />
               ) : (
-                <InquiryCard inquiries={inquiries} onRespond={handleRespond} />
+                <InquiryCard 
+                  inquiries={inquiries} 
+                  onRespond={handleRespond}
+                  onInquiriesUpdated={handleInquiriesUpdated}
+                />
               )}
             </div>
           </>
+        )}
+        
+        {activeMenu === 'responseInquiry' && (
+          <DashboardResponseInquiry 
+            inquiryId={currentInquiryId} 
+            onBack={() => setActiveMenu('inquiries')}
+          />
         )}
         
         {activeMenu === 'users' && isAdmin && (

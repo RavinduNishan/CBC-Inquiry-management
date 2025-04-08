@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Spinner from '../../components/Spinner';
 import { useSnackbar } from 'notistack';
 
-const ResponseInquiry = () => {
+const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
   const [inquiry, setInquiry] = useState(null);
   const [loading, setLoading] = useState(false);
   const [assigned, setAssigned] = useState('');
@@ -17,7 +17,8 @@ const ResponseInquiry = () => {
     // In a real app, you would fetch this list from your API
   ]);
 
-  const { id } = useParams();
+  const { id: paramId } = useParams();
+  const id = propId || paramId;
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -73,8 +74,14 @@ const ResponseInquiry = () => {
       .then(() => {
         setLoading(false);
         enqueueSnackbar('Inquiry closed successfully', { variant: 'success' });
-        // Navigate back after closing
-        navigate('/');
+        // Navigate based on mode
+        if (dashboardMode) {
+          // Return to inquiries view in dashboard
+          // This will be handled by the parent component
+        } else {
+          // Navigate back after closing
+          navigate('/');
+        }
       })
       .catch((error) => {
         console.error('Error closing inquiry:', error);
@@ -155,8 +162,7 @@ const ResponseInquiry = () => {
 
   return (
     <div className="p-4">
-     
-      <h1 className="text-3xl my-4">Respond to Inquiry</h1>
+      {!dashboardMode && <h1 className="text-3xl my-4">Respond to Inquiry</h1>}
       
       {isClosed && (
         <div className="bg-gray-100 border-l-4 border-gray-500 text-gray-700 p-4 mb-4">

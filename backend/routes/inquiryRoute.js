@@ -1,6 +1,7 @@
 import express from "express";
 import Inquiry from "../models/inquirymodel.js";
 import { protect } from "../middleware/authMiddleware.js";
+import mongoose from "mongoose";
 
 const router = express.Router();  
 
@@ -83,17 +84,57 @@ router.get("/:id", async (req, res) => {
 //update an existing inquiry
 router.put("/:id", async (req, res) => {
     try {
+        console.log("Updating inquiry:", req.params.id);
+        console.log("Received update data:", JSON.stringify(req.body));
+        
+        // Create a clean update object
+        const updateData = {};
+        
+        // Copy simple fields
+        if (req.body.status) updateData.status = req.body.status;
+        if (req.body.comments) updateData.comments = req.body.comments;
+        
+        // Handle assigned user data
+        if (req.body.assigned) {
+            if (req.body.assigned.userId) {
+                try {
+                    // Validate the ObjectId format
+                    if (!mongoose.Types.ObjectId.isValid(req.body.assigned.userId)) {
+                        return res.status(400).json({ 
+                            message: "Invalid user ID format",
+                            details: `Received: ${req.body.assigned.userId}`
+                        });
+                    }
+                    
+                    // Set the entire assigned object
+                    updateData.assigned = {
+                        userId: req.body.assigned.userId,
+                        name: req.body.assigned.name || "Unknown User"
+                    };
+                    
+                    console.log("Storing assigned user:", updateData.assigned);
+                } catch (error) {
+                    console.error("Error processing assigned userId:", error.message);
+                    return res.status(400).json({ message: "Invalid user ID", details: error.message });
+                }
+            }
+        }
+        
+        console.log("Final update data:", JSON.stringify(updateData));
+        
+        // Use findByIdAndUpdate with the clean update object
         const inquiry = await Inquiry.findByIdAndUpdate(
             req.params.id,
-            req.body,
-            { new: true }
+            updateData,
+            { new: true, runValidators: true }
         );
 
         if (!inquiry) return res.status(404).json({ message: "Inquiry not found" });
 
+        console.log("Updated inquiry result:", inquiry);
         return res.status(200).json(inquiry);
     } catch (error) {
-        console.log(error.message);
+        console.error("Error updating inquiry:", error.message);
         return res.status(500).send({ message: error.message });
     }
 });
