@@ -69,7 +69,7 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
 
   return (
     <>
-      <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm relative">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -81,7 +81,7 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 shadow-l z-10">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -126,7 +126,7 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
                 <td className="px-6 py-4 whitespace-nowrap">
                   {statusBadge(inquiry.status)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
                   <div className="flex justify-end space-x-2">
                     {!hideAssignButton && (
                       <button
