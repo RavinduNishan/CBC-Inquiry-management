@@ -30,7 +30,7 @@ const priorityStyles = {
     low: 'bg-blue-100 text-blue-800 border-blue-200'
 };
 
-const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated }) => {
+const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButton = false }) => {
     const [assignModalOpen, setAssignModalOpen] = useState(false);
     const [currentInquiryId, setCurrentInquiryId] = useState(null);
     const [currentAssignee, setCurrentAssignee] = useState(null);
@@ -180,18 +180,20 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated }) => {
                                 </div>
                             </div>
                             <div className="flex space-x-3">
-                                <button
-                                    onClick={() => handleAssignClick(inquiry)}
-                                    className={`inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md ${
-                                        inquiry.status.toLowerCase() === 'closed'
-                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                                        : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                                    }`}
-                                    disabled={inquiry.status.toLowerCase() === 'closed'}
-                                >
-                                    <FiUserPlus className="mr-1" />
-                                    Assign
-                                </button>
+                                {!hideAssignButton && (
+                                    <button
+                                        onClick={() => handleAssignClick(inquiry)}
+                                        className={`inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md ${
+                                            inquiry.status.toLowerCase() === 'closed'
+                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                                            : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                                        }`}
+                                        disabled={inquiry.status.toLowerCase() === 'closed'}
+                                    >
+                                        <FiUserPlus className="mr-1" />
+                                        Assign
+                                    </button>
+                                )}
                                 
                                 {onRespond ? (
                                     <button

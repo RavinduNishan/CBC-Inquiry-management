@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Spinner from '../../Spinner';
 import { Link } from 'react-router-dom';
-import { AiOutlineEdit } from 'react-icons/ai';
 import { BsInfoCircle, BsTable, BsGrid3X3Gap } from 'react-icons/bs';
 import { MdOutlineAddBox, MdOutlineDelete, MdDashboard } from 'react-icons/md';
 import { FaUserFriends, FaClipboardList, FaChartBar, FaCog, FaSignOutAlt } from 'react-icons/fa';
@@ -22,9 +21,11 @@ const Master = () => {
   const navigate = useNavigate();
   
   const [inquiries, setInquiries] = useState([]);
+  const [myInquiries, setMyInquiries] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showType, setShowType] = useState('table');
+  const [myInquiriesShowType, setMyInquiriesShowType] = useState('table');
   const [activeMenu, setActiveMenu] = useState('inquiries');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({
@@ -49,6 +50,8 @@ const Master = () => {
   useEffect(() => {
     if (activeMenu === 'inquiries') {
       fetchInquiries();
+    } else if (activeMenu === 'dashboard') {
+      fetchMyInquiries();
     } else if (activeMenu === 'users') {
       fetchUsers();
     }
@@ -60,6 +63,26 @@ const Master = () => {
       .get('http://localhost:5555/inquiry')
       .then((response) => {
         setInquiries(response.data.data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.log(error);
+        setLoading(false);
+      });
+  };
+
+  const fetchMyInquiries = () => {
+    if (!user || !user._id) return;
+    
+    setLoading(true);
+    axios
+      .get('http://localhost:5555/inquiry')
+      .then((response) => {
+        // Filter inquiries assigned to the current user
+        const assignedInquiries = response.data.data.filter(
+          inquiry => inquiry.assigned && inquiry.assigned.userId === user._id
+        );
+        setMyInquiries(assignedInquiries);
         setLoading(false);
       })
       .catch((error) => {
@@ -160,6 +183,43 @@ const Master = () => {
         })
         .catch((error) => {
           console.error("Error refreshing inquiries:", error);
+          setLoading(false);
+        });
+    }, 500); // 500ms delay
+  };
+
+  // Handle response for my inquiries
+  const handleMyInquiryRespond = (inquiryId) => {
+    setCurrentInquiryId(inquiryId);
+    setActiveMenu('responseInquiry');
+  };
+
+  // Refresh my inquiries after update
+  const handleMyInquiriesUpdated = () => {
+    console.log("Refreshing my assigned inquiries...");
+    setLoading(true);
+    
+    // Clear existing inquiries first to ensure UI updates
+    setMyInquiries([]);
+    
+    // Add a small delay to ensure the database has time to update
+    setTimeout(() => {
+      // Then fetch fresh data
+      axios
+        .get('http://localhost:5555/inquiry', {
+          // Add cache-busting parameter to prevent stale data
+          params: { _t: new Date().getTime() }
+        })
+        .then((response) => {
+          // Filter inquiries assigned to the current user
+          const assignedInquiries = response.data.data.filter(
+            inquiry => inquiry.assigned && inquiry.assigned.userId === user._id
+          );
+          setMyInquiries(assignedInquiries);
+          setLoading(false);
+        })
+        .catch((error) => {
+          console.error("Error refreshing my inquiries:", error);
           setLoading(false);
         });
     }, 500); // 500ms delay
@@ -434,10 +494,73 @@ const Master = () => {
         )}
         
         {activeMenu === 'dashboard' && (
-          <div className='p-4'>
-            <h1 className='text-3xl mb-4'>Dashboard</h1>
-            <p>Dashboard content will be displayed here.</p>
-          </div>
+          <>
+            <div className='flex justify-between items-center mb-6'>
+              <h1 className='text-2xl font-bold text-gray-800'>My Assigned Inquiries</h1>
+              <div className='flex items-center gap-4'>
+                <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-1 flex'>
+                  <button
+                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                      myInquiriesShowType === 'table'
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'bg-white text-gray-500 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setMyInquiriesShowType('table')}
+                    title="Show as table"
+                  >
+                    <BsTable className={`mr-2 ${myInquiriesShowType === 'table' ? 'text-white' : 'text-gray-400'}`} />
+                    Table
+                  </button>
+                  <button
+                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                      myInquiriesShowType === 'card'
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'bg-white text-gray-500 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setMyInquiriesShowType('card')}
+                    title="Show as cards"
+                  >
+                    <BsGrid3X3Gap className={`mr-2 ${myInquiriesShowType === 'card' ? 'text-white' : 'text-gray-400'}`} />
+                    Cards
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
+              <div className='flex justify-between items-center mb-6'>
+                <h2 className='text-xl font-semibold text-gray-700'>Inquiries Assigned to You</h2>
+                <div className='text-sm text-gray-500'>
+                  {myInquiries.length} {myInquiries.length === 1 ? 'inquiry' : 'inquiries'} assigned to you
+                </div>
+              </div>
+              
+              {loading ? (
+                <Spinner />
+              ) : myInquiries.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <div className="text-gray-500">
+                    <p className="text-xl font-medium mb-2">No inquiries assigned to you yet</p>
+                    <p className="text-sm">When inquiries are assigned to you, they will appear here.</p>
+                  </div>
+                </div>
+              ) : myInquiriesShowType === 'table' ? (
+                <InquiryTable 
+                  inquiries={myInquiries} 
+                  onRespond={handleMyInquiryRespond}
+                  onInquiriesUpdated={handleMyInquiriesUpdated}
+                  hideAssignButton={true}
+                />
+              ) : (
+                <InquiryCard 
+                  inquiries={myInquiries} 
+                  onRespond={handleMyInquiryRespond}
+                  onInquiriesUpdated={handleMyInquiriesUpdated}
+                  hideAssignButton={true}
+                />
+              )}
+            </div>
+          </>
         )}
         
         {activeMenu === 'reports' && isAdmin && (

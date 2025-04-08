@@ -46,7 +46,7 @@ const priorityBadge = (priority) => {
   }
 };
 
-const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated }) => {
+const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButton = false }) => {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
   const [currentAssignee, setCurrentAssignee] = useState(null);
@@ -128,18 +128,20 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated }) => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end space-x-2">
-                    <button
-                      onClick={() => handleAssignClick(inquiry)}
-                      className={`inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md ${
-                        inquiry.status.toLowerCase() === 'closed'
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                        : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                      }`}
-                      disabled={inquiry.status.toLowerCase() === 'closed'}
-                    >
-                      <FiUserPlus className="mr-1" />
-                      Assign
-                    </button>
+                    {!hideAssignButton && (
+                      <button
+                        onClick={() => handleAssignClick(inquiry)}
+                        className={`inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md ${
+                          inquiry.status.toLowerCase() === 'closed'
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                          : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                        }`}
+                        disabled={inquiry.status.toLowerCase() === 'closed'}
+                      >
+                        <FiUserPlus className="mr-1" />
+                        Assign
+                      </button>
+                    )}
                     {onRespond ? (
                       <button
                         onClick={() => onRespond(inquiry._id)}
