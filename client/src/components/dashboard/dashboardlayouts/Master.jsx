@@ -15,6 +15,8 @@ import AuthContext from '../../../context/AuthContext';
 import loginImg from '../../../assets/loginImg.png';
 import CreateInquiry from '../../Inquiry/CreateInquiry';
 import DashboardResponseInquiry from '../../Inquiry/DashboardResponseInquiry';
+import UserForm from '../../../pages/user/createuser';
+import CreateUser from '../../../pages/user/createuser';
 
 const Master = () => {
   const { user, logout, isAdmin } = useContext(AuthContext);
@@ -317,6 +319,19 @@ const Master = () => {
                 <li className='px-3'>
                   <button 
                     className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
+                      activeMenu === 'addUser' 
+                        ? 'bg-sky-50 text-sky-600 font-medium' 
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                    onClick={() => setActiveMenu('addUser')}
+                  >
+                    <MdOutlineAddBox className={`mr-3 text-lg ${activeMenu === 'addUser' ? 'text-sky-600' : 'text-gray-500'}`} />
+                    Add User
+                  </button>
+                </li>
+                <li className='px-3'>
+                  <button 
+                    className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
                       activeMenu === 'reports' 
                         ? 'bg-sky-50 text-sky-600 font-medium' 
                         : 'text-gray-600 hover:bg-gray-100'
@@ -489,6 +504,29 @@ const Master = () => {
               ) : (
                 <UserTable users={users} fetchUsers={fetchUsers} />
               )}
+            </div>
+          </>
+        )}
+        
+        {activeMenu === 'addUser' && isAdmin && (
+          <>
+            <div className='flex justify-between items-center mb-6'>
+              <h1 className='text-2xl font-bold text-gray-800'>Add New User</h1>
+              <button
+                onClick={() => setActiveMenu('users')}
+                className='bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg px-4 py-2 flex items-center text-sm font-medium transition-all duration-200 shadow-sm'
+              >
+                Back to User List
+              </button>
+            </div>
+            
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
+              <CreateUser 
+                onUserAdded={() => {
+                  fetchUsers();
+                  setActiveMenu('users');
+                }}
+              />
             </div>
           </>
         )}
