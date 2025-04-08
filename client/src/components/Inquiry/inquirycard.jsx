@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AiOutlineEdit } from 'react-icons/ai';
 import { FiUser, FiMail, FiPhone, FiBriefcase, FiTag, FiMessageSquare, FiFile, FiClock, FiRefreshCw, FiSend, FiUserPlus } from 'react-icons/fi';
 import AssignUserModal from './AssignUserModal';
 
@@ -35,6 +36,9 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated }) => {
     const [currentAssignee, setCurrentAssignee] = useState(null);
 
     const handleAssignClick = (inquiry) => {
+        // Don't process if the inquiry is closed
+        if (inquiry.status.toLowerCase() === 'closed') return;
+        
         setCurrentInquiryId(inquiry._id);
         // Set current assignee from the updated structure
         setCurrentAssignee(inquiry.assigned?.userId || null);
@@ -178,7 +182,12 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated }) => {
                             <div className="flex space-x-3">
                                 <button
                                     onClick={() => handleAssignClick(inquiry)}
-                                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    className={`inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md ${
+                                        inquiry.status.toLowerCase() === 'closed'
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                                        : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                                    }`}
+                                    disabled={inquiry.status.toLowerCase() === 'closed'}
                                 >
                                     <FiUserPlus className="mr-1" />
                                     Assign

@@ -7,7 +7,6 @@ import { useSnackbar } from 'notistack';
 const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
   const [inquiry, setInquiry] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [assigned, setAssigned] = useState('');
   const [comments, setComments] = useState('');
   const [status, setStatus] = useState('');
   const [users, setUsers] = useState([
@@ -29,7 +28,6 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
       .then((response) => {
         const inquiryData = response.data;
         setInquiry(inquiryData);
-        setAssigned(inquiryData.assigned || '');
         setComments(inquiryData.comments || '');
         setStatus(inquiryData.status || 'pending');
         setLoading(false);
@@ -41,25 +39,7 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
       });
   }, [id]);
 
-  const handleAssign = () => {
-    if (inquiry.status === 'closed') return;
-    
-    setLoading(true);
-    axios
-      .put(`http://localhost:5555/inquiry/${id}`, { 
-        ...inquiry,
-        assigned 
-      })
-      .then(() => {
-        setLoading(false);
-        enqueueSnackbar('Inquiry assigned successfully', { variant: 'success' });
-      })
-      .catch((error) => {
-        console.error('Error assigning inquiry:', error);
-        setLoading(false);
-        enqueueSnackbar('Error assigning inquiry', { variant: 'error' });
-      });
-  };
+  
 
   const handleClose = () => {
     if (inquiry.status === 'closed') return;
@@ -97,7 +77,6 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
     const updatedInquiry = {
       ...inquiry,
       status,
-      assigned,
       comments
     };
     
@@ -230,29 +209,7 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
         <div className="border-2 border-sky-400 rounded-xl p-4">
           <h2 className="text-xl font-semibold mb-4">Response Actions</h2>
           
-          <div className="mb-4">
-            <label className="block text-gray-700 mb-2">Assign To</label>
-            <select
-              value={assigned}
-              onChange={(e) => !isClosed && setAssigned(e.target.value)}
-              className={`w-full border-2 border-gray-300 rounded-md p-2 ${isClosed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              disabled={isClosed}
-            >
-              <option value="">Unassigned</option>
-              {users.map(user => (
-                <option key={user.id} value={user.name}>{user.name}</option>
-              ))}
-            </select>
-            <button 
-              onClick={handleAssign}
-              className={`mt-2 text-white px-4 py-2 rounded w-full ${
-                isClosed ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'
-              }`}
-              disabled={isClosed}
-            >
-              Assign
-            </button>
-          </div>
+          
           
           <div className="mb-4">
             <label className="block text-gray-700 mb-2">Comments</label>

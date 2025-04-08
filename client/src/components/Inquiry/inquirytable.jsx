@@ -52,6 +52,9 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated }) => {
   const [currentAssignee, setCurrentAssignee] = useState(null);
 
   const handleAssignClick = (inquiry) => {
+    // Don't process if the inquiry is closed
+    if (inquiry.status.toLowerCase() === 'closed') return;
+    
     setCurrentInquiryId(inquiry._id);
     setCurrentAssignee(inquiry.assigned?.userId || null);
     setAssignModalOpen(true);
@@ -127,7 +130,12 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated }) => {
                   <div className="flex justify-end space-x-2">
                     <button
                       onClick={() => handleAssignClick(inquiry)}
-                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className={`inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md ${
+                        inquiry.status.toLowerCase() === 'closed'
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                        : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                      }`}
+                      disabled={inquiry.status.toLowerCase() === 'closed'}
                     >
                       <FiUserPlus className="mr-1" />
                       Assign
