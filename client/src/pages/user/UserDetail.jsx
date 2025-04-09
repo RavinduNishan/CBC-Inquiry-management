@@ -19,14 +19,37 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
     setShowEditForm(true);
   };
 
-  const handleDeleteUser = () => {
-    // This should be implemented to show the delete confirmation
-    // You can reuse the existing delete functionality
+  const handleDeleteUser = async () => {
+    // Show a confirmation dialog
+    const confirmDelete = window.confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`);
+    
+    if (confirmDelete) {
+      try {
+        // Get the token to include in the request
+        const token = localStorage.getItem('token');
+        
+        // Make the delete request
+        await axios.delete(`http://localhost:5555/user/${user._id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        // Show success notification
+        enqueueSnackbar('User deleted successfully', { variant: 'success' });
+        
+        // Call the callback to refresh the list and go back to the users list
+        if (onUserUpdated) onUserUpdated();
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        enqueueSnackbar(error.response?.data?.message || 'Failed to delete user', { 
+          variant: 'error' 
+        });
+      }
+    }
   };
 
-  const handleChangePermissions = () => {
-    // Implement permission changes here
-  };
+  
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
@@ -114,22 +137,7 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
                 Edit User
               </button>
               
-              <button
-                onClick={handleChangePermissions}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition"
-              >
-                {user.status === 'active' ? (
-                  <>
-                    <MdOutlinePersonOff className="text-lg" />
-                    Change Permissions
-                  </>
-                ) : (
-                  <>
-                    <MdOutlinePersonAdd className="text-lg" />
-                    Change Permissions
-                  </>
-                )}
-              </button>
+            
               
               <button
                 onClick={handleDeleteUser}
