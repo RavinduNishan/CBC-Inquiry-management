@@ -27,11 +27,28 @@ export const AuthProvider = ({ children }) => {
 
       // Store user in state and localStorage
       const userData = response.data;
+      
+      // Check for inactive status before storing user data
+      if (userData && userData.status === 'inactive') {
+        return {
+          success: false,
+          message: 'Your account is inactive. Please contact the administrator.'
+        };
+      }
+      
+      // Store token separately for easier access
+      if (userData.token) {
+        localStorage.setItem('token', userData.token);
+        // Set axios default headers
+        axios.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
+      }
+      
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
 
-      return { success: true };
+      return { success: true, user: userData };
     } catch (error) {
+      console.error('Login error:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'An error occurred during login'

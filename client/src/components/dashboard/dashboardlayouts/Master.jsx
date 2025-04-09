@@ -6,16 +6,16 @@ import { Link } from 'react-router-dom';
 import { BsInfoCircle, BsTable, BsGrid3X3Gap } from 'react-icons/bs';
 import { MdOutlineAddBox, MdOutlineDelete, MdDashboard } from 'react-icons/md';
 import { FaUserFriends, FaClipboardList, FaChartBar, FaCog, FaSignOutAlt } from 'react-icons/fa';
-import InquiryTable from '../../Inquiry/inquirytable';
-import InquiryCard from '../../Inquiry/inquirycard';
-import UserTable from '../../User/UserTable';
+// Fix import paths for the inquiry components that were moved
+import InquiryTable from '../../../pages/inquiry/Inquiry/inquirytable';
+import InquiryCard from '../../../pages/inquiry/Inquiry/inquirycard';
+import UserTable from '../../../pages/user/usertable';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import AuthContext from '../../../context/AuthContext';
 import loginImg from '../../../assets/loginImg.png';
-import CreateInquiry from '../../Inquiry/CreateInquiry';
-import DashboardResponseInquiry from '../../Inquiry/DashboardResponseInquiry';
-import UserForm from '../../../pages/user/createuser';
+import CreateInquiry from '../../../pages/inquiry/Inquiry/CreateInquiry';
+import DashboardResponseInquiry from '../../../pages/inquiry/Inquiry/DashboardResponseInquiry';
 import CreateUser from '../../../pages/user/createuser';
 
 const Master = () => {
@@ -42,13 +42,28 @@ const Master = () => {
   const [error, setError] = useState('');
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
 
-  // Set up axios to include the auth token in all requests
-  useEffect(() => {
-    // Configure axios to include the token in all requests
+  // Add authorization headers to axios requests
+  const updateAxiosConfig = () => {
     const token = localStorage.getItem('token');
     if (token) {
+      // Apply token to default axios headers
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Also ensure that refreshed API calls have the token
+      axios.interceptors.request.use(
+        config => {
+          if (!config.headers.Authorization) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
+          return config;
+        },
+        error => Promise.reject(error)
+      );
     }
+  };
+
+  // Initialize axios with auth headers
+  useEffect(() => {
+    updateAxiosConfig();
   }, []);
 
   // Enhanced check for authenticated and active users
@@ -225,6 +240,8 @@ const Master = () => {
     
     // Add a small delay to ensure the database has time to update
     setTimeout(() => {
+      // Ensure token is included in this request
+      updateAxiosConfig();
       // Then fetch fresh data
       axios
         .get('http://localhost:5555/inquiry', {
@@ -238,6 +255,10 @@ const Master = () => {
         })
         .catch((error) => {
           console.error("Error refreshing inquiries:", error);
+          if (error.response && error.response.status === 401) {
+            logout();
+            navigate('/login');
+          }
           setLoading(false);
         });
     }, 500); // 500ms delay
@@ -259,6 +280,8 @@ const Master = () => {
     
     // Add a small delay to ensure the database has time to update
     setTimeout(() => {
+      // Ensure token is included in this request
+      updateAxiosConfig();
       // Then fetch fresh data
       axios
         .get('http://localhost:5555/inquiry', {
@@ -275,6 +298,10 @@ const Master = () => {
         })
         .catch((error) => {
           console.error("Error refreshing my inquiries:", error);
+          if (error.response && error.response.status === 401) {
+            logout();
+            navigate('/login');
+          }
           setLoading(false);
         });
     }, 500); // 500ms delay

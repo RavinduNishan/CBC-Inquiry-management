@@ -1,5 +1,5 @@
 import React from 'react';
-import ResponseInquiry from '../../pages/inquiry/responseinquiry';
+import ResponseInquiry from '../responseinquiry';
 import { useNavigate } from 'react-router-dom';
 
 const DashboardResponseInquiry = ({ inquiryId, onBack }) => {

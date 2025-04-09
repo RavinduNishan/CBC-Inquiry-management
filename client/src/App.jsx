@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import CreateInquiry from './pages/inquiry/createInquiry';
 import Home from './pages/Home';
-import inquirysinglecard from './components/Inquiry/inquirysinglecard';
+import InquirySingleCard from './pages/inquiry/Inquiry/inquirysinglecard';
 import ResponseInquiry from './pages/inquiry/responseinquiry';
 import IndexBlade from './components/dashboard/IndexBlade';
 import { FormBlade } from './components/dashboard/FormBlade';

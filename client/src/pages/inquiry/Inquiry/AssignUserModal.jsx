@@ -2,7 +2,7 @@ import React, { useState, useEffect, Fragment } from 'react';
 import axios from 'axios';
 import { Dialog, Transition } from '@headlessui/react';
 import { FiSearch, FiUser, FiMail, FiPhone } from 'react-icons/fi';
-import Spinner from '../../pages/user/Spinner';
+import Spinner from '../../user/Spinner';
 import { useSnackbar } from 'notistack';
 
 const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee }) => {
