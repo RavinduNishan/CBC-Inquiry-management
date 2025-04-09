@@ -3,7 +3,32 @@ import axios from 'axios';
 import Spinner from '../../components/Spinner';
 import { useSnackbar } from 'notistack';
 
+// Custom CSS for toggle
+const toggleStyles = `
+  .toggle-checkbox:checked {
+    right: 0;
+    border-color: #68D391;
+  }
+  .toggle-checkbox:checked + .toggle-label {
+    background-color: #68D391;
+  }
+  .toggle-label {
+    transition: background-color 0.2s;
+  }
+`;
+
 function CreateUser({ onUserAdded }) {
+  // Add style tag with toggle CSS
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = toggleStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+
   const { enqueueSnackbar } = useSnackbar();
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState({
@@ -14,6 +39,7 @@ function CreateUser({ onUserAdded }) {
     permissions: [],
     password: '',
     confirmPassword: '',
+    status: 'active', // Default status is active
   });
   const [error, setError] = useState('');
 
@@ -46,6 +72,14 @@ function CreateUser({ onUserAdded }) {
     setUserData({
       ...userData,
       [e.target.name]: e.target.value
+    });
+  };
+
+  // Handle status toggle change
+  const handleToggleChange = (e) => {
+    setUserData({
+      ...userData,
+      status: e.target.checked ? 'active' : 'inactive'
     });
   };
 
@@ -101,7 +135,7 @@ function CreateUser({ onUserAdded }) {
         accessLevel: userData.accessLevel,
         permissions: userData.permissions,
         password: userData.password,
-        status: 'active'
+        status: userData.status // Send status to backend
       });
       
       setLoading(false);
@@ -116,6 +150,7 @@ function CreateUser({ onUserAdded }) {
         permissions: ['myInquiries'],
         password: '',
         confirmPassword: '',
+        status: 'active', // Reset status to active
       });
       
       // Notify parent component if callback provided
@@ -231,6 +266,37 @@ function CreateUser({ onUserAdded }) {
                     <option value="Staff Member">Staff Member</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Status toggle switch */}
+              <div className="sm:col-span-6">
+                <div className="flex items-center">
+                  <label htmlFor="status-toggle" className="block text-sm font-medium text-gray-700 mr-4">
+                    User Status
+                  </label>
+                  <div className="relative inline-block w-12 mr-2 align-middle select-none">
+                    <input
+                      type="checkbox"
+                      id="status-toggle"
+                      name="status-toggle"
+                      checked={userData.status === 'active'}
+                      onChange={handleToggleChange}
+                      className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                    />
+                    <label
+                      htmlFor="status-toggle"
+                      className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${
+                        userData.status === 'active' ? 'bg-green-400' : 'bg-gray-300'
+                      }`}
+                    ></label>
+                  </div>
+                  <span className="text-sm font-medium ml-2">
+                    {userData.status === 'active' ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-gray-500">
+                  Toggle to set whether this user account is active or inactive.
+                </p>
               </div>
 
               {/* Permissions field - only show for Staff Members */}
