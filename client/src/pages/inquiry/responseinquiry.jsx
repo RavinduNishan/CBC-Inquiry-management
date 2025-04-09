@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
-import Spinner from '../../components/Spinner';
+import Spinner from '../user/Spinner';
 import { useSnackbar } from 'notistack';
 
 const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {

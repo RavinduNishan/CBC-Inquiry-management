@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import Spinner from '../Spinner';
+import Spinner from '../../pages/user/Spinner';
 import AuthContext from '../../context/AuthContext';
 
 const CreateInquiry = () => {

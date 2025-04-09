@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Spinner from '../../Spinner';
+import Spinner from '../../../pages/user/Spinner';
 import { Link } from 'react-router-dom';
 import { BsInfoCircle, BsTable, BsGrid3X3Gap } from 'react-icons/bs';
 import { MdOutlineAddBox, MdOutlineDelete, MdDashboard } from 'react-icons/md';
@@ -42,12 +42,29 @@ const Master = () => {
   const [error, setError] = useState('');
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
 
-  // Check if user is authenticated
+  // Set up axios to include the auth token in all requests
+  useEffect(() => {
+    // Configure axios to include the token in all requests
+    const token = localStorage.getItem('token');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
+  }, []);
+
+  // Enhanced check for authenticated and active users
   useEffect(() => {
     if (!user) {
       navigate('/login');
+      return;
     }
-  }, [user, navigate]);
+    
+    // Additional check to prevent inactive users from accessing the dashboard
+    if (user.status === 'inactive') {
+      console.log('Inactive user detected, redirecting to login');
+      logout(); // Force logout
+      navigate('/login');
+    }
+  }, [user, navigate, logout]);
 
   useEffect(() => {
     if (activeMenu === 'inquiries') {
@@ -61,14 +78,26 @@ const Master = () => {
 
   const fetchInquiries = () => {
     setLoading(true);
+    // Get the token directly to ensure it's included
+    const token = localStorage.getItem('token');
+    
     axios
-      .get('http://localhost:5555/inquiry')
+      .get('http://localhost:5555/inquiry', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       .then((response) => {
         setInquiries(response.data.data);
         setLoading(false);
       })
       .catch((error) => {
         console.log(error);
+        // If unauthorized, redirect to login
+        if (error.response && error.response.status === 401) {
+          logout();
+          navigate('/login');
+        }
         setLoading(false);
       });
   };
@@ -77,8 +106,15 @@ const Master = () => {
     if (!user || !user._id) return;
     
     setLoading(true);
+    // Get the token directly to ensure it's included
+    const token = localStorage.getItem('token');
+    
     axios
-      .get('http://localhost:5555/inquiry')
+      .get('http://localhost:5555/inquiry', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       .then((response) => {
         // Filter inquiries assigned to the current user
         const assignedInquiries = response.data.data.filter(
@@ -89,20 +125,37 @@ const Master = () => {
       })
       .catch((error) => {
         console.log(error);
+        // If unauthorized, redirect to login
+        if (error.response && error.response.status === 401) {
+          logout();
+          navigate('/login');
+        }
         setLoading(false);
       });
   };
 
   const fetchUsers = () => {
     setLoading(true);
+    // Get the token directly to ensure it's included
+    const token = localStorage.getItem('token');
+    
     axios
-      .get('http://localhost:5555/user')
+      .get('http://localhost:5555/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       .then((response) => {
         setUsers(response.data.data);
         setLoading(false);
       })
       .catch((error) => {
         console.log(error);
+        // If unauthorized, redirect to login
+        if (error.response && error.response.status === 401) {
+          logout();
+          navigate('/login');
+        }
         setLoading(false);
       });
   };

@@ -9,7 +9,7 @@ export const LoginBlade = () => {
     password: ''
   });
   const [error, setError] = useState('');
-  const { login, loading } = useContext(AuthContext);
+  const { login, loading, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -29,11 +29,48 @@ export const LoginBlade = () => {
       return;
     }
 
-    const result = await login(email, password);
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.message);
+    try {
+      // Make a direct API call to get the user data and token
+      const response = await fetch('http://localhost:5555/user/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+      console.log('Login API response:', data);
+      
+      // Check if we received user data
+      if (data && data._id) {
+        // First check if user is inactive
+        if (data.status === 'inactive') {
+          console.log('Inactive user detected, blocking login:', data);
+          setError('Your account is inactive. Please contact the administrator.');
+          return;
+        }
+        
+        // Save the token to localStorage for API requests
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        
+        // Use context login to handle user state
+        const result = await login(email, password);
+        
+        if (result.success) {
+          navigate('/dashboard');
+        } else {
+          setError(result.message || 'Login failed');
+        }
+      } else {
+        // No user data found in response
+        setError(data.message || 'Invalid credentials. Please try again.');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('An error occurred. Please try again later.');
     }
   };
 
