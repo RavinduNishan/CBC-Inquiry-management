@@ -6,9 +6,8 @@ import axios from 'axios';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 
-const UserTable = ({ users, fetchUsers }) => {
+const UserTable = ({ users, fetchUsers, onViewDetails }) => {
   const [selectedUser, setSelectedUser] = useState(null);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,12 +20,7 @@ const UserTable = ({ users, fetchUsers }) => {
     status: ''
   });
 
-  // Handle view user details
-  const handleViewUser = (user) => {
-    setSelectedUser(user);
-    setIsViewModalOpen(true);
-  };
-
+ 
   // Handle edit user
   const handleEditClick = (user) => {
     setSelectedUser(user);
@@ -137,8 +131,8 @@ const UserTable = ({ users, fetchUsers }) => {
                   <div className="flex space-x-2">
                     <button 
                       className="text-blue-600 hover:text-blue-900"
-                      onClick={() => handleViewUser(user)}
-                      title="View details"
+                      onClick={() => onViewDetails(user)}
+                      title="View user details"
                     >
                       <BsInfoCircle className="text-lg" />
                     </button>
@@ -164,90 +158,7 @@ const UserTable = ({ users, fetchUsers }) => {
         </table>
       </div>
 
-      {/* View User Modal */}
-      <Transition appear show={isViewModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-10" onClose={() => setIsViewModalOpen(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
-          </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                  <Dialog.Title
-                    as="h3"
-                    className="text-lg font-medium leading-6 text-gray-900 mb-4"
-                  >
-                    User Details
-                  </Dialog.Title>
-                  
-                  {selectedUser && (
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Name</p>
-                        <p className="font-medium">{selectedUser.name}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Email</p>
-                        <p className="font-medium">{selectedUser.email}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Phone</p>
-                        <p className="font-medium">{selectedUser.phone}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Access Level</p>
-                        <p className="font-medium">{selectedUser.accessLevel}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Status</p>
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          selectedUser.status === 'active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {selectedUser.status === 'active' ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="mt-6">
-                    <button
-                      type="button"
-                      className="w-full inline-flex justify-center rounded-md border border-transparent bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                      onClick={() => setIsViewModalOpen(false)}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
+      
 
       {/* Edit User Modal */}
       <Transition appear show={isEditModalOpen} as={Fragment}>

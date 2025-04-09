@@ -17,6 +17,7 @@ import loginImg from '../../../assets/loginImg.png';
 import CreateInquiry from '../../../pages/inquiry/Inquiry/CreateInquiry';
 import DashboardResponseInquiry from '../../../pages/inquiry/Inquiry/DashboardResponseInquiry';
 import CreateUser from '../../../pages/user/createuser';
+import UserDetail from '../../../pages/user/UserDetail';
 
 const Master = () => {
   const { user, logout, isAdmin } = useContext(AuthContext);
@@ -41,6 +42,7 @@ const Master = () => {
   });
   const [error, setError] = useState('');
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
+  const [selectedUserForDetails, setSelectedUserForDetails] = useState(null);
 
   // Add authorization headers to axios requests
   const updateAxiosConfig = () => {
@@ -307,6 +309,11 @@ const Master = () => {
     }, 500); // 500ms delay
   };
 
+  const handleViewUserDetails = (user) => {
+    setSelectedUserForDetails(user);
+    setActiveMenu('userDetails');
+  };
+
   if (!user) {
     return null;
   }
@@ -517,19 +524,12 @@ const Master = () => {
                     Cards
                   </button>
                 </div>
-                <Link 
-                  to='/inquiry/create'
-                  className='bg-sky-600 hover:bg-sky-700 text-white rounded-lg px-4 py-2 flex items-center text-sm font-medium transition-all duration-200 shadow-sm'
-                >
-                  <MdOutlineAddBox className='mr-2' />
-                  New Inquiry
-                </Link>
+                
               </div>
             </div>
             
             <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
               <div className='flex justify-between items-center mb-6'>
-                <h2 className='text-xl font-semibold text-gray-700'>Inquiry List</h2>
                 <div className='text-sm text-gray-500'>
                   {inquiries.length} {inquiries.length === 1 ? 'inquiry' : 'inquiries'} found
                 </div>
@@ -578,7 +578,6 @@ const Master = () => {
             
             <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
               <div className='flex justify-between items-center mb-6'>
-                <h2 className='text-xl font-semibold text-gray-700'>User List</h2>
                 <div className='text-sm text-gray-500'>
                   {users.length} {users.length === 1 ? 'user' : 'users'} found
                 </div>
@@ -587,7 +586,11 @@ const Master = () => {
               {loading ? (
                 <Spinner />
               ) : (
-                <UserTable users={users} fetchUsers={fetchUsers} />
+                <UserTable 
+                  users={users} 
+                  fetchUsers={fetchUsers}
+                  onViewDetails={handleViewUserDetails} 
+                />
               )}
             </div>
           </>
@@ -652,7 +655,6 @@ const Master = () => {
             
             <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
               <div className='flex justify-between items-center mb-6'>
-                <h2 className='text-xl font-semibold text-gray-700'>Inquiries Assigned to You</h2>
                 <div className='text-sm text-gray-500'>
                   {myInquiries.length} {myInquiries.length === 1 ? 'inquiry' : 'inquiries'} assigned to you
                 </div>
@@ -699,6 +701,17 @@ const Master = () => {
             <p>Settings content will be displayed here.</p>
           </div>
         )}
+
+        {activeMenu === 'userDetails' && selectedUserForDetails && (
+          <UserDetail 
+            user={selectedUserForDetails}
+            onBack={() => setActiveMenu('users')}
+            onUserUpdated={() => {
+              fetchUsers();
+              setActiveMenu('users');
+            }}
+          />
+        )}
       </div>
 
       {/* Add User Modal */}
@@ -728,23 +741,20 @@ const Master = () => {
                 leaveTo="opacity-0 scale-95"
               >
                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                  <Dialog.Title
-                    as="h3"
-                    className="text-lg font-medium leading-6 text-gray-900 mb-4"
-                  >
+                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
                     Add New User
                   </Dialog.Title>
                   
-                  {error && (
-                    <div className="mb-4 p-2 bg-red-100 text-red-700 rounded-md text-sm">
-                      {error}
-                    </div>
-                  )}
-                  
                   <form onSubmit={handleAddUser}>
+                    {error && (
+                      <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+                        {error}
+                      </div>
+                    )}
+                    
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Full Name
+                        Name
                       </label>
                       <input
                         type="text"
@@ -799,6 +809,41 @@ const Master = () => {
                         <option value="Staff Member">Staff Member</option>
                       </select>
                     </div>
+                    
+                    {/* Only show permissions if access level is Staff Member */}
+                    {newUser.accessLevel === 'Staff Member' && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Permissions
+                        </label>
+                        <div className="bg-gray-50 p-3 rounded-md border border-gray-200 space-y-2">
+                          <p className="text-xs text-gray-500 mb-2">
+                            Select permissions for this staff member:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {['View Inquiries', 'Respond to Inquiries', 'Create Inquiries'].map((permission) => (
+                              <label key={permission} className="flex items-center space-x-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.includes(permission)}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setNewUser({
+                                      ...newUser,
+                                      permissions: isChecked 
+                                        ? [...newUser.permissions, permission]
+                                        : newUser.permissions.filter(p => p !== permission)
+                                    });
+                                  }}
+                                  className="rounded text-sky-600 focus:ring-sky-500"
+                                />
+                                <span>{permission}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
