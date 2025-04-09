@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BsInfoCircle, BsSearch } from 'react-icons/bs';
+import { BsInfoCircle, BsSearch, BsDownload } from 'react-icons/bs';
 import axios from 'axios';
 
 const UserTable = ({ users, fetchUsers, onViewDetails }) => {
@@ -24,7 +24,7 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
 
   // Apply filters when search button is clicked
   const handleSearch = (e) => {
-    e.preventDefault();
+    e && e.preventDefault();
     
     // Update the actual filter values from the input values
     setSearchTerm(inputSearchTerm);
@@ -32,31 +32,14 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
     setStatusFilter(inputStatusFilter);
     
     // Apply filters
-    applyFilters(inputSearchTerm, inputAccessLevelFilter, inputStatusFilter);
-  };
-
-  // Apply the filters to the users array
-  const applyFilters = (search, accessLevel, status) => {
-    let result = [...users];
-    
-    // Filter by search term (name or email)
-    if (search) {
-      const term = search.toLowerCase();
-      result = result.filter(user => 
-        user.name.toLowerCase().includes(term) || 
-        user.email.toLowerCase().includes(term)
-      );
-    }
-    
-    // Filter by access level
-    if (accessLevel) {
-      result = result.filter(user => user.accessLevel === accessLevel);
-    }
-    
-    // Filter by status
-    if (status) {
-      result = result.filter(user => user.status === status);
-    }
+    const result = users.filter(user => {
+      const matchesSearchTerm = !inputSearchTerm || 
+        user.name.toLowerCase().includes(inputSearchTerm.toLowerCase()) || 
+        user.email.toLowerCase().includes(inputSearchTerm.toLowerCase());
+      const matchesAccessLevel = !inputAccessLevelFilter || user.accessLevel === inputAccessLevelFilter;
+      const matchesStatus = !inputStatusFilter || user.status === inputStatusFilter;
+      return matchesSearchTerm && matchesAccessLevel && matchesStatus;
+    });
     
     setFilteredUsers(result);
   };
@@ -76,14 +59,90 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
     // Reset to show all users
     setFilteredUsers(users);
   };
+  
+  // Generate CSV data from filtered users
+  const generateCSV = () => {
+    // Define the headers
+    const headers = ['Name', 'Email', 'Phone', 'Access Level', 'Status', 'Permissions', 'Created At', 'Updated At'];
+    
+    // Create the CSV content
+    let csvContent = headers.join(',') + '\n';
+    
+    // Add data for each user
+    filteredUsers.forEach(user => {
+      // Format permissions to handle array data properly
+      let permissions = user.accessLevel === 'Administrator' 
+        ? 'All permissions' 
+        : (user.permissions && user.permissions.length > 0 
+            ? user.permissions.join('; ') 
+            : 'No permissions');
+      
+      // Format status for better readability
+      let status = user.status === 'active' ? 'Active' : 'Inactive';
+      
+      // Format dates for better readability with 24-hour format
+      const dateOptions = { 
+        year: 'numeric', 
+        month: 'numeric', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit', 
+        hour12: false 
+      };
+      
+      const createdDate = user.createdAt ? new Date(user.createdAt).toLocaleString('en-US', dateOptions) : 'N/A';
+      const updatedDate = user.updatedAt ? new Date(user.updatedAt).toLocaleString('en-US', dateOptions) : 'N/A';
+      
+      // Create CSV row and escape values that might contain commas
+      const row = [
+        `"${user.name}"`,
+        `"${user.email}"`,
+        `"${user.phone || 'N/A'}"`,
+        `"${user.accessLevel}"`,
+        `"${status}"`,
+        `"${permissions}"`,
+        `"${createdDate}"`,
+        `"${updatedDate}"`
+      ].join(',');
+      
+      csvContent += row + '\n';
+    });
+    
+    return csvContent;
+  };
+  
+  // Download CSV file
+  const downloadCSV = () => {
+    const csvData = generateCSV();
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a link and trigger the download
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `User-Management-${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <>
-      {/* Search and Filter Section */}
-      <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <form onSubmit={handleSearch}>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search Bar */}
+      {/* User Management Title and Search Functionality */}
+      <div className="mb-6">
+        <h1 className='text-2xl font-bold text-gray-800 mb-4'>User Management</h1>
+        
+        {/* Search, Filters, and User Count in a single row */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div className='text-sm text-gray-500 whitespace-nowrap'>
+            {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'} found
+          </div>
+          
+          <div className="flex-1 flex flex-wrap items-center gap-2 mx-2 min-w-0">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <BsSearch className="text-gray-400" />
@@ -92,55 +151,64 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
                 type="text"
                 placeholder="Search by name or email"
                 value={inputSearchTerm}
-                onChange={(e) => setInputSearchTerm(e.target.value)}
-                className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                onChange={(e) => {
+                  setInputSearchTerm(e.target.value);
+                  if (e.target.value === '') {
+                    setTimeout(() => handleSearch(), 100);
+                  }
+                }}
+                className="pl-8 w-full px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
               />
             </div>
             
-            {/* Access Level Filter */}
-            <div>
-              <select
-                value={inputAccessLevelFilter}
-                onChange={(e) => setInputAccessLevelFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-              >
-                <option value="">All Access Levels</option>
-                <option value="Administrator">Administrator</option>
-                <option value="Staff Member">Staff Member</option>
-              </select>
-            </div>
+            <select
+              value={inputAccessLevelFilter}
+              onChange={(e) => {
+                setInputAccessLevelFilter(e.target.value);
+                setTimeout(() => handleSearch(), 100);
+              }}
+              className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+            >
+              <option value="">All Access Levels</option>
+              <option value="Administrator">Administrator</option>
+              <option value="Staff Member">Staff Member</option>
+            </select>
             
-            {/* Status Filter */}
-            <div>
-              <select
-                value={inputStatusFilter}
-                onChange={(e) => setInputStatusFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-              >
-                <option value="">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+            <select
+              value={inputStatusFilter}
+              onChange={(e) => {
+                setInputStatusFilter(e.target.value);
+                setTimeout(() => handleSearch(), 100);
+              }}
+              className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+            >
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+
+            <button
+              onClick={handleSearch}
+              className="px-3 py-1.5 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none whitespace-nowrap"
+            >
+              Search
+            </button>
             
-            {/* Buttons */}
-            <div className="flex space-x-2">
-              <button
-                type="submit"
-                className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
-              >
-                Search
-              </button>
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              >
-                Clear
-              </button>
-            </div>
+            <button
+              onClick={clearFilters}
+              className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none whitespace-nowrap"
+            >
+              Clear
+            </button>
           </div>
-        </form>
+          
+          <button
+            onClick={downloadCSV}
+            className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none flex items-center whitespace-nowrap"
+          >
+            <BsDownload className="mr-1" /> Export to CSV
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
