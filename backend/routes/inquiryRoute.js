@@ -2,6 +2,7 @@ import express from "express";
 import Inquiry from "../models/inquirymodel.js";
 import { protect } from "../middleware/authMiddleware.js";
 import mongoose from "mongoose";
+import { sendInquiryConfirmation } from "../utils/emailService.js";
 
 const router = express.Router();  
 
@@ -74,9 +75,22 @@ router.post("/", async (req, res) => {
             createdBy: req.body.createdBy
         });
 
-        return res.status(201).send(
-            `Inquiry created successfully with ID: ${newInquiry.inquiryID}`
-        );
+        // Send email confirmation to the inquiry submitter
+        let emailSent = false;
+        try {
+            console.log('Attempting to send email notification...');
+            await sendInquiryConfirmation(newInquiry);
+            console.log('Inquiry confirmation email sent successfully');
+            emailSent = true;
+        } catch (emailError) {
+            console.error('Failed to send confirmation email:', emailError);
+            // Continue with the response even if email fails
+        }
+
+        return res.status(201).json({
+            message: `Inquiry created successfully with ID: ${newInquiry.inquiryID}`,
+            emailSent: emailSent
+        });
     } catch (error) {
         console.log(error.message);
         return res.status(500).send({ message: error.message });

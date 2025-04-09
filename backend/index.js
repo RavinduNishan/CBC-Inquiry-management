@@ -1,7 +1,7 @@
 import express from "express";
 import { PORT, MONGODBURL } from "./config.js";
 import mongoose from "mongoose";
-
+// Import nodemailer (first install with: npm install nodemailer)
 import cors from "cors";
 
 import inquiryRoute from "./routes/inquiryRoute.js";
