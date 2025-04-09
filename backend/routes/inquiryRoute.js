@@ -8,6 +8,34 @@ const router = express.Router();
 // Apply protect middleware to all inquiry routes
 router.use(protect);
 
+// Helper function to generate the next inquiry ID
+async function generateInquiryID() {
+    const today = new Date();
+    const year = today.getFullYear().toString().slice(-2); // Last 2 digits of year
+    const month = (today.getMonth() + 1).toString().padStart(2, '0'); // 01-12
+    const day = today.getDate().toString().padStart(2, '0'); // 01-31
+    
+    const datePrefix = `${year}${month}${day}`;
+    
+    // Find the latest inquiry with the same date prefix
+    const latestInquiry = await Inquiry.findOne(
+        { inquiryID: new RegExp(`^${datePrefix}`) },
+        { inquiryID: 1 }
+    ).sort({ inquiryID: -1 });
+    
+    let nextNumber = 1; // Default start
+    
+    if (latestInquiry) {
+        // Extract the counter part (last 4 digits)
+        const latestCounter = parseInt(latestInquiry.inquiryID.slice(-4));
+        nextNumber = latestCounter + 1;
+    }
+    
+    // Format the counter as 4 digits with leading zeros
+    const counter = nextNumber.toString().padStart(4, '0');
+    return `${datePrefix}${counter}`;
+}
+
 //create a new inquiry
 router.post("/", async (req, res) => {
     try {
@@ -25,8 +53,12 @@ router.post("/", async (req, res) => {
             return res.status(400).send({ message: "All required fields must be provided." });
         }
 
+        // Generate the inquiry ID
+        const inquiryID = await generateInquiryID();
+
         // Create new inquiry
         const newInquiry = await Inquiry.create({
+            inquiryID: inquiryID,
             name: req.body.name,
             email: req.body.email,
             phone: req.body.phone,
@@ -43,7 +75,7 @@ router.post("/", async (req, res) => {
         });
 
         return res.status(201).send(
-            `Inquiry created successfully with ID: ${newInquiry._id}`
+            `Inquiry created successfully with ID: ${newInquiry.inquiryID}`
         );
     } catch (error) {
         console.log(error.message);

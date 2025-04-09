@@ -153,7 +153,12 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Inquiry Details Section */}
         <div className="lg:col-span-2 border-2 border-sky-400 rounded-xl p-4">
-          <h2 className="text-2xl font-semibold mb-4">{inquiry.subject}</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold">{inquiry.subject}</h2>
+            <div className="text-sm font-medium text-gray-500 px-3 py-1 bg-gray-100 rounded-lg">
+              ID: {inquiry.inquiryID}
+            </div>
+          </div>
           
           <div className="flex flex-wrap gap-2 mb-4">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(inquiry.priority)}`}>

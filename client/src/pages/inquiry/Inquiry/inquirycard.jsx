@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AiOutlineEdit } from 'react-icons/ai';
-import { FiUser, FiMail, FiPhone, FiBriefcase, FiTag, FiMessageSquare, FiFile, FiClock, FiRefreshCw, FiSend, FiUserPlus } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiBriefcase, FiTag, FiMessageSquare, FiFile, FiClock, FiRefreshCw, FiSend, FiUserPlus, FiHash } from 'react-icons/fi';
 import AssignUserModal from './AssignUserModal';
 
 const formatDate = (dateString) => {
@@ -61,6 +61,10 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                         <div className="bg-gradient-to-r from-blue-50 to-gray-50 px-6 py-4 border-b border-gray-200">
                             <div className="flex justify-between items-start">
                                 <div>
+                                    <div className="text-xs font-medium text-gray-500 mb-1 flex items-center">
+                                        <FiHash className="mr-1 text-blue-500" />
+                                        Inquiry ID: {inquiry.inquiryID}
+                                    </div>
                                     <h3 className="text-xl font-bold text-gray-800 flex items-center">
                                         <FiUser className="mr-2 text-blue-500" />
                                         {inquiry.name}
