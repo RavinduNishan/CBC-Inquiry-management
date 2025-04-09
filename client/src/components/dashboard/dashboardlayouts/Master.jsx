@@ -476,7 +476,12 @@ const Master = () => {
             </div>
             
             <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
-              <CreateInquiry />
+              <CreateInquiry 
+                onSuccess={() => {
+                  setActiveMenu('inquiries');
+                  fetchInquiries(); // Refresh the inquiries list
+                }} 
+              />
             </div>
           </>
         )}

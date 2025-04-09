@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import Spinner from '../../user/Spinner';
 import AuthContext from '../../../context/AuthContext';
 
-const CreateInquiry = () => {
+const CreateInquiry = ({ onSuccess }) => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -36,7 +36,13 @@ const CreateInquiry = () => {
       .post('http://localhost:5555/inquiry', inquiry)
       .then(() => {
         setLoading(false);
-        navigate('/dashboard');
+        // If onSuccess callback exists, call it to navigate within dashboard
+        if (onSuccess && typeof onSuccess === 'function') {
+          onSuccess();
+        } else {
+          // Otherwise use default navigation
+          navigate('/dashboard');
+        }
       })
       .catch((error) => {
         setLoading(false);
