@@ -3,12 +3,13 @@ import user from "../models/usermodel.js"; // Adjust the path as necessary
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { protect, admin } from "../middleware/authMiddleware.js";
+import { JWT_SECRET } from "../config.js";  // Import JWT_SECRET from config
 
 const router = express.Router();  
 
 // Generate JWT
 const generateToken = (id) => {
-  return jwt.sign({ id }, 'mysecretkey123', { // Replace with a proper secret key in config
+  return jwt.sign({ id }, JWT_SECRET, {  // Use imported JWT_SECRET instead of hardcoded value
     expiresIn: '30d',
   });
 };

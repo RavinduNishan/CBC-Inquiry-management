@@ -527,11 +527,7 @@ const Master = () => {
             </div>
             
             <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
-              <div className='flex justify-between items-center mb-6'>
-                <div className='text-sm text-gray-500'>
-                  {inquiries.length} {inquiries.length === 1 ? 'inquiry' : 'inquiries'} found
-                </div>
-              </div>
+            
               
               {loading ? (
                 <Spinner />
