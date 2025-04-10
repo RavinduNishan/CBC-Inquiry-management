@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/usermodel.js';
+import { JWT_SECRET } from '../config.js'; // Import JWT_SECRET from config
 
 const protect = async (req, res, next) => {
   let token;
@@ -13,7 +14,7 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
 
       // Verify token
-      const decoded = jwt.verify(token, 'mysecretkey123'); // Replace with a proper secret key in config
+      const decoded = jwt.verify(token, JWT_SECRET); // Use JWT_SECRET from config
 
       // Get user from the token (exclude password)
       req.user = await User.findById(decoded.id).select('-password');

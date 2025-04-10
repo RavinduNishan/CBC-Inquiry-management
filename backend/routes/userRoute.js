@@ -65,6 +65,40 @@ router.get("/profile", protect, async (req, res) => {
   }
 });
 
+// Reset password endpoint - MOVED UP before the ID routes
+router.put("/reset-password", protect, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    // Find the current user by ID
+    const userFound = await user.findById(req.user._id);
+    
+    if (!userFound) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, userFound.password);
+    
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+    
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    
+    // Update the password
+    userFound.password = hashedPassword;
+    await userFound.save();
+    
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({ message: error.message });
+  }
+});
+
 //create a new user
 router.post("/", async (req, res) => {
     try {

@@ -18,6 +18,7 @@ import CreateInquiry from '../../../pages/inquiry/Inquiry/CreateInquiry';
 import DashboardResponseInquiry from '../../../pages/inquiry/Inquiry/DashboardResponseInquiry';
 import CreateUser from '../../../pages/user/createuser';
 import UserDetail from '../../../pages/user/UserDetail';
+import UserProfile from '../../../pages/user/UserProfile';
 
 const Master = () => {
   const { user, logout, isAdmin } = useContext(AuthContext);
@@ -447,7 +448,10 @@ const Master = () => {
         
         {/* User Profile */}
         <div className='p-4 border-t border-sky-100 bg-sky-50'>
-          <div className='flex justify-between items-center'>
+          <div 
+            className='flex justify-between items-center cursor-pointer hover:bg-sky-100 p-2 rounded-lg transition-colors'
+            onClick={() => setActiveMenu('profile')}
+          >
             <div className='flex items-center'>
               <div className='h-8 w-8 rounded-full bg-gray-300'></div>
               <div className='ml-3'>
@@ -456,7 +460,10 @@ const Master = () => {
               </div>
             </div>
             <button 
-              onClick={handleLogout}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent triggering profile view
+                handleLogout();
+              }}
               className='text-gray-500 hover:text-red-500'
               title="Logout"
             >
@@ -683,6 +690,13 @@ const Master = () => {
               fetchUsers();
               setActiveMenu('users');
             }}
+          />
+        )}
+
+        {activeMenu === 'profile' && (
+          <UserProfile 
+            user={user} 
+            onBack={() => setActiveMenu('dashboard')} 
           />
         )}
       </div>
