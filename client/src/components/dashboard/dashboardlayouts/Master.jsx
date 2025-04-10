@@ -60,7 +60,7 @@ const Master = () => {
   // Enhanced check for authenticated and active users
   useEffect(() => {
     if (!user) {
-      navigate('/login');
+      navigate('/login', { replace: true });
       return;
     }
     
@@ -167,8 +167,11 @@ const Master = () => {
   };
 
   const handleLogout = () => {
+    // Call the logout function from context
     logout();
-    navigate('/login');
+    
+    // Use replace instead of push to prevent back navigation
+    navigate('/login', { replace: true });
   };
 
   // Add this with your other functions
@@ -257,6 +260,56 @@ const Master = () => {
   const handleViewUserDetails = (user) => {
     setSelectedUserForDetails(user);
     setActiveMenu('userDetails');
+  };
+
+  // Enhanced authentication check to run on every navigation or history event
+  useEffect(() => {
+    // Check authentication on component mount and on focus
+    checkAuthState();
+    
+    // Add event listener for popstate (browser back/forward buttons)
+    const handlePopState = () => {
+      checkAuthState();
+    };
+    
+    // Add event listener for when the page gets focus
+    const handleFocus = () => {
+      checkAuthState();
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+  
+  // Enhanced function to check authentication state
+  const checkAuthState = () => {
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+    const loggedOut = localStorage.getItem('loggedOut');
+    
+    // If user explicitly logged out or no valid auth data, redirect to login
+    if (loggedOut || !token || !userData) {
+      navigate('/login', { replace: true });
+      return;
+    }
+    
+    try {
+      // Parse user data to check status
+      const parsedUser = JSON.parse(userData);
+      if (parsedUser.status === 'inactive') {
+        logout();
+        navigate('/login', { replace: true });
+      }
+    } catch (error) {
+      console.error('Error parsing user data', error);
+      logout();
+      navigate('/login', { replace: true });
+    }
   };
 
   if (!user) {

@@ -56,11 +56,14 @@ export const LoginBlade = () => {
           localStorage.setItem('token', data.token);
         }
         
+        // Remove the logged-out flag if it exists
+        localStorage.removeItem('loggedOut');
+        
         // Use context login to handle user state
         const result = await login(email, password);
         
         if (result.success) {
-          navigate('/dashboard');
+          navigate('/dashboard', { replace: true });
         } else {
           setError(result.message || 'Login failed');
         }

@@ -78,10 +78,14 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">category</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coments</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Update</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 shadow-l z-10">Actions</th>
             </tr>
           </thead>
@@ -111,6 +115,9 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
                 <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                   {inquiry.subject}
                 </td>
+                <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                  {inquiry.category}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {priorityBadge(inquiry.priority)}
                 </td>
@@ -129,6 +136,15 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {statusBadge(inquiry.status)}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                  {inquiry.message}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                  {inquiry.comments}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {formatDate(inquiry.updatedAt)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
                   <div className="flex justify-end space-x-2">

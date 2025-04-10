@@ -62,6 +62,13 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    
+    // Remove the Authorization header from axios
+    delete axios.defaults.headers.common['Authorization'];
+    
+    // Set a logout flag with timestamp to prevent back navigation
+    localStorage.setItem('loggedOut', Date.now().toString());
   };
 
   // Set axios auth header
