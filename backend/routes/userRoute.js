@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { protect, admin } from "../middleware/authMiddleware.js";
 import { JWT_SECRET } from "../config.js";  // Import JWT_SECRET from config
+import { format } from 'date-fns';
 
 const router = express.Router();  
 
@@ -12,6 +13,11 @@ const generateToken = (id) => {
   return jwt.sign({ id }, JWT_SECRET, {  // Use imported JWT_SECRET instead of hardcoded value
     expiresIn: '30d',
   });
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  return format(new Date(dateString), 'PPP p');
 };
 
 // Login user
@@ -159,7 +165,10 @@ router.get("/:id", protect, async (req, res) => {
 
         if (!User) return res.status(404).json({ message: "user not found" });
 
-        return res.status(200).json(User);
+        const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+        const createdDate = User.createdAt ? new Date(User.createdAt).toLocaleString('en-US', dateOptions) : 'N/A';
+
+        return res.status(200).json({ ...User._doc, createdDate });
     } catch (error) {
         console.log(error.message);
         return res.status(500).send({ message: error.message });
