@@ -341,131 +341,152 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
 
   return (
     <>
-      {/* Compact Search and Filter Controls - 2 lines max */}
+      {/* Compact Search and Filter Controls */}
       <div className="mb-4">
-        {/* Line 1: Inquiry count, search input, and primary filters */}
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <span className='text-xs text-gray-500 whitespace-nowrap mr-2'>
-            {filteredInquiries.length} {filteredInquiries.length === 1 ? 'inquiry' : 'inquiries'} found
-          </span>
-          
-          <div className="relative flex-grow max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-              <BsSearch className="text-gray-400 text-xs" />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 items-end">
+            {/* Search Input */}
+            <div className="relative col-span-1">
+              <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                <BsSearch className="text-gray-400 text-sm" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search inquiries..."
+                value={inputSearchTerm}
+                onChange={(e) => setInputSearchTerm(e.target.value)}
+                className="pl-8 w-full py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Search..."
-              value={inputSearchTerm}
-              onChange={(e) => setInputSearchTerm(e.target.value)}
-              className="pl-6 w-full py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-            />
+            
+            {/* Main Filters */}
+            <div className="flex space-x-1 flex-wrap">
+              <select
+                value={inputPriorityFilter}
+                onChange={(e) => setInputPriorityFilter(e.target.value)}
+                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+              >
+                <option value="">Priority</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="urgent">Urgent</option>
+              </select>
+              
+              <select
+                value={inputStatusFilter}
+                onChange={(e) => setInputStatusFilter(e.target.value)}
+                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+              >
+                <option value="">Status</option>
+                <option value="pending">Pending</option>
+                <option value="in-progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+              
+              <select
+                value={inputAssignedFilter}
+                onChange={(e) => setInputAssignedFilter(e.target.value)}
+                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+              >
+                <option value="">Assigned</option>
+                <option value="unassigned">Unassigned</option>
+                {users.map(user => (
+                  <option key={user._id} value={user._id}>{user.name.split(' ')[0]}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-1">
+              <button
+                onClick={handleSearch}
+                className="px-3 py-1.5 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none text-sm font-medium flex items-center"
+              >
+                <BsSearch className="mr-1" /> Search
+              </button>
+              <button
+                onClick={clearFilters}
+                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none text-sm font-medium"
+              >
+                Clear
+              </button>
+              <button
+                onClick={downloadCSV}
+                className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none text-sm font-medium flex items-center"
+              >
+                <BsDownload className="mr-1" /> CSV
+              </button>
+            </div>
           </div>
           
-          <select
-            value={inputPriorityFilter}
-            onChange={(e) => setInputPriorityFilter(e.target.value)}
-            className="py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-24"
-          >
-            <option value="">Priority</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-          
-          <select
-            value={inputStatusFilter}
-            onChange={(e) => setInputStatusFilter(e.target.value)}
-            className="py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-24"
-          >
-            <option value="">Status</option>
-            <option value="pending">Pending</option>
-            <option value="in-progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-          </select>
-          
-          <select
-            value={inputAssignedFilter}
-            onChange={(e) => setInputAssignedFilter(e.target.value)}
-            className="py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-24"
-          >
-            <option value="">Assigned</option>
-            <option value="unassigned">Unassigned</option>
-            {users.map(user => (
-              <option key={user._id} value={user._id}>{user.name.split(' ')[0]}</option>
-            ))}
-          </select>
-        </div>
-        
-        {/* Line 2: Date filters, ID filters and action buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center space-x-1">
-            <select
-              value={inputDateField}
-              onChange={(e) => setInputDateField(e.target.value)}
-              className="py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-20"
-            >
-              <option value="createdAt">Created</option>
-              <option value="updatedAt">Updated</option>
-            </select>
+          {/* Secondary Filters Row */}
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            {/* Date Range */}
+            <div className="flex items-center space-x-1">
+              <select
+                value={inputDateField}
+                onChange={(e) => setInputDateField(e.target.value)}
+                className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm"
+              >
+                <option value="createdAt">Created</option>
+                <option value="updatedAt">Updated</option>
+              </select>
+              <input
+                type="date"
+                value={inputDateFrom}
+                onChange={(e) => setInputDateFrom(e.target.value)}
+                className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm"
+              />
+              <span className="text-xs text-gray-400">to</span>
+              <input
+                type="date"
+                value={inputDateTo}
+                onChange={(e) => setInputDateTo(e.target.value)}
+                className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm"
+              />
+            </div>
             
-            <input
-              type="date"
-              value={inputDateFrom}
-              onChange={(e) => setInputDateFrom(e.target.value)}
-              className="py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-32"
-            />
+            {/* ID Range */}
+            <div className="flex items-center">
+              <span className="text-xs text-gray-500 mr-1">ID Range:</span>
+              <input
+                type="text"
+                placeholder="From ID"
+                value={inputInquiryIdFrom}
+                onChange={(e) => {
+                  // Only allow numbers
+                  const value = e.target.value.replace(/\D/g, '');
+                  setInputInquiryIdFrom(value);
+                }}
+                maxLength="10"
+                pattern="[0-9]*"
+                inputMode="numeric"
+                className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm w-24"
+              />
+              <span className="mx-1 text-xs text-gray-400">-</span>
+              <input
+                type="text"
+                placeholder="To ID"
+                value={inputInquiryIdTo}
+                onChange={(e) => {
+                  // Only allow numbers
+                  const value = e.target.value.replace(/\D/g, '');
+                  setInputInquiryIdTo(value);
+                }}
+                maxLength="10"
+                pattern="[0-9]*"
+                inputMode="numeric"
+                className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm w-24"
+              />
+            </div>
             
-            <span className="text-xs">-</span>
-            
-            <input
-              type="date"
-              value={inputDateTo}
-              onChange={(e) => setInputDateTo(e.target.value)}
-              className="py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-32"
-            />
-          </div>
-          
-          <div className="flex items-center text-xs">
-            <span>ID:</span>
-            <input
-              type="text"
-              placeholder="From"
-              value={inputInquiryIdFrom}
-              onChange={(e) => setInputInquiryIdFrom(e.target.value)}
-              className="ml-1 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-16"
-            />
-            <span className="mx-1">-</span>
-            <input
-              type="text"
-              placeholder="To"
-              value={inputInquiryIdTo}
-              onChange={(e) => setInputInquiryIdTo(e.target.value)}
-              className="py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-16"
-            />
-          </div>
-          
-          <div className="ml-auto flex space-x-1">
-            <button
-              onClick={handleSearch}
-              className="px-2 py-1 text-xs bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none"
-            >
-              <BsSearch className="inline mr-1" />Search
-            </button>
-            
-            <button
-              onClick={clearFilters}
-              className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none"
-            >
-              Clear
-            </button>
-            
-            <button
-              onClick={downloadCSV}
-              className="px-2 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none flex items-center"
-            >
-              <BsDownload className="mr-1" />CSV
-            </button>
+            <div className="ml-auto text-xs text-gray-500 whitespace-nowrap">
+              <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                {filteredInquiries.length}
+              </span> inquiries found
+            </div>
           </div>
         </div>
       </div>

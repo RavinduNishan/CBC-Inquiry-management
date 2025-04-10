@@ -132,20 +132,16 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
 
   return (
     <>
-      {/* User Management Title and Search Functionality */}
-      <div className="mb-6">
-        <h1 className='text-2xl font-bold text-gray-800 mb-4'>User Management</h1>
+      {/* User Management Header and Compact Search UI */}
+      <div className="mb-4">
+        <h1 className='text-2xl font-bold text-gray-800 mb-3'>User Management</h1>
         
-        {/* Search, Filters, and User Count in a single row */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <div className='text-sm text-gray-500 whitespace-nowrap'>
-            {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'} found
-          </div>
-          
-          <div className="flex-1 flex flex-wrap items-center gap-2 mx-2 min-w-0">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <BsSearch className="text-gray-400" />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+            {/* Search Input */}
+            <div className="relative col-span-1">
+              <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                <BsSearch className="text-gray-400 text-sm" />
               </div>
               <input
                 type="text"
@@ -157,61 +153,76 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
                     setTimeout(() => handleSearch(), 100);
                   }
                 }}
-                className="pl-8 w-full px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                className="pl-8 w-full py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
               />
             </div>
             
-            <select
-              value={inputAccessLevelFilter}
-              onChange={(e) => {
-                setInputAccessLevelFilter(e.target.value);
-                setTimeout(() => handleSearch(), 100);
-              }}
-              className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-            >
-              <option value="">All Access Levels</option>
-              <option value="Administrator">Administrator</option>
-              <option value="Staff Member">Staff Member</option>
-            </select>
+            {/* Quick Filters */}
+            <div className="flex space-x-2">
+              <select
+                value={inputAccessLevelFilter}
+                onChange={(e) => {
+                  setInputAccessLevelFilter(e.target.value);
+                  setTimeout(() => handleSearch(), 100);
+                }}
+                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 flex-grow"
+              >
+                <option value="">Access Level</option>
+                <option value="Administrator">Administrator</option>
+                <option value="Staff Member">Staff Member</option>
+              </select>
+              
+              <select
+                value={inputStatusFilter}
+                onChange={(e) => {
+                  setInputStatusFilter(e.target.value);
+                  setTimeout(() => handleSearch(), 100);
+                }}
+                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 flex-grow"
+              >
+                <option value="">Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
             
-            <select
-              value={inputStatusFilter}
-              onChange={(e) => {
-                setInputStatusFilter(e.target.value);
-                setTimeout(() => handleSearch(), 100);
-              }}
-              className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-            >
-              <option value="">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-
-            <button
-              onClick={handleSearch}
-              className="px-3 py-1.5 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none whitespace-nowrap"
-            >
-              Search
-            </button>
-            
-            <button
-              onClick={clearFilters}
-              className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none whitespace-nowrap"
-            >
-              Clear
-            </button>
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-1">
+              <button
+                onClick={handleSearch}
+                className="px-3 py-1.5 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none text-sm font-medium flex items-center"
+              >
+                <BsSearch className="mr-1" /> Search
+              </button>
+              
+              <button
+                onClick={clearFilters}
+                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none text-sm font-medium"
+              >
+                Clear
+              </button>
+              
+              <button
+                onClick={downloadCSV}
+                className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none text-sm font-medium flex items-center"
+              >
+                <BsDownload className="mr-1" /> CSV
+              </button>
+            </div>
           </div>
           
-          <button
-            onClick={downloadCSV}
-            className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none flex items-center whitespace-nowrap"
-          >
-            <BsDownload className="mr-1" /> Export to CSV
-          </button>
+          {/* Counter Row */}
+          <div className="mt-2 flex items-center justify-between">
+            <div className="text-xs text-gray-500">
+              <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                {filteredUsers.length}
+              </span> users found
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

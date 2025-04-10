@@ -374,148 +374,155 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
 
     return (
         <>
-            {/* Search and Filter Controls */}
-            <div className="mb-6">
-            <div className='text-sm text-gray-500 whitespace-nowrap'>
-                        {filteredInquiries.length} {filteredInquiries.length === 1 ? 'inquiry' : 'inquiries'} found
-                    </div>
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                    
-                    
-                    <div className="flex-1 mx-2">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {/* Basic Search Input */}
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <BsSearch className="text-gray-400" />
-                                </div>
-                                <input
-                                    type="text"
-                                    placeholder="Search (name, email, company, subject)"
-                                    value={inputSearchTerm}
-                                    onChange={(e) => setInputSearchTerm(e.target.value)}
-                                    className="pl-8 w-full px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                                />
+            {/* Compact Search and Filter Controls */}
+            <div className="mb-4">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 items-end">
+                        {/* Search Input */}
+                        <div className="relative col-span-1">
+                            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                <BsSearch className="text-gray-400 text-sm" />
                             </div>
+                            <input
+                                type="text"
+                                placeholder="Search inquiries..."
+                                value={inputSearchTerm}
+                                onChange={(e) => setInputSearchTerm(e.target.value)}
+                                className="pl-8 w-full py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            />
+                        </div>
+                        
+                        {/* Main Filters */}
+                        <div className="flex space-x-1 flex-wrap col-span-1">
+                            <select
+                                value={inputPriorityFilter}
+                                onChange={(e) => setInputPriorityFilter(e.target.value)}
+                                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            >
+                                <option value="">Priority</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
                             
-                            {/* Filter Dropdowns - First Row */}
-                            <div className="flex space-x-2">
-                                <select
-                                    value={inputPriorityFilter}
-                                    onChange={(e) => setInputPriorityFilter(e.target.value)}
-                                    className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-full"
-                                >
-                                    <option value="">All Priorities</option>
-                                    <option value="high">High</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="low">Low</option>
-                                    <option value="urgent">Urgent</option>
-                                </select>
-                                
-                                <select
-                                    value={inputStatusFilter}
-                                    onChange={(e) => setInputStatusFilter(e.target.value)}
-                                    className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-full"
-                                >
-                                    <option value="">All Statuses</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="in-progress">In Progress</option>
-                                    <option value="resolved">Resolved</option>
-                                    <option value="closed">Closed</option>
-                                </select>
-                            </div>
+                            <select
+                                value={inputStatusFilter}
+                                onChange={(e) => setInputStatusFilter(e.target.value)}
+                                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            >
+                                <option value="">Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="resolved">Resolved</option>
+                                <option value="closed">Closed</option>
+                            </select>
                             
-                            {/* Assigned To Filter */}
                             <select
                                 value={inputAssignedFilter}
                                 onChange={(e) => setInputAssignedFilter(e.target.value)}
-                                className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
                             >
-                                <option value="">Assigned To (Any)</option>
-                                <option value="unassigned">Not Assigned</option>
+                                <option value="">Assigned</option>
+                                <option value="unassigned">Unassigned</option>
                                 {users.map(user => (
                                     <option key={user._id} value={user._id}>
-                                        {user.name}
+                                        {user.name.split(' ')[0]}
                                     </option>
                                 ))}
                             </select>
                         </div>
                         
-                        {/* Second Row of Filters */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                            {/* Date Range Filters */}
-                            <div className="flex items-center space-x-2">
-                                <div className="flex items-center space-x-1">
-                                    <select
-                                        value={inputDateField}
-                                        onChange={(e) => setInputDateField(e.target.value)}
-                                        className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                                    >
-                                        <option value="createdAt">Created Date</option>
-                                        <option value="updatedAt">Updated Date</option>
-                                    </select>
-                                    <span className="text-sm text-gray-500">From</span>
-                                    <input
-                                        type="date"
-                                        value={inputDateFrom}
-                                        onChange={(e) => setInputDateFrom(e.target.value)}
-                                        className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                                    />
-                                    <span className="text-sm text-gray-500">To</span>
-                                    <input
-                                        type="date"
-                                        value={inputDateTo}
-                                        onChange={(e) => setInputDateTo(e.target.value)}
-                                        className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                                    />
-                                </div>
-                            </div>
-                            
-                            {/* Inquiry ID Range */}
-                            <div className="flex items-center space-x-2">
-                                <div className="flex items-center space-x-1">
-                                    <span className="text-sm text-gray-500">Inquiry ID From</span>
-                                    <input
-                                        type="text"
-                                        placeholder="Starting ID"
-                                        value={inputInquiryIdFrom}
-                                        onChange={(e) => setInputInquiryIdFrom(e.target.value)}
-                                        className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                                    />
-                                    <span className="text-sm text-gray-500">To</span>
-                                    <input
-                                        type="text"
-                                        placeholder="Ending ID"
-                                        value={inputInquiryIdTo}
-                                        onChange={(e) => setInputInquiryIdTo(e.target.value)}
-                                        className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {/* Search Buttons */}
-                        <div className="flex justify-end space-x-2 mt-3">
+                        {/* Action Buttons */}
+                        <div className="flex justify-end space-x-1">
                             <button
                                 onClick={handleSearch}
-                                className="px-4 py-1.5 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none"
+                                className="px-3 py-1.5 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none text-sm font-medium flex items-center"
                             >
-                                <BsSearch className="inline mr-1" /> Search
+                                <BsSearch className="mr-1" /> Search
                             </button>
-                            
                             <button
                                 onClick={clearFilters}
-                                className="px-4 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none"
+                                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none text-sm font-medium"
                             >
                                 Clear
                             </button>
-                            
                             <button
                                 onClick={exportToPDF}
-                                className="px-4 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none flex items-center"
+                                className="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none text-sm font-medium flex items-center"
                             >
-                                <BsFilePdf className="mr-1" /> Export PDF
+                                <BsFilePdf className="mr-1" /> PDF
                             </button>
+                        </div>
+                    </div>
+                    
+                    {/* Secondary Filters Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {/* Date Range Filters */}
+                        <div className="flex items-center space-x-1 text-sm">
+                            <select
+                                value={inputDateField}
+                                onChange={(e) => setInputDateField(e.target.value)}
+                                className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm"
+                            >
+                                <option value="createdAt">Created</option>
+                                <option value="updatedAt">Updated</option>
+                            </select>
+                            <input
+                                type="date"
+                                value={inputDateFrom}
+                                onChange={(e) => setInputDateFrom(e.target.value)}
+                                className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm"
+                            />
+                            <span className="text-xs text-gray-400">to</span>
+                            <input
+                                type="date"
+                                value={inputDateTo}
+                                onChange={(e) => setInputDateTo(e.target.value)}
+                                className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm"
+                            />
+                        </div>
+                        
+                        {/* ID Range and Counter */}
+                        <div className="flex items-center text-sm justify-between">
+                            <div className="flex items-center">
+                                <span className="text-xs text-gray-500 mr-1">ID Range:</span>
+                                <input
+                                    type="text"
+                                    placeholder="From ID"
+                                    value={inputInquiryIdFrom}
+                                    onChange={(e) => {
+                                        // Only allow numbers
+                                        const value = e.target.value.replace(/\D/g, '');
+                                        setInputInquiryIdFrom(value);
+                                    }}
+                                    maxLength="10"
+                                    pattern="[0-9]*"
+                                    inputMode="numeric"
+                                    className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm w-24"
+                                />
+                                <span className="mx-1 text-xs text-gray-400">-</span>
+                                <input
+                                    type="text"
+                                    placeholder="To ID"
+                                    value={inputInquiryIdTo}
+                                    onChange={(e) => {
+                                        // Only allow numbers
+                                        const value = e.target.value.replace(/\D/g, '');
+                                        setInputInquiryIdTo(value);
+                                    }}
+                                    maxLength="10"
+                                    pattern="[0-9]*"
+                                    inputMode="numeric"
+                                    className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm w-24"
+                                />
+                            </div>
+                            
+                            <div className="text-xs text-gray-500 ml-2 whitespace-nowrap">
+                                <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                                    {filteredInquiries.length}
+                                </span> inquiries found
+                            </div>
                         </div>
                     </div>
                 </div>
