@@ -341,149 +341,131 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
 
   return (
     <>
-      {/* Search and Filter Controls */}
-      <div className="mb-6">
-      <div className='text-sm text-gray-500 whitespace-nowrap'>
+      {/* Compact Search and Filter Controls - 2 lines max */}
+      <div className="mb-4">
+        {/* Line 1: Inquiry count, search input, and primary filters */}
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <span className='text-xs text-gray-500 whitespace-nowrap mr-2'>
             {filteredInquiries.length} {filteredInquiries.length === 1 ? 'inquiry' : 'inquiries'} found
+          </span>
+          
+          <div className="relative flex-grow max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+              <BsSearch className="text-gray-400 text-xs" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={inputSearchTerm}
+              onChange={(e) => setInputSearchTerm(e.target.value)}
+              className="pl-6 w-full py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+            />
           </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           
+          <select
+            value={inputPriorityFilter}
+            onChange={(e) => setInputPriorityFilter(e.target.value)}
+            className="py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-24"
+          >
+            <option value="">Priority</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
           
-          <div className="flex-1 mx-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Basic Search Input */}
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <BsSearch className="text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search (name, email, company, subject)"
-                  value={inputSearchTerm}
-                  onChange={(e) => setInputSearchTerm(e.target.value)}
-                  className="pl-8 w-full px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                />
-              </div>
-              
-              {/* Filter Dropdowns - First Row */}
-              <div className="flex space-x-2">
-                <select
-                  value={inputPriorityFilter}
-                  onChange={(e) => setInputPriorityFilter(e.target.value)}
-                  className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-full"
-                >
-                  <option value="">All Priorities</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-                
-                <select
-                  value={inputStatusFilter}
-                  onChange={(e) => setInputStatusFilter(e.target.value)}
-                  className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-full"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-              
-              {/* Assigned To Filter */}
-              <select
-                value={inputAssignedFilter}
-                onChange={(e) => setInputAssignedFilter(e.target.value)}
-                className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-              >
-                <option value="">Assigned To (Any)</option>
-                <option value="unassigned">Not Assigned</option>
-                {users.map(user => (
-                  <option key={user._id} value={user._id}>
-                    {user.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <select
+            value={inputStatusFilter}
+            onChange={(e) => setInputStatusFilter(e.target.value)}
+            className="py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-24"
+          >
+            <option value="">Status</option>
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+          </select>
+          
+          <select
+            value={inputAssignedFilter}
+            onChange={(e) => setInputAssignedFilter(e.target.value)}
+            className="py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-24"
+          >
+            <option value="">Assigned</option>
+            <option value="unassigned">Unassigned</option>
+            {users.map(user => (
+              <option key={user._id} value={user._id}>{user.name.split(' ')[0]}</option>
+            ))}
+          </select>
+        </div>
+        
+        {/* Line 2: Date filters, ID filters and action buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center space-x-1">
+            <select
+              value={inputDateField}
+              onChange={(e) => setInputDateField(e.target.value)}
+              className="py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-20"
+            >
+              <option value="createdAt">Created</option>
+              <option value="updatedAt">Updated</option>
+            </select>
             
-            {/* Second Row of Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-              {/* Date Range Filters */}
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1">
-                  <select
-                    value={inputDateField}
-                    onChange={(e) => setInputDateField(e.target.value)}
-                    className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                  >
-                    <option value="createdAt">Created Date</option>
-                    <option value="updatedAt">Updated Date</option>
-                  </select>
-                  <span className="text-sm text-gray-500">From</span>
-                  <input
-                    type="date"
-                    value={inputDateFrom}
-                    onChange={(e) => setInputDateFrom(e.target.value)}
-                    className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                  />
-                  <span className="text-sm text-gray-500">To</span>
-                  <input
-                    type="date"
-                    value={inputDateTo}
-                    onChange={(e) => setInputDateTo(e.target.value)}
-                    className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                  />
-                </div>
-              </div>
-              
-              {/* Inquiry ID Range */}
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1">
-                  <span className="text-sm text-gray-500">Inquiry ID From</span>
-                  <input
-                    type="text"
-                    placeholder="Starting ID"
-                    value={inputInquiryIdFrom}
-                    onChange={(e) => setInputInquiryIdFrom(e.target.value)}
-                    className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                  />
-                  <span className="text-sm text-gray-500">To</span>
-                  <input
-                    type="text"
-                    placeholder="Ending ID"
-                    value={inputInquiryIdTo}
-                    onChange={(e) => setInputInquiryIdTo(e.target.value)}
-                    className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                  />
-                </div>
-              </div>
-            </div>
+            <input
+              type="date"
+              value={inputDateFrom}
+              onChange={(e) => setInputDateFrom(e.target.value)}
+              className="py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-32"
+            />
             
-            {/* Search Buttons */}
-            <div className="flex justify-end space-x-2 mt-3">
-              <button
-                onClick={handleSearch}
-                className="px-4 py-1.5 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none"
-              >
-                <BsSearch className="inline mr-1" /> Search
-              </button>
-              
-              <button
-                onClick={clearFilters}
-                className="px-4 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none"
-              >
-                Clear
-              </button>
-              
-              <button
-                onClick={downloadCSV}
-                className="px-4 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none flex items-center"
-              >
-                <BsDownload className="mr-1" /> Export CSV
-              </button>
-            </div>
+            <span className="text-xs">-</span>
+            
+            <input
+              type="date"
+              value={inputDateTo}
+              onChange={(e) => setInputDateTo(e.target.value)}
+              className="py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-32"
+            />
+          </div>
+          
+          <div className="flex items-center text-xs">
+            <span>ID:</span>
+            <input
+              type="text"
+              placeholder="From"
+              value={inputInquiryIdFrom}
+              onChange={(e) => setInputInquiryIdFrom(e.target.value)}
+              className="ml-1 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-16"
+            />
+            <span className="mx-1">-</span>
+            <input
+              type="text"
+              placeholder="To"
+              value={inputInquiryIdTo}
+              onChange={(e) => setInputInquiryIdTo(e.target.value)}
+              className="py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 w-16"
+            />
+          </div>
+          
+          <div className="ml-auto flex space-x-1">
+            <button
+              onClick={handleSearch}
+              className="px-2 py-1 text-xs bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none"
+            >
+              <BsSearch className="inline mr-1" />Search
+            </button>
+            
+            <button
+              onClick={clearFilters}
+              className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none"
+            >
+              Clear
+            </button>
+            
+            <button
+              onClick={downloadCSV}
+              className="px-2 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none flex items-center"
+            >
+              <BsDownload className="mr-1" />CSV
+            </button>
           </div>
         </div>
       </div>
@@ -512,99 +494,124 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
           
           {/* Table body */}
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredInquiries.map((inquiry) => (
-              <tr key={inquiry._id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {inquiry.inquiryID}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 font-medium">{inquiry.name.charAt(0).toUpperCase()}</span>
+            {filteredInquiries.map((inquiry) => {
+              // Determine row style based on status and priority
+              let rowStyle = '';
+              
+              if (inquiry.status.toLowerCase() === 'closed') {
+                rowStyle = 'bg-gray-100';
+              } else {
+                switch (inquiry.priority.toLowerCase()) {
+                  case 'high':
+                  case 'urgent':
+                    rowStyle = 'bg-red-50 hover:bg-red-100';
+                    break;
+                  case 'medium':
+                    rowStyle = 'bg-yellow-50 hover:bg-yellow-100';
+                    break;
+                  case 'low':
+                    rowStyle = 'bg-blue-50 hover:bg-blue-100';
+                    break;
+                  default:
+                    rowStyle = 'hover:bg-gray-50';
+                }
+              }
+              
+              return (
+                <tr key={inquiry._id} className={`transition-colors ${rowStyle}`}>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {inquiry.inquiryID}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-medium">{inquiry.name.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div className="ml-3">
+                        {/* Company name made more prominent than person name */}
+                        <div className="text-sm font-bold text-sky-700">{inquiry.company}</div>
+                        <div className="text-xs text-gray-500">{inquiry.name}</div>
+                      </div>
                     </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{inquiry.name}</div>
-                      <div className="text-sm text-gray-500">{inquiry.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {inquiry.phone}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {inquiry.company}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                  {inquiry.subject}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                  {inquiry.category}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {priorityBadge(inquiry.priority)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {inquiry.assigned && inquiry.assigned.name ? (
-                    <span className="font-medium text-blue-600">{inquiry.assigned.name}</span>
-                  ) : (
-                    <span className="text-gray-400 italic">Unassigned</span>
-                  )}
-                  {inquiry.assigned && inquiry.assigned.userId && (
-                    <span className="hidden">ID: {inquiry.assigned.userId}</span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {formatDate(inquiry.createdAt)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {statusBadge(inquiry.status)}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                  {inquiry.message}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                  {inquiry.comments}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {formatDate(inquiry.updatedAt)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
-                  <div className="flex justify-end space-x-2">
-                    {!hideAssignButton && (
-                      <button
-                        onClick={() => handleAssignClick(inquiry)}
-                        className={`inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md ${
-                          inquiry.status.toLowerCase() === 'closed'
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                          : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                        }`}
-                        disabled={inquiry.status.toLowerCase() === 'closed'}
-                      >
-                        <FiUserPlus className="mr-1" />
-                        Assign
-                      </button>
-                    )}
-                    {onRespond ? (
-                      <button
-                        onClick={() => onRespond(inquiry._id)}
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <FiSend className="mr-1" />
-                        Respond
-                      </button>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                    {inquiry.phone}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 max-w-xs truncate">
+                    <div className="text-xs">{inquiry.email}</div>
+                  </td>
+                  <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate">
+                    {inquiry.subject}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-gray-900 max-w-xs truncate">
+                    {inquiry.category}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {priorityBadge(inquiry.priority)}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs">
+                    {inquiry.assigned && inquiry.assigned.name ? (
+                      <span className="font-medium text-blue-600">{inquiry.assigned.name}</span>
                     ) : (
-                      <Link
-                        to={`/inquiry/response/${inquiry._id}`}
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <FiSend className="mr-1" />
-                        Respond
-                      </Link>
+                      <span className="text-gray-400 italic">Unassigned</span>
                     )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    {inquiry.assigned && inquiry.assigned.userId && (
+                      <span className="hidden">ID: {inquiry.assigned.userId}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                    {formatDate(inquiry.createdAt)}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {statusBadge(inquiry.status)}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-gray-900 max-w-xs truncate">
+                    {inquiry.message}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-gray-900 max-w-xs truncate">
+                    {inquiry.comments}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                    {formatDate(inquiry.updatedAt)}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
+                    <div className="flex justify-end space-x-1">
+                      {!hideAssignButton && (
+                        <button
+                          onClick={() => handleAssignClick(inquiry)}
+                          className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
+                            inquiry.status.toLowerCase() === 'closed'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                            : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500'
+                          }`}
+                          disabled={inquiry.status.toLowerCase() === 'closed'}
+                        >
+                          <FiUserPlus className="mr-1" />
+                          Assign
+                        </button>
+                      )}
+                      {onRespond ? (
+                        <button
+                          onClick={() => onRespond(inquiry._id)}
+                          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-sky-500"
+                        >
+                          <FiSend className="mr-1" />
+                          Respond
+                        </button>
+                      ) : (
+                        <Link
+                          to={`/inquiry/response/${inquiry._id}`}
+                          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-sky-500"
+                        >
+                          <FiSend className="mr-1" />
+                          Respond
+                        </Link>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

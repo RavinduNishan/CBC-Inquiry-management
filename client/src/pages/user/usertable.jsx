@@ -239,61 +239,73 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredUsers.map((user) => (
-              <tr key={user._id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{user.email}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{user.phone}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{user.accessLevel}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {user.status === 'active' ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {user.accessLevel === 'Staff Member' ? (
-                    <div>
-                      {user.permissions && user.permissions.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {user.permissions.map((permission, index) => (
-                            <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                              {permission}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-500">No permissions</span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-500">
-                      All permissions
+            {filteredUsers.map((user) => {
+              // Determine row style based on status and access level
+              let rowStyle = '';
+              if (user.status === 'inactive') {
+                rowStyle = 'bg-gray-100 hover:bg-gray-200';
+              } else if (user.accessLevel === 'Administrator') {
+                rowStyle = 'bg-red-50 hover:bg-red-100';
+              } else {
+                rowStyle = 'hover:bg-gray-50';
+              }
+              
+              return (
+                <tr key={user._id} className={`transition-colors ${rowStyle}`}>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="text-xs text-gray-500">{user.email}</div>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="text-xs text-gray-500">{user.phone}</div>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="text-xs text-gray-500">{user.accessLevel}</div>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {user.status === 'active' ? 'Active' : 'Inactive'}
                     </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex space-x-2">
-                    <button 
-                      className="text-blue-600 hover:text-blue-900"
-                      onClick={() => onViewDetails(user)}
-                      title="View user details"
-                    >
-                      <BsInfoCircle className="text-lg" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {user.accessLevel === 'Staff Member' ? (
+                      <div>
+                        {user.permissions && user.permissions.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {user.permissions.map((permission, index) => (
+                              <span key={index} className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                {permission}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-500">No permissions</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-500">
+                        All permissions
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs font-medium">
+                    <div className="flex space-x-2">
+                      <button 
+                        className="text-sky-600 hover:text-sky-900"
+                        onClick={() => onViewDetails(user)}
+                        title="View user details"
+                      >
+                        <BsInfoCircle className="text-lg" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

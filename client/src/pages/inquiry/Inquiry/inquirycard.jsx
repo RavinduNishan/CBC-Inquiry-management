@@ -25,13 +25,17 @@ const formatDate = (dateString) => {
 const statusStyles = {
     pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     completed: 'bg-green-100 text-green-800 border-green-200',
+    'in progress': 'bg-blue-100 text-blue-800 border-blue-200',
+    resolved: 'bg-green-100 text-green-800 border-green-200',
+    closed: 'bg-gray-100 text-gray-800 border-gray-200',
     cancelled: 'bg-red-100 text-red-800 border-red-200'
 };
 
 const priorityStyles = {
     high: 'bg-red-100 text-red-800 border-red-200',
-    medium: 'bg-orange-100 text-orange-800 border-orange-200',
-    low: 'bg-blue-100 text-blue-800 border-blue-200'
+    medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    low: 'bg-blue-100 text-blue-800 border-blue-200',
+    urgent: 'bg-red-200 text-red-900 border-red-300'
 };
 
 const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButton = false }) => {
@@ -518,168 +522,153 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
             </div>
 
             {/* Inquiry Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
-                {filteredInquiries.map((inquiry) => (
-                    <div key={inquiry._id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                        {/* Card Header */}
-                        <div className="bg-gradient-to-r from-blue-50 to-gray-50 px-6 py-4 border-b border-gray-200">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <div className="text-xs font-medium text-gray-500 mb-1 flex items-center">
-                                        <FiHash className="mr-1 text-blue-500" />
-                                        Inquiry ID: {inquiry.inquiryID}
-                                    </div>
-                                    <h3 className="text-xl font-bold text-gray-800 flex items-center">
-                                        <FiUser className="mr-2 text-blue-500" />
-                                        {inquiry.name}
-                                    </h3>
-                                    <div className="flex items-center mt-1 text-sm text-gray-600">
-                                        <FiMail className="mr-1.5" />
-                                        {inquiry.email}
-                                    </div>
-                                    <div className="flex items-center mt-1 text-sm text-gray-600">
-                                        <FiPhone className="mr-1.5" />
-                                        {inquiry.phone}
-                                    </div>
-                                </div>
-                                <div className="flex flex-col items-end space-y-2">
-                                    <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${statusStyles[inquiry.status]}`}>
-                                        {inquiry.status}
-                                    </span>
-                                    <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${priorityStyles[inquiry.priority]}`}>
-                                        {inquiry.priority} priority
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card Body */}
-                        <div className="p-6">
-                            {/* Timestamps */}
-                            <div className="flex justify-between items-center bg-gray-50 rounded-lg p-3 mb-4">
-                                <div className="flex items-center text-xs text-gray-600">
-                                    <FiClock className="mr-1.5 text-blue-400" />
-                                    Created: {formatDate(inquiry.createdAt)}
-                                </div>
-                                <div className="flex items-center text-xs text-gray-600">
-                                    <FiRefreshCw className="mr-1.5 text-blue-400" />
-                                    Updated: {formatDate(inquiry.updatedAt)}
-                                </div>
-                            </div>
-
-                            {/* Details Grid */}
-                            <div className="grid grid-cols-1 gap-3">
-                                <div className="flex items-start">
-                                    <FiBriefcase className="mt-1 mr-2 text-blue-500 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-xs font-semibold text-gray-500 uppercase">Company</p>
-                                        <p className="text-sm text-gray-700">{inquiry.company}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start">
-                                    <FiTag className="mt-1 mr-2 text-blue-500 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-xs font-semibold text-gray-500 uppercase">Category</p>
-                                        <p className="text-sm text-gray-700">{inquiry.category}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start">
-                                    <FiMessageSquare className="mt-1 mr-2 text-blue-500 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-xs font-semibold text-gray-500 uppercase">Subject</p>
-                                        <p className="text-sm text-gray-700 font-medium">{inquiry.subject}</p>
-                                    </div>
-                                </div>
-
-                                {inquiry.attachments?.length > 0 && (
-                                    <div className="flex items-start">
-                                        <FiFile className="mt-1 mr-2 text-blue-500 flex-shrink-0" />
-                                        <div>
-                                            <p className="text-xs font-semibold text-gray-500 uppercase">Attachments</p>
-                                            <div className="text-sm text-gray-700 space-y-1">
-                                                {inquiry.attachments.map((file, index) => (
-                                                    <a key={index} href={file} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline block truncate">
-                                                        {file.split('/').pop()}
-                                                    </a>
-                                                ))}
-                                            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-2">
+                {filteredInquiries.map((inquiry) => {
+                    // Determine card style based on status and priority
+                    let cardBorderStyle = 'border-gray-200';
+                    if (inquiry.status.toLowerCase() === 'closed') {
+                        cardBorderStyle = 'border-gray-300';
+                    } else {
+                        switch (inquiry.priority.toLowerCase()) {
+                            case 'high':
+                            case 'urgent':
+                                cardBorderStyle = 'border-red-300';
+                                break;
+                            case 'medium':
+                                cardBorderStyle = 'border-yellow-300';
+                                break;
+                            case 'low':
+                                cardBorderStyle = 'border-blue-300';
+                                break;
+                        }
+                    }
+                    
+                    return (
+                        <div key={inquiry._id} className={`bg-white rounded-lg border-2 ${cardBorderStyle} overflow-hidden shadow-sm hover:shadow-md transition-all duration-300`}>
+                            {/* Card Header */}
+                            <div className="bg-gradient-to-r from-sky-50 to-gray-50 px-3 py-2 border-b border-gray-200">
+                                <div className="flex justify-between items-start">
+                                    <div className="w-3/4">
+                                        {/* Company name more prominently displayed */}
+                                        <h3 className="text-base font-bold text-sky-700 flex items-center mb-1">
+                                            <FiBriefcase className="mr-1 text-sky-500 flex-shrink-0" />
+                                            {inquiry.company}
+                                        </h3>
+                                        {/* Inquiry ID and contact smaller */}
+                                        <div className="text-xs font-medium text-gray-500 mb-1 flex items-center">
+                                            <FiHash className="mr-1 text-gray-400" />
+                                            {inquiry.inquiryID}
+                                        </div>
+                                        <div className="text-xs text-gray-600">
+                                            <FiUser className="inline mr-1" />
+                                            {inquiry.name}
                                         </div>
                                     </div>
-                                )}
-
-                                <div className="flex items-start">
-                                    <FiMessageSquare className="mt-1 mr-2 text-blue-500 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-xs font-semibold text-gray-500 uppercase">Message</p>
-                                        <p className="text-sm text-gray-700">
-                                            {inquiry.message.length > 120 
-                                                ? `${inquiry.message.substring(0, 120)}...` 
-                                                : inquiry.message}
-                                            {inquiry.message.length > 120 && (
-                                                <Link to={`/inquiries/${inquiry._id}`} className="text-blue-500 hover:underline ml-1">
-                                                    Read more
-                                                </Link>
-                                            )}
-                                        </p>
+                                    <div className="flex flex-col items-end space-y-1">
+                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusStyles[inquiry.status.toLowerCase()]}`}>
+                                            {inquiry.status}
+                                        </span>
+                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${priorityStyles[inquiry.priority.toLowerCase()]}`}>
+                                            {inquiry.priority}
+                                        </span>
                                     </div>
                                 </div>
-
-                                {inquiry.comments && (
-                                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r">
-                                        <p className="text-xs font-semibold text-yellow-800 uppercase">Comments</p>
-                                        <p className="text-sm text-yellow-700">{inquiry.comments}</p>
-                                    </div>
-                                )}
                             </div>
-                        </div>
 
-                        {/* Card Footer */}
-                        <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-                            <div>
-                                {inquiry.assigned && inquiry.assigned.name && (
-                                    <div className="text-xs text-gray-600">
-                                        <span className="font-medium">Assigned to:</span> {inquiry.assigned.name}
-                                    </div>
-                                )}
-                                <div className="text-xs text-gray-600">
-                                    <span className="font-medium">Created by:</span> {inquiry.createdBy}
+                            {/* Card Body - more compact */}
+                            <div className="p-3">
+                                {/* Subject line */}
+                                <div className="mb-2">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase">Subject</p>
+                                    <p className="text-sm font-medium">{inquiry.subject}</p>
                                 </div>
-                            </div>
-                            <div className="flex space-x-3">
-                                {!hideAssignButton && (
-                                    <button
-                                        onClick={() => handleAssignClick(inquiry)}
-                                        className={`inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md ${
-                                            inquiry.status.toLowerCase() === 'closed'
-                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                                            : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                                        }`}
-                                        disabled={inquiry.status.toLowerCase() === 'closed'}
-                                    >
-                                        <FiUserPlus className="mr-1" />
-                                        Assign
-                                    </button>
-                                )}
                                 
-                                {onRespond ? (
-                                    <button
-                                        onClick={() => onRespond(inquiry._id)}
-                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                    >
-                                        <FiSend className="mr-1" />
-                                        Respond
-                                    </button>
-                                ) : (
-                                    <Link to={`/inquiry/response/${inquiry._id}`} className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                        <FiSend className="mr-1" />Respond
-                                    </Link>
-                                )}
+                                {/* Contact info row */}
+                                <div className="flex justify-between mb-2 text-xs">
+                                    <div className="flex items-center">
+                                        <FiMail className="mr-1 text-gray-400" />
+                                        <span className="truncate max-w-[140px]">{inquiry.email}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <FiPhone className="mr-1 text-gray-400" />
+                                        <span>{inquiry.phone}</span>
+                                    </div>
+                                </div>
+                                
+                                {/* Category */}
+                                <div className="mb-2">
+                                    <p className="text-xs text-gray-500">
+                                        <FiTag className="inline mr-1 text-sky-500" />
+                                        {inquiry.category}
+                                    </p>
+                                </div>
+
+                                {/* Message content */}
+                                <div className="mb-2">
+                                    <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Message</div>
+                                    <p className="text-xs text-gray-700 line-clamp-2">
+                                        {inquiry.message.length > 80 
+                                            ? `${inquiry.message.substring(0, 80)}...` 
+                                            : inquiry.message}
+                                    </p>
+                                </div>
+
+                                {/* Dates row */}
+                                <div className="text-xs text-gray-500 mb-2 flex justify-between">
+                                    <span>
+                                        <FiClock className="inline mr-1" />
+                                        {formatDate(inquiry.createdAt).split(',')[0]}
+                                    </span>
+                                    {inquiry.comments && (
+                                        <span className="italic">{inquiry.comments.length > 20 ? `${inquiry.comments.substring(0, 20)}...` : inquiry.comments}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Card Footer */}
+                            <div className="px-3 py-2 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+                                <div className="text-xs text-gray-500">
+                                    {inquiry.assigned && inquiry.assigned.name ? (
+                                        <span>Assigned: {inquiry.assigned.name.split(' ')[0]}</span>
+                                    ) : (
+                                        <span className="italic text-gray-400">Unassigned</span>
+                                    )}
+                                </div>
+                                <div className="flex space-x-1">
+                                    {!hideAssignButton && (
+                                        <button
+                                            onClick={() => handleAssignClick(inquiry)}
+                                            className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
+                                                inquiry.status.toLowerCase() === 'closed'
+                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                                                : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none'
+                                            }`}
+                                            disabled={inquiry.status.toLowerCase() === 'closed'}
+                                        >
+                                            <FiUserPlus className="mr-1" />
+                                            Assign
+                                        </button>
+                                    )}
+                                    
+                                    {onRespond ? (
+                                        <button
+                                            onClick={() => onRespond(inquiry._id)}
+                                            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none"
+                                        >
+                                            <FiSend className="mr-1" />
+                                            Respond
+                                        </button>
+                                    ) : (
+                                        <Link to={`/inquiry/response/${inquiry._id}`} className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none">
+                                            <FiSend className="mr-1" />
+                                            Respond
+                                        </Link>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Display "No inquiries found" message when filters return empty results */}

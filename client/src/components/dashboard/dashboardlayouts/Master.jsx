@@ -319,9 +319,9 @@ const Master = () => {
   return (
     <div className='flex h-screen bg-gray-50'>
       {/* Sidebar */}
-      <div className='w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col'>
+      <div className='w-64 bg-gradient-to-b from-sky-50 to-white shadow-lg border-r border-gray-200 flex flex-col'>
         {/* Sidebar Header */}
-        <div className='p-6 border-b border-gray-200'>
+        <div className='p-4 border-b border-sky-100'>
           <div className='flex items-center'>
             <div className='h-10 w-10 rounded-full bg-sky-600 flex items-center justify-center text-white font-bold text-xl'>
               <img
@@ -331,8 +331,8 @@ const Master = () => {
               />
             </div>
             <div className='ml-3'>
-              <h2 className='font-semibold text-gray-800'>Inquiry Management</h2>
-              <p className='text-xs text-gray-500'>Admin Portal</p>
+              <h2 className='font-semibold text-sky-800'>Inquiry Management</h2>
+              <p className='text-xs text-sky-500'>CBC Admin Portal</p>
             </div>
           </div>
         </div>
@@ -340,14 +340,14 @@ const Master = () => {
         {/* Navigation */}
         <nav className='flex-1 pt-4 pb-4 overflow-y-auto'>
           <div className='px-4 mb-3'>
-            <p className='text-xs font-semibold text-gray-400 uppercase tracking-wider'>Inquiries</p>
+            <p className='text-xs font-semibold text-sky-500 uppercase tracking-wider'>Inquiries</p>
           </div>
           <ul>
             <li className='px-3'>
               <button 
                 className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
                   activeMenu === 'dashboard' 
-                    ? 'bg-sky-50 text-sky-600 font-medium' 
+                    ? 'bg-sky-100 text-sky-700 font-medium' 
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 onClick={() => setActiveMenu('dashboard')}
@@ -360,7 +360,7 @@ const Master = () => {
               <button 
                 className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
                   activeMenu === 'inquiries' 
-                    ? 'bg-sky-50 text-sky-600 font-medium' 
+                    ? 'bg-sky-100 text-sky-700 font-medium' 
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 onClick={() => setActiveMenu('inquiries')}
@@ -373,7 +373,7 @@ const Master = () => {
               <button 
                 className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
                   activeMenu === 'createInquiry' 
-                    ? 'bg-sky-50 text-sky-600 font-medium' 
+                    ? 'bg-sky-100 text-sky-700 font-medium' 
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 onClick={() => setActiveMenu('createInquiry')}
@@ -385,14 +385,14 @@ const Master = () => {
             {isAdmin && (
               <>
                 <div className='px-4 mt-6 mb-3'>
-                  <p className='text-xs font-semibold text-gray-400 uppercase tracking-wider'>Management</p>
+                  <p className='text-xs font-semibold text-sky-500 uppercase tracking-wider'>Management</p>
                 </div>
                 
                 <li className='px-3'>
                   <button 
                     className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
                       activeMenu === 'users' 
-                        ? 'bg-sky-50 text-sky-600 font-medium' 
+                        ? 'bg-sky-100 text-sky-700 font-medium' 
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                     onClick={() => setActiveMenu('users')}
@@ -405,7 +405,7 @@ const Master = () => {
                   <button 
                     className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
                       activeMenu === 'addUser' 
-                        ? 'bg-sky-50 text-sky-600 font-medium' 
+                        ? 'bg-sky-100 text-sky-700 font-medium' 
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                     onClick={() => setActiveMenu('addUser')}
@@ -418,7 +418,7 @@ const Master = () => {
                   <button 
                     className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
                       activeMenu === 'reports' 
-                        ? 'bg-sky-50 text-sky-600 font-medium' 
+                        ? 'bg-sky-100 text-sky-700 font-medium' 
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                     onClick={() => setActiveMenu('reports')}
@@ -431,7 +431,7 @@ const Master = () => {
                   <button 
                     className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
                       activeMenu === 'settings' 
-                        ? 'bg-sky-50 text-sky-600 font-medium' 
+                        ? 'bg-sky-100 text-sky-700 font-medium' 
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                     onClick={() => setActiveMenu('settings')}
@@ -446,7 +446,7 @@ const Master = () => {
         </nav>
         
         {/* User Profile */}
-        <div className='p-4 border-t border-gray-200'>
+        <div className='p-4 border-t border-sky-100 bg-sky-50'>
           <div className='flex justify-between items-center'>
             <div className='flex items-center'>
               <div className='h-8 w-8 rounded-full bg-gray-300'></div>
@@ -501,7 +501,7 @@ const Master = () => {
                     className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                       showType === 'table'
                         ? 'bg-sky-600 text-white shadow-sm'
-                        : 'bg-white text-gray-500 hover:bg-gray-50'
+                        : 'bg-white text-gray-500 hover:bg-sky-50 hover:text-sky-600'
                     }`}
                     onClick={() => setShowType('table')}
                     title="Show as table"
@@ -513,7 +513,7 @@ const Master = () => {
                     className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                       showType === 'card'
                         ? 'bg-sky-600 text-white shadow-sm'
-                        : 'bg-white text-gray-500 hover:bg-gray-50'
+                        : 'bg-white text-gray-500 hover:bg-sky-50 hover:text-sky-600'
                     }`}
                     onClick={() => setShowType('card')}
                     title="Show as cards"
@@ -602,7 +602,7 @@ const Master = () => {
                     className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                       myInquiriesShowType === 'table'
                         ? 'bg-sky-600 text-white shadow-sm'
-                        : 'bg-white text-gray-500 hover:bg-gray-50'
+                        : 'bg-white text-gray-500 hover:bg-sky-50 hover:text-sky-600'
                     }`}
                     onClick={() => setMyInquiriesShowType('table')}
                     title="Show as table"
@@ -614,7 +614,7 @@ const Master = () => {
                     className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                       myInquiriesShowType === 'card'
                         ? 'bg-sky-600 text-white shadow-sm'
-                        : 'bg-white text-gray-500 hover:bg-gray-50'
+                        : 'bg-white text-gray-500 hover:bg-sky-50 hover:text-sky-600'
                     }`}
                     onClick={() => setMyInquiriesShowType('card')}
                     title="Show as cards"
