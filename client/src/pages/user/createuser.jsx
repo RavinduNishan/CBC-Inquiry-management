@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Spinner from './Spinner';
 import { useSnackbar } from 'notistack';
+import { MdPersonAdd, MdPerson, MdEmail, MdPhone, MdSecurity, MdBadge, MdCheckCircle, MdVerifiedUser, MdLock, MdShield } from 'react-icons/md';
 
 // Custom CSS for toggle
 const toggleStyles = `
   .toggle-checkbox:checked {
     right: 0;
-    border-color: #68D391;
+    border-color: #10B981;
   }
   .toggle-checkbox:checked + .toggle-label {
-    background-color: #68D391;
+    background-color: #10B981;
   }
   .toggle-label {
     transition: background-color 0.2s;
@@ -45,10 +46,10 @@ function CreateUser({ onUserAdded }) {
 
   // Available permissions for staff members
   const availablePermissions = [
-    { id: 'allInquiries', label: 'All Inquiries' },
-    { id: 'myInquiries', label: 'My Inquiries' },
-    { id: 'assignUsers', label: 'Assign Users' },
-    { id: 'addInquiries', label: 'Add Inquiries' },
+    { id: 'allInquiries', label: 'All Inquiries', description: 'Can view and manage all inquiries in the system' },
+    { id: 'myInquiries', label: 'My Inquiries', description: 'Can only view and manage their own inquiries' },
+    { id: 'assignUsers', label: 'Assign Users', description: 'Can assign inquiries to other users' },
+    { id: 'addInquiries', label: 'Add Inquiries', description: 'Can create new inquiries in the system' },
   ];
 
   // Default permissions for staff members
@@ -167,39 +168,49 @@ function CreateUser({ onUserAdded }) {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6">
+      <div className="flex items-center mb-6">
+        <div className="h-16 w-16 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold mr-4 shadow-lg">
+          <MdPersonAdd className="text-2xl" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 border-b-2 border-indigo-500 pb-1">Create New User</h1>
+          <p className="text-gray-600 mt-1">Add a new user to the system with appropriate access level and permissions</p>
+        </div>
+      </div>
+
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-md">
+          <div className="flex items-start">
+            <svg className="h-5 w-5 text-red-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700 font-medium">{error}</p>
             </div>
           </div>
         </div>
       )}
       
-      {loading && (
-        <div className="flex justify-center my-8">
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
           <Spinner />
+          <span className="ml-3 text-gray-600">Creating user...</span>
         </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div >
-            <p className="mt-1 text-sm text-gray-500">Please fill in the details to create a new user.</p>
-          </div>
-          
-          <div className="px-4 py-5 sm:p-6">
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Personal Information Section */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center">
+              <MdPerson className="text-indigo-500 mr-2" />
+              Personal Information
+            </h3>
+
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
               <div className="sm:col-span-3">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                  Full Name *
+                <label htmlFor="name" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <MdPerson className="text-gray-500 mr-1.5" />
+                  Full Name
                 </label>
                 <div className="mt-1">
                   <input
@@ -208,15 +219,17 @@ function CreateUser({ onUserAdded }) {
                     name="name"
                     value={userData.name}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
+                    placeholder="Enter user's full name"
                   />
                 </div>
               </div>
 
               <div className="sm:col-span-3">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email Address *
+                <label htmlFor="email" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <MdEmail className="text-gray-500 mr-1.5" />
+                  Email Address
                 </label>
                 <div className="mt-1">
                   <input
@@ -225,15 +238,17 @@ function CreateUser({ onUserAdded }) {
                     name="email"
                     value={userData.email}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
+                    placeholder="Enter email address"
                   />
                 </div>
               </div>
 
-              <div className="sm:col-span-3">
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  Phone Number *
+              <div className="sm:col-span-6">
+                <label htmlFor="phone" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <MdPhone className="text-gray-500 mr-1.5" />
+                  Phone Number
                 </label>
                 <div className="mt-1">
                   <input
@@ -242,15 +257,27 @@ function CreateUser({ onUserAdded }) {
                     name="phone"
                     value={userData.phone}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
+                    placeholder="Enter phone number"
                   />
                 </div>
               </div>
+            </div>
+          </div>
 
+          {/* Access & Security Section */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center">
+              <MdSecurity className="text-indigo-500 mr-2" />
+              Access & Security
+            </h3>
+
+            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6 mb-6">
               <div className="sm:col-span-3">
-                <label htmlFor="accessLevel" className="block text-sm font-medium text-gray-700">
-                  Access Level *
+                <label htmlFor="accessLevel" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <MdBadge className="text-gray-500 mr-1.5" />
+                  Access Level
                 </label>
                 <div className="mt-1">
                   <select
@@ -258,128 +285,165 @@ function CreateUser({ onUserAdded }) {
                     name="accessLevel"
                     value={userData.accessLevel}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
                   >
                     <option value="Administrator">Administrator</option>
                     <option value="Staff Member">Staff Member</option>
                   </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {userData.accessLevel === 'Administrator' 
+                      ? 'Administrators have full access to all system features and data' 
+                      : 'Staff members have limited access based on assigned permissions'}
+                  </p>
                 </div>
               </div>
 
-              {/* Status toggle switch */}
-              <div className="sm:col-span-6">
-                <div className="flex items-center">
-                  <label htmlFor="status-toggle" className="block text-sm font-medium text-gray-700 mr-4">
+              {/* Status toggle switch with improved styling */}
+              <div className="sm:col-span-3">
+                <div className="flex items-center h-full">
+                  <label htmlFor="status-toggle" className="flex items-center text-sm font-medium text-gray-700 mr-4">
+                    <MdVerifiedUser className="text-gray-500 mr-1.5" />
                     User Status
                   </label>
-                  <div className="relative inline-block w-12 mr-2 align-middle select-none">
+                  <div className="relative inline-block w-14 mr-2 align-middle select-none transition duration-200 ease-in">
                     <input
                       type="checkbox"
                       id="status-toggle"
                       name="status-toggle"
                       checked={userData.status === 'active'}
                       onChange={handleToggleChange}
-                      className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                      className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-gray-300 appearance-none cursor-pointer"
+                      style={{
+                        transform: userData.status === 'active' ? 'translateX(100%)' : 'translateX(0)',
+                        borderColor: userData.status === 'active' ? '#10B981' : '#D1D5DB'
+                      }}
                     />
                     <label
                       htmlFor="status-toggle"
-                      className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${
-                        userData.status === 'active' ? 'bg-green-400' : 'bg-gray-300'
-                      }`}
+                      className="toggle-label block overflow-hidden h-6 rounded-full cursor-pointer transition-colors duration-200 ease-in"
+                      style={{ 
+                        backgroundColor: userData.status === 'active' ? '#10B981' : '#D1D5DB' 
+                      }}
                     ></label>
                   </div>
-                  <span className="text-sm font-medium ml-2">
+                  <span className={`text-sm font-medium ml-2 ${
+                    userData.status === 'active' ? 'text-green-600' : 'text-gray-500'
+                  }`}>
                     {userData.status === 'active' ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-gray-500">
-                  Toggle to set whether this user account is active or inactive.
+                <p className="mt-1 text-xs text-gray-500 ml-6">
+                  {userData.status === 'active'
+                    ? 'User will be able to login immediately after creation'
+                    : 'User will be created but unable to login until activated'}
                 </p>
               </div>
+            </div>
 
-              {/* Permissions field - only show for Staff Members */}
-              {userData.accessLevel === 'Staff Member' && (
-                <div className="sm:col-span-6">
-                  <fieldset>
-                    <legend className="block text-sm font-medium text-gray-700 mb-2">
-                      Permissions *
-                    </legend>
-                    <div className="bg-gray-50 rounded p-4 border border-gray-200">
-                      <div className="grid grid-cols-2 gap-4">
-                        {availablePermissions.map((permission) => (
-                          <div key={permission.id} className="flex items-start">
-                            <div className="flex items-center h-5">
-                              <input
-                                id={`permission-${permission.id}`}
-                                name={`permission-${permission.id}`}
-                                type="checkbox"
-                                checked={userData.permissions.includes(permission.id)}
-                                onChange={() => handlePermissionChange(permission.id)}
-                                className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                              />
-                            </div>
-                            <div className="ml-3 text-sm">
-                              <label htmlFor={`permission-${permission.id}`} className="font-medium text-gray-700">
-                                {permission.label}
-                              </label>
-                              <p className="text-gray-500">{permission.description}</p>
-                            </div>
+            {/* Permissions section with enhanced styling */}
+            {userData.accessLevel === 'Staff Member' && (
+              <div className="rounded-lg bg-gray-50 p-4 border border-gray-200 mb-6">
+                <fieldset>
+                  <legend className="flex items-center text-sm font-medium text-gray-700 mb-3">
+                    <MdCheckCircle className="text-indigo-500 mr-1.5" />
+                    User Permissions
+                  </legend>
+                  
+                  <div className="bg-white rounded-lg p-3 border border-gray-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {availablePermissions.map((permission) => (
+                        <div key={permission.id} className="flex items-start p-2 rounded-md hover:bg-gray-50">
+                          <div className="flex items-center h-5">
+                            <input
+                              id={`permission-${permission.id}`}
+                              name={`permission-${permission.id}`}
+                              type="checkbox"
+                              checked={userData.permissions.includes(permission.id)}
+                              onChange={() => handlePermissionChange(permission.id)}
+                              className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                            />
                           </div>
-                        ))}
-                      </div>
+                          <div className="ml-3 text-sm">
+                            <label htmlFor={`permission-${permission.id}`} className="font-medium text-gray-700">
+                              {permission.label}
+                            </label>
+                            <p className="text-gray-500 text-xs mt-0.5">{permission.description}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </fieldset>
-                </div>
-              )}
-
-              <div className="sm:col-span-3">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password *
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={userData.password}
-                    onChange={handleInputChange}
-                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
-                    required
-                  />
-                </div>
+                  </div>
+                  
+                  <p className="mt-3 text-xs text-gray-500 italic">
+                    Note: Staff members require at least one permission to access system features
+                  </p>
+                </fieldset>
               </div>
+            )}
 
-              <div className="sm:col-span-3">
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                  Confirm Password *
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={userData.confirmPassword}
-                    onChange={handleInputChange}
-                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
-                    required
-                  />
+            {/* Password section with enhanced styling */}
+            <div className="rounded-lg bg-gray-50 p-4 border border-gray-200">
+              <h4 className="flex items-center text-sm font-medium text-gray-700 mb-3">
+                <MdLock className="text-indigo-500 mr-1.5" />
+                User Password
+              </h4>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-white p-3 rounded-lg border border-gray-100">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                    Password
+                  </label>
+                  <div className="mt-1 relative rounded-md shadow-sm">
+                    <input
+                      type="password"
+                      id="password"
+                      name="password"
+                      value={userData.password}
+                      onChange={handleInputChange}
+                      className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                      required
+                      placeholder="Enter password"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">Password must be at least 6 characters long</p>
+                </div>
+
+                <div className="bg-white p-3 rounded-lg border border-gray-100">
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                    Confirm Password
+                  </label>
+                  <div className="mt-1 relative rounded-md shadow-sm">
+                    <input
+                      type="password"
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      value={userData.confirmPassword}
+                      onChange={handleInputChange}
+                      className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                      required
+                      placeholder="Confirm password"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">Enter the same password again to confirm</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="px-4 py-3 bg-gray-50 text-right sm:px-6">
+          {/* Action buttons */}
+          <div className="flex justify-end">
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-lg shadow-sm transition-all"
             >
+              <MdPersonAdd className="mr-2" />
               {loading ? 'Creating...' : 'Create User'}
             </button>
           </div>
-        </div>
-      </form>
+        </form>
+      )}
     </div>
   );
 }
