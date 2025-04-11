@@ -89,8 +89,15 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
               </select>
             </div>
             
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-1">
+            {/* Action Buttons - Fixed layout */}
+            <div className="flex items-center justify-end space-x-3">
+              <div className="text-xs text-gray-500 flex items-center">
+                <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full text-xs font-medium mr-1">
+                  {filteredUsers.length}
+                </span> 
+                users found
+              </div>
+              
               <button
                 onClick={clearFilters}
                 className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none text-sm font-medium"
@@ -100,11 +107,6 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
             </div>
           </div>
           
-          <div className="ml-auto text-xs text-gray-500 whitespace-nowrap">
-            <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full text-xs font-medium">
-              {filteredUsers.length}
-            </span> users found
-          </div>
         </div>
       </div>
 
