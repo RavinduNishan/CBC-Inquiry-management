@@ -473,11 +473,11 @@ const Master = () => {
         </div>
       </div>
 
-      {/* Main content */}
-      <div className='flex-1 p-6 overflow-auto'>
+      {/* Main content with improved handling of fixed headers */}
+      <div className='flex-1 overflow-auto relative'>
         {activeMenu === 'createInquiry' && (
           <>
-            <div className='flex justify-between items-center mb-6'>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3'>
               <h1 className='text-2xl font-bold text-gray-800'>Create New Inquiry</h1>
               <button
                 onClick={() => setActiveMenu('inquiries')}
@@ -487,7 +487,7 @@ const Master = () => {
               </button>
             </div>
             
-            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6 mx-6'>
               <CreateInquiry 
                 onSuccess={() => {
                   setActiveMenu('inquiries');
@@ -500,7 +500,7 @@ const Master = () => {
         
         {activeMenu === 'inquiries' && (
           <>
-            <div className='flex justify-between items-center mb-6'>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
               <h1 className='text-2xl font-bold text-gray-800'>Inquiry Management</h1>
               <div className='flex items-center gap-4'>
                 <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-1 flex'>
@@ -533,7 +533,7 @@ const Master = () => {
               </div>
             </div>
             
-            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-6 mb-6'>
             
               
               {loading ? (
@@ -578,7 +578,7 @@ const Master = () => {
         
         {activeMenu === 'addUser' && isAdmin && (
           <>
-            <div className='flex justify-between items-center mb-6'>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-10 py-3'>
               <h1 className='text-2xl font-bold text-gray-800'>Add New User</h1>
               <button
                 onClick={() => setActiveMenu('users')}
@@ -601,7 +601,7 @@ const Master = () => {
         
         {activeMenu === 'dashboard' && (
           <>
-            <div className='flex justify-between items-center mb-6'>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
               <h1 className='text-2xl font-bold text-gray-800'>My Assigned Inquiries</h1>
               <div className='flex items-center gap-4'>
                 <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-1 flex'>

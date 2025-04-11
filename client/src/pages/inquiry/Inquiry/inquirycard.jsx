@@ -374,8 +374,8 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
 
     return (
         <>
-            {/* Compact Search and Filter Controls */}
-            <div className="mb-4">
+            {/* Sticky Search and Filter Controls with improved styling */}
+            <div className="mb-4 sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm pt-2 pb-3 px-1 -mx-1 shadow-md">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 items-end">
                         {/* Search Input */}
