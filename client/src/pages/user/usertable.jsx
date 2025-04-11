@@ -185,11 +185,6 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
                       >
                         <FiUser className="mr-1" /> Details
                       </button>
-                      <button
-                        className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500"
-                      >
-                        <FiEdit className="mr-1" /> Edit
-                      </button>
                     </div>
                   </td>
                 </tr>
