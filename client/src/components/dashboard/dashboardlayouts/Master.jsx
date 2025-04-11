@@ -325,19 +325,19 @@ const Master = () => {
 
   return (
     <div className='flex h-screen bg-gray-50 relative'>
-      {/* Sidebar with conditional width and transition */}
+      {/* Updated sidebar with theme matching logo */}
       <div 
-        className={`bg-gradient-to-b from-sky-50 to-white shadow-lg border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out 
+        className={`bg-gradient-to-b from-blue-700 via-sky-600 to-sky-500 shadow-lg border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out 
           ${sidebarOpen ? 'w-64' : 'w-16'} ${sidebarOpen ? '' : 'overflow-hidden'}`}
       >
-        {/* Sidebar Header - converted to a clickable button for toggling */}
+        {/* Sidebar Header with enhanced styling */}
         <button 
           onClick={toggleSidebar}
-          className='w-full p-4 border-b border-sky-100 flex justify-between items-center text-left hover:bg-sky-50 transition-colors cursor-pointer focus:outline-none'
+          className='w-full p-4 border-b border-sky-400/30 flex justify-between items-center text-left hover:bg-sky-600/30 transition-colors cursor-pointer focus:outline-none'
           aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
         >
           <div className={`flex items-center ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className='h-10 w-10 rounded-full bg-sky-600 flex items-center justify-center text-white font-bold text-xl flex-shrink-0'>
+            <div className='h-10 w-10 rounded-full bg-white flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-md'>
               <img
                 src={loginImg}
                 alt="CBC Logo"
@@ -346,22 +346,22 @@ const Master = () => {
             </div>
             {sidebarOpen && (
               <div className='ml-3 overflow-hidden whitespace-nowrap'>
-                <h2 className='font-semibold text-sky-800'>Inquiry Management</h2>
-                <p className='text-xs text-sky-500'>CBC Admin Portal</p>
+                <h2 className='font-semibold text-white'>Inquiry Management</h2>
+                <p className='text-xs text-sky-100'>CBC Admin Portal</p>
               </div>
             )}
           </div>
-          {/* Chevron icon as a visual indicator */}
+          {/* Chevron icon with updated color */}
           {sidebarOpen && (
-            <BsChevronLeft size={16} className="text-gray-500" />
+            <BsChevronLeft size={16} className="text-sky-100" />
           )}
         </button>
         
-        {/* Navigation */}
+        {/* Updated Navigation styling */}
         <nav className='flex-1 pt-4 pb-4 overflow-y-auto'>
           {sidebarOpen && (
             <div className='px-4 mb-3'>
-              <p className='text-xs font-semibold text-sky-500 uppercase tracking-wider'>Inquiries</p>
+              <p className='text-xs font-semibold text-sky-100 uppercase tracking-wider'>Inquiries</p>
             </div>
           )}
           <ul>
@@ -369,13 +369,13 @@ const Master = () => {
               <button 
                 className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
                   ${activeMenu === 'dashboard' 
-                    ? 'bg-sky-100 text-sky-700 font-medium' 
-                    : 'text-gray-600 hover:bg-gray-100'}
+                    ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                    : 'text-sky-100 hover:bg-sky-600/30'}
                   ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                 onClick={() => setActiveMenu('dashboard')}
                 title="My Inquiries"
               >
-                <MdDashboard className={`text-lg ${activeMenu === 'dashboard' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                <MdDashboard className={`text-lg ${activeMenu === 'dashboard' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
                 {sidebarOpen && <span className="ml-3">My Inquiries</span>}
               </button>
             </li>
@@ -383,13 +383,13 @@ const Master = () => {
               <button 
                 className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
                   ${activeMenu === 'inquiries' 
-                    ? 'bg-sky-100 text-sky-700 font-medium' 
-                    : 'text-gray-600 hover:bg-gray-100'}
+                    ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                    : 'text-sky-100 hover:bg-sky-600/30'}
                   ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                 onClick={() => setActiveMenu('inquiries')}
                 title="Inquiries"
               >
-                <FaClipboardList className={`text-lg ${activeMenu === 'inquiries' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                <FaClipboardList className={`text-lg ${activeMenu === 'inquiries' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
                 {sidebarOpen && <span className="ml-3">Inquiries</span>}
               </button>
             </li>
@@ -397,13 +397,13 @@ const Master = () => {
               <button 
                 className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
                   ${activeMenu === 'createInquiry' 
-                    ? 'bg-sky-100 text-sky-700 font-medium' 
-                    : 'text-gray-600 hover:bg-gray-100'}
+                    ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                    : 'text-sky-100 hover:bg-sky-600/30'}
                   ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                 onClick={() => setActiveMenu('createInquiry')}
                 title="Add Inquiry"
               >
-                <MdOutlineAddBox className={`text-lg ${activeMenu === 'createInquiry' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                <MdOutlineAddBox className={`text-lg ${activeMenu === 'createInquiry' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
                 {sidebarOpen && <span className="ml-3">Add Inquiry</span>}
               </button>
             </li>
@@ -411,22 +411,22 @@ const Master = () => {
               <>
                 {sidebarOpen && (
                   <div className='px-4 mt-6 mb-3'>
-                    <p className='text-xs font-semibold text-sky-500 uppercase tracking-wider'>Management</p>
+                    <p className='text-xs font-semibold text-sky-100 uppercase tracking-wider'>Management</p>
                   </div>
                 )}
-                {!sidebarOpen && <div className="border-t border-gray-200 my-2 mx-3"></div>}
+                {!sidebarOpen && <div className="border-t border-sky-400/30 my-2 mx-3"></div>}
                 
                 <li className='px-3'>
                   <button 
                     className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
                       ${activeMenu === 'users' 
-                        ? 'bg-sky-100 text-sky-700 font-medium' 
-                        : 'text-gray-600 hover:bg-gray-100'}
+                        ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                        : 'text-sky-100 hover:bg-sky-600/30'}
                       ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                     onClick={() => setActiveMenu('users')}
                     title="Users"
                   >
-                    <FaUserFriends className={`text-lg ${activeMenu === 'users' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                    <FaUserFriends className={`text-lg ${activeMenu === 'users' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
                     {sidebarOpen && <span className="ml-3">Users</span>}
                   </button>
                 </li>
@@ -434,13 +434,13 @@ const Master = () => {
                   <button 
                     className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
                       ${activeMenu === 'addUser' 
-                        ? 'bg-sky-100 text-sky-700 font-medium' 
-                        : 'text-gray-600 hover:bg-gray-100'}
+                        ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                        : 'text-sky-100 hover:bg-sky-600/30'}
                       ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                     onClick={() => setActiveMenu('addUser')}
                     title="Add User"
                   >
-                    <MdOutlineAddBox className={`text-lg ${activeMenu === 'addUser' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                    <MdOutlineAddBox className={`text-lg ${activeMenu === 'addUser' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
                     {sidebarOpen && <span className="ml-3">Add User</span>}
                   </button>
                 </li>
@@ -448,47 +448,36 @@ const Master = () => {
                   <button 
                     className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
                       ${activeMenu === 'reports' 
-                        ? 'bg-sky-100 text-sky-700 font-medium' 
-                        : 'text-gray-600 hover:bg-gray-100'}
+                        ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                        : 'text-sky-100 hover:bg-sky-600/30'}
                       ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                     onClick={() => setActiveMenu('reports')}
                     title="Reports"
                   >
-                    <FaChartBar className={`text-lg ${activeMenu === 'reports' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                    <FaChartBar className={`text-lg ${activeMenu === 'reports' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
                     {sidebarOpen && <span className="ml-3">Reports</span>}
                   </button>
                 </li>
-                <li className='px-3'>
-                  <button 
-                    className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
-                      ${activeMenu === 'settings' 
-                        ? 'bg-sky-100 text-sky-700 font-medium' 
-                        : 'text-gray-600 hover:bg-gray-100'}
-                      ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
-                    onClick={() => setActiveMenu('settings')}
-                    title="Settings"
-                  >
-                    <FaCog className={`text-lg ${activeMenu === 'settings' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
-                    {sidebarOpen && <span className="ml-3">Settings</span>}
-                  </button>
-                </li>
+                {/* Settings button removed */}
               </>
             )}
           </ul>
         </nav>
         
-        {/* User Profile */}
-        <div className={`border-t border-sky-100 bg-sky-50 flex ${sidebarOpen ? 'p-4' : 'p-2'}`}>
+        {/* Updated User Profile section */}
+        <div className={`border-t border-sky-400/30 bg-blue-800/30 backdrop-blur-sm flex ${sidebarOpen ? 'p-4' : 'p-2'}`}>
           {sidebarOpen ? (
             <div 
-              className="flex justify-between items-center cursor-pointer hover:bg-sky-100 rounded-lg transition-colors p-2 w-full"
+              className="flex justify-between items-center cursor-pointer hover:bg-blue-700/40 rounded-lg transition-colors p-2 w-full"
               onClick={() => setActiveMenu('profile')}
             >
               <div className='flex items-center'>
-                <div className='h-8 w-8 rounded-full bg-gray-300 flex-shrink-0'></div>
+                <div className='h-8 w-8 rounded-full bg-white flex items-center justify-center shadow-sm'>
+                  <span className="text-blue-700 font-medium text-sm">{user.name.charAt(0).toUpperCase()}</span>
+                </div>
                 <div className='ml-3 overflow-hidden'>
-                  <p className='text-sm font-medium text-gray-700 truncate'>{user.name}</p>
-                  <p className='text-xs text-gray-500 truncate'>{user.email}</p>
+                  <p className='text-sm font-medium text-white truncate'>{user.name}</p>
+                  <p className='text-xs text-sky-100 truncate'>{user.email}</p>
                 </div>
               </div>
               <button 
@@ -496,7 +485,7 @@ const Master = () => {
                   e.stopPropagation(); // Prevent triggering profile view
                   handleLogout();
                 }}
-                className='text-gray-500 hover:text-red-500'
+                className='text-sky-100 hover:text-white hover:bg-red-500/20 p-1.5 rounded-full transition-colors'
                 title="Logout"
               >
                 <FaSignOutAlt />
@@ -507,16 +496,16 @@ const Master = () => {
               {/* Profile button when sidebar is collapsed */}
               <button
                 onClick={() => setActiveMenu('profile')}
-                className="h-8 w-8 rounded-full bg-gray-300 hover:ring-2 hover:ring-sky-300 transition-all cursor-pointer relative group"
+                className="h-8 w-8 rounded-full bg-white hover:ring-2 hover:ring-white/30 transition-all cursor-pointer relative group"
                 title="View Profile"
               >
                 {/* First letter of user's name */}
-                <span className="absolute inset-0 flex items-center justify-center text-gray-700 font-medium">
+                <span className="absolute inset-0 flex items-center justify-center text-blue-700 font-medium">
                   {user.name.charAt(0).toUpperCase()}
                 </span>
                 
                 {/* Tooltip */}
-                <span className="absolute left-full ml-2 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                <span className="absolute left-full ml-2 bg-blue-900/90 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
                   View Profile
                 </span>
               </button>
@@ -524,7 +513,7 @@ const Master = () => {
               {/* Logout button when sidebar is collapsed */}
               <button
                 onClick={handleLogout}
-                className='text-gray-500 hover:text-red-500 p-1 rounded-full hover:bg-gray-100'
+                className='text-sky-100 hover:text-white hover:bg-red-500/20 p-1 rounded-full transition-colors'
                 title="Logout"
               >
                 <FaSignOutAlt />
@@ -532,14 +521,13 @@ const Master = () => {
             </div>
           )}
         </div>
-
       </div>
 
-      {/* Mobile sidebar toggle button (floating) */}
+      {/* Updated Mobile sidebar toggle button to match theme */}
       <div className="md:hidden fixed bottom-4 left-4 z-50">
         <button
           onClick={toggleSidebar}
-          className="bg-sky-600 text-white p-3 rounded-full shadow-lg hover:bg-sky-700 focus:outline-none"
+          className="bg-blue-700 text-white p-3 rounded-full shadow-lg hover:bg-blue-800 focus:outline-none"
           aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
         >
           <FaBars />
@@ -746,13 +734,6 @@ const Master = () => {
           </div>
         )}
         
-        {activeMenu === 'settings' && isAdmin && (
-          <div className='p-4'>
-            <h1 className='text-3xl mb-4'>Settings</h1>
-            <p>Settings content will be displayed here.</p>
-          </div>
-        )}
-
         {activeMenu === 'userDetails' && selectedUserForDetails && (
           <UserDetail 
             user={selectedUserForDetails}
