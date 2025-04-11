@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Spinner from '../../../pages/user/Spinner';
 import { Link } from 'react-router-dom';
-import { BsInfoCircle, BsTable, BsGrid3X3Gap, BsDownload } from 'react-icons/bs';
+import { BsInfoCircle, BsTable, BsGrid3X3Gap, BsDownload, BsChevronLeft, BsChevronRight } from 'react-icons/bs';
 import { MdOutlineAddBox, MdOutlineDelete, MdDashboard } from 'react-icons/md';
-import { FaUserFriends, FaClipboardList, FaChartBar, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import { FaUserFriends, FaClipboardList, FaChartBar, FaCog, FaSignOutAlt, FaBars } from 'react-icons/fa';
 // Fix import paths for the inquiry components that were moved
 import InquiryTable from '../../../pages/inquiry/Inquiry/inquirytable';
 import InquiryCard from '../../../pages/inquiry/Inquiry/inquirycard';
@@ -33,6 +33,7 @@ const Master = () => {
   const [activeMenu, setActiveMenu] = useState('inquiries');
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
   const [selectedUserForDetails, setSelectedUserForDetails] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Add state for sidebar toggle
 
   // Add authorization headers to axios requests
   const updateAxiosConfig = () => {
@@ -313,132 +314,162 @@ const Master = () => {
     }
   };
 
+  // Toggle sidebar function
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
   if (!user) {
     return null;
   }
 
   return (
-    <div className='flex h-screen bg-gray-50'>
-      {/* Sidebar */}
-      <div className='w-64 bg-gradient-to-b from-sky-50 to-white shadow-lg border-r border-gray-200 flex flex-col'>
-        {/* Sidebar Header */}
-        <div className='p-4 border-b border-sky-100'>
-          <div className='flex items-center'>
-            <div className='h-10 w-10 rounded-full bg-sky-600 flex items-center justify-center text-white font-bold text-xl'>
+    <div className='flex h-screen bg-gray-50 relative'>
+      {/* Sidebar with conditional width and transition */}
+      <div 
+        className={`bg-gradient-to-b from-sky-50 to-white shadow-lg border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out 
+          ${sidebarOpen ? 'w-64' : 'w-16'} ${sidebarOpen ? '' : 'overflow-hidden'}`}
+      >
+        {/* Sidebar Header - converted to a clickable button for toggling */}
+        <button 
+          onClick={toggleSidebar}
+          className='w-full p-4 border-b border-sky-100 flex justify-between items-center text-left hover:bg-sky-50 transition-colors cursor-pointer focus:outline-none'
+          aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          <div className={`flex items-center ${!sidebarOpen && 'justify-center w-full'}`}>
+            <div className='h-10 w-10 rounded-full bg-sky-600 flex items-center justify-center text-white font-bold text-xl flex-shrink-0'>
               <img
                 src={loginImg}
                 alt="CBC Logo"
                 className="h-full w-full object-contain rounded-full"
               />
             </div>
-            <div className='ml-3'>
-              <h2 className='font-semibold text-sky-800'>Inquiry Management</h2>
-              <p className='text-xs text-sky-500'>CBC Admin Portal</p>
-            </div>
+            {sidebarOpen && (
+              <div className='ml-3 overflow-hidden whitespace-nowrap'>
+                <h2 className='font-semibold text-sky-800'>Inquiry Management</h2>
+                <p className='text-xs text-sky-500'>CBC Admin Portal</p>
+              </div>
+            )}
           </div>
-        </div>
+          {/* Chevron icon as a visual indicator */}
+          {sidebarOpen && (
+            <BsChevronLeft size={16} className="text-gray-500" />
+          )}
+        </button>
         
         {/* Navigation */}
         <nav className='flex-1 pt-4 pb-4 overflow-y-auto'>
-          <div className='px-4 mb-3'>
-            <p className='text-xs font-semibold text-sky-500 uppercase tracking-wider'>Inquiries</p>
-          </div>
+          {sidebarOpen && (
+            <div className='px-4 mb-3'>
+              <p className='text-xs font-semibold text-sky-500 uppercase tracking-wider'>Inquiries</p>
+            </div>
+          )}
           <ul>
             <li className='px-3'>
               <button 
-                className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
-                  activeMenu === 'dashboard' 
+                className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                  ${activeMenu === 'dashboard' 
                     ? 'bg-sky-100 text-sky-700 font-medium' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                    : 'text-gray-600 hover:bg-gray-100'}
+                  ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                 onClick={() => setActiveMenu('dashboard')}
+                title="My Inquiries"
               >
-                <MdDashboard className={`mr-3 text-lg ${activeMenu === 'dashboard' ? 'text-sky-600' : 'text-gray-500'}`} />
-                My Inquiries
+                <MdDashboard className={`text-lg ${activeMenu === 'dashboard' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                {sidebarOpen && <span className="ml-3">My Inquiries</span>}
               </button>
             </li>
             <li className='px-3'>
               <button 
-                className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
-                  activeMenu === 'inquiries' 
+                className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                  ${activeMenu === 'inquiries' 
                     ? 'bg-sky-100 text-sky-700 font-medium' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                    : 'text-gray-600 hover:bg-gray-100'}
+                  ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                 onClick={() => setActiveMenu('inquiries')}
+                title="Inquiries"
               >
-                <FaClipboardList className={`mr-3 text-lg ${activeMenu === 'inquiries' ? 'text-sky-600' : 'text-gray-500'}`} />
-                Inquiries
+                <FaClipboardList className={`text-lg ${activeMenu === 'inquiries' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                {sidebarOpen && <span className="ml-3">Inquiries</span>}
               </button>
             </li>
             <li className='px-3'>
               <button 
-                className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
-                  activeMenu === 'createInquiry' 
+                className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                  ${activeMenu === 'createInquiry' 
                     ? 'bg-sky-100 text-sky-700 font-medium' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                    : 'text-gray-600 hover:bg-gray-100'}
+                  ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                 onClick={() => setActiveMenu('createInquiry')}
+                title="Add Inquiry"
               >
-                <MdOutlineAddBox className={`mr-3 text-lg ${activeMenu === 'createInquiry' ? 'text-sky-600' : 'text-gray-500'}`} />
-                Add Inquiry
+                <MdOutlineAddBox className={`text-lg ${activeMenu === 'createInquiry' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                {sidebarOpen && <span className="ml-3">Add Inquiry</span>}
               </button>
             </li>
             {isAdmin && (
               <>
-                <div className='px-4 mt-6 mb-3'>
-                  <p className='text-xs font-semibold text-sky-500 uppercase tracking-wider'>Management</p>
-                </div>
+                {sidebarOpen && (
+                  <div className='px-4 mt-6 mb-3'>
+                    <p className='text-xs font-semibold text-sky-500 uppercase tracking-wider'>Management</p>
+                  </div>
+                )}
+                {!sidebarOpen && <div className="border-t border-gray-200 my-2 mx-3"></div>}
                 
                 <li className='px-3'>
                   <button 
-                    className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
-                      activeMenu === 'users' 
+                    className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                      ${activeMenu === 'users' 
                         ? 'bg-sky-100 text-sky-700 font-medium' 
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                        : 'text-gray-600 hover:bg-gray-100'}
+                      ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                     onClick={() => setActiveMenu('users')}
+                    title="Users"
                   >
-                    <FaUserFriends className={`mr-3 text-lg ${activeMenu === 'users' ? 'text-sky-600' : 'text-gray-500'}`} />
-                    Users
+                    <FaUserFriends className={`text-lg ${activeMenu === 'users' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                    {sidebarOpen && <span className="ml-3">Users</span>}
                   </button>
                 </li>
                 <li className='px-3'>
                   <button 
-                    className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
-                      activeMenu === 'addUser' 
+                    className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                      ${activeMenu === 'addUser' 
                         ? 'bg-sky-100 text-sky-700 font-medium' 
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                        : 'text-gray-600 hover:bg-gray-100'}
+                      ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                     onClick={() => setActiveMenu('addUser')}
+                    title="Add User"
                   >
-                    <MdOutlineAddBox className={`mr-3 text-lg ${activeMenu === 'addUser' ? 'text-sky-600' : 'text-gray-500'}`} />
-                    Add User
+                    <MdOutlineAddBox className={`text-lg ${activeMenu === 'addUser' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                    {sidebarOpen && <span className="ml-3">Add User</span>}
                   </button>
                 </li>
                 <li className='px-3'>
                   <button 
-                    className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
-                      activeMenu === 'reports' 
+                    className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                      ${activeMenu === 'reports' 
                         ? 'bg-sky-100 text-sky-700 font-medium' 
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                        : 'text-gray-600 hover:bg-gray-100'}
+                      ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                     onClick={() => setActiveMenu('reports')}
+                    title="Reports"
                   >
-                    <FaChartBar className={`mr-3 text-lg ${activeMenu === 'reports' ? 'text-sky-600' : 'text-gray-500'}`} />
-                    Reports
+                    <FaChartBar className={`text-lg ${activeMenu === 'reports' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                    {sidebarOpen && <span className="ml-3">Reports</span>}
                   </button>
                 </li>
                 <li className='px-3'>
                   <button 
-                    className={`flex items-center w-full p-3 rounded-lg text-sm transition-colors duration-200 ${
-                      activeMenu === 'settings' 
+                    className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                      ${activeMenu === 'settings' 
                         ? 'bg-sky-100 text-sky-700 font-medium' 
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                        : 'text-gray-600 hover:bg-gray-100'}
+                      ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
                     onClick={() => setActiveMenu('settings')}
+                    title="Settings"
                   >
-                    <FaCog className={`mr-3 text-lg ${activeMenu === 'settings' ? 'text-sky-600' : 'text-gray-500'}`} />
-                    Settings
+                    <FaCog className={`text-lg ${activeMenu === 'settings' ? 'text-sky-600' : 'text-gray-500'} ${!sidebarOpen && 'mx-auto'}`} />
+                    {sidebarOpen && <span className="ml-3">Settings</span>}
                   </button>
                 </li>
               </>
@@ -447,34 +478,76 @@ const Master = () => {
         </nav>
         
         {/* User Profile */}
-        <div className='p-4 border-t border-sky-100 bg-sky-50'>
-          <div 
-            className='flex justify-between items-center cursor-pointer hover:bg-sky-100 p-2 rounded-lg transition-colors'
-            onClick={() => setActiveMenu('profile')}
-          >
-            <div className='flex items-center'>
-              <div className='h-8 w-8 rounded-full bg-gray-300'></div>
-              <div className='ml-3'>
-                <p className='text-sm font-medium text-gray-700'>{user.name}</p>
-                <p className='text-xs text-gray-500'>{user.email}</p>
-              </div>
-            </div>
-            <button 
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent triggering profile view
-                handleLogout();
-              }}
-              className='text-gray-500 hover:text-red-500'
-              title="Logout"
+        <div className={`border-t border-sky-100 bg-sky-50 flex ${sidebarOpen ? 'p-4' : 'p-2'}`}>
+          {sidebarOpen ? (
+            <div 
+              className="flex justify-between items-center cursor-pointer hover:bg-sky-100 rounded-lg transition-colors p-2 w-full"
+              onClick={() => setActiveMenu('profile')}
             >
-              <FaSignOutAlt />
-            </button>
-          </div>
+              <div className='flex items-center'>
+                <div className='h-8 w-8 rounded-full bg-gray-300 flex-shrink-0'></div>
+                <div className='ml-3 overflow-hidden'>
+                  <p className='text-sm font-medium text-gray-700 truncate'>{user.name}</p>
+                  <p className='text-xs text-gray-500 truncate'>{user.email}</p>
+                </div>
+              </div>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent triggering profile view
+                  handleLogout();
+                }}
+                className='text-gray-500 hover:text-red-500'
+                title="Logout"
+              >
+                <FaSignOutAlt />
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center w-full space-y-2">
+              {/* Profile button when sidebar is collapsed */}
+              <button
+                onClick={() => setActiveMenu('profile')}
+                className="h-8 w-8 rounded-full bg-gray-300 hover:ring-2 hover:ring-sky-300 transition-all cursor-pointer relative group"
+                title="View Profile"
+              >
+                {/* First letter of user's name */}
+                <span className="absolute inset-0 flex items-center justify-center text-gray-700 font-medium">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
+                
+                {/* Tooltip */}
+                <span className="absolute left-full ml-2 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  View Profile
+                </span>
+              </button>
+              
+              {/* Logout button when sidebar is collapsed */}
+              <button
+                onClick={handleLogout}
+                className='text-gray-500 hover:text-red-500 p-1 rounded-full hover:bg-gray-100'
+                title="Logout"
+              >
+                <FaSignOutAlt />
+              </button>
+            </div>
+          )}
         </div>
+
       </div>
 
-      {/* Main content with improved handling of fixed headers */}
-      <div className='flex-1 overflow-auto relative'>
+      {/* Mobile sidebar toggle button (floating) */}
+      <div className="md:hidden fixed bottom-4 left-4 z-50">
+        <button
+          onClick={toggleSidebar}
+          className="bg-sky-600 text-white p-3 rounded-full shadow-lg hover:bg-sky-700 focus:outline-none"
+          aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+        >
+          <FaBars />
+        </button>
+      </div>
+
+      {/* Main content - adjust padding based on sidebar state */}
+      <div className='flex-1 overflow-auto relative transition-all duration-300'>
         {activeMenu === 'createInquiry' && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3'>
@@ -533,9 +606,7 @@ const Master = () => {
               </div>
             </div>
             
-            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-6 mb-6'>
-            
-              
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-6 mb-6 flex-1 h-[calc(100vh-106px)]'>
               {loading ? (
                 <Spinner />
               ) : showType === 'table' ? (
@@ -563,17 +634,23 @@ const Master = () => {
         )}
         
         {activeMenu === 'users' && isAdmin && (
-          <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
-            {loading ? (
-              <Spinner />
-            ) : (
-              <UserTable 
-                users={users} 
-                fetchUsers={fetchUsers}
-                onViewDetails={handleViewUserDetails} 
-              />
-            )}
-          </div>
+          <>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
+              <h1 className='text-2xl font-bold text-gray-800'>User Management</h1>
+            </div>
+            
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-6 mb-6 flex-1 h-[calc(100vh-92px)]'>
+              {loading ? (
+                <Spinner />
+              ) : (
+                <UserTable 
+                  users={users} 
+                  fetchUsers={fetchUsers}
+                  onViewDetails={handleViewUserDetails} 
+                />
+              )}
+            </div>
+          </>
         )}
         
         {activeMenu === 'addUser' && isAdmin && (
@@ -633,13 +710,7 @@ const Master = () => {
               </div>
             </div>
             
-            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
-              <div className='flex justify-between items-center mb-6'>
-                <div className='text-sm text-gray-500'>
-                  {myInquiries.length} {myInquiries.length === 1 ? 'inquiry' : 'inquiries'} assigned to you
-                </div>
-              </div>
-              
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-6 mb-6 flex-1 h-[calc(100vh-110px)]'>
               {loading ? (
                 <Spinner />
               ) : myInquiries.length === 0 ? (

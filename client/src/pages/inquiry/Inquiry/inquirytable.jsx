@@ -340,10 +340,10 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
   };
 
   return (
-    <>
-      {/* Sticky Search and Filter Controls - Improve stickiness with backdrop blur */}
-      <div className="mb-4 sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm pt-2 pb-3 px-1 -mx-1 shadow-md">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+    <div className="flex flex-col h-full relative">
+      {/* Sticky Search and Filter Controls */}
+      <div className="sticky top-0 z-30 bg-white backdrop-blur-sm shadow-md">
+        <div className="bg-white rounded-t-lg border border-gray-200 p-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 items-end">
             {/* Search Input */}
             <div className="relative col-span-1">
@@ -491,165 +491,166 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
         </div>
       </div>
 
-      {/* Modify the table container to properly support sticky headers */}
-      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-180px)] rounded-lg border border-gray-200 shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200 table-fixed">
-          {/* Fix table header stickiness */}
-          <thead className="bg-gray-50 sticky top-0 z-20">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Inquiry ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Contact</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Company</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Subject</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">category</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Priority</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Assigned</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Created At</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Message</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Coments</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Last Update</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200 sticky right-0 z-20">Actions</th>
-            </tr>
-          </thead>
-          
-          {/* Table body */}
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredInquiries.map((inquiry) => {
-              // Determine row style based on status and priority
-              let rowStyle = '';
-              
-              if (inquiry.status.toLowerCase() === 'closed') {
-                rowStyle = 'bg-gray-100';
-              } else {
-                switch (inquiry.priority.toLowerCase()) {
-                  case 'high':
-                  case 'urgent':
-                    rowStyle = 'bg-red-50 hover:bg-red-100';
-                    break;
-                  case 'medium':
-                    rowStyle = 'bg-yellow-50 hover:bg-yellow-100';
-                    break;
-                  case 'low':
-                    rowStyle = 'bg-blue-50 hover:bg-blue-100';
-                    break;
-                  default:
-                    rowStyle = 'hover:bg-gray-50';
+      {/* Single scrollable container for the entire table - increased height */}
+      <div className="flex-1 overflow-auto border border-gray-200 rounded-b-lg" style={{ height: 'calc(100% - 120px)' }}>
+        {filteredInquiries.length === 0 ? (
+          <div className="text-center py-8 bg-white h-full flex items-center justify-center">
+            <div>
+              <p className="text-gray-500 text-lg">No inquiries found matching your search criteria</p>
+              <button
+                onClick={clearFilters}
+                className="mt-2 text-sky-600 hover:text-sky-800 underline"
+              >
+                Clear filters
+              </button>
+            </div>
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200">
+            {/* Table header - sticky relative to the scrollable container */}
+            <thead className="bg-gray-50 sticky top-0 z-10">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Inquiry ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Contact</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Company</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Subject</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Priority</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Assigned</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Created At</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Message</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Comments</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Last Update</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200 sticky right-0 z-20 shadow-l">Actions</th>
+              </tr>
+            </thead>
+            
+            {/* Table body */}
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredInquiries.map((inquiry) => {
+                // Determine row style based on status and priority
+                let rowStyle = '';
+                
+                if (inquiry.status.toLowerCase() === 'closed') {
+                  rowStyle = 'bg-gray-100';
+                } else {
+                  switch (inquiry.priority.toLowerCase()) {
+                    case 'high':
+                    case 'urgent':
+                      rowStyle = 'bg-red-50 hover:bg-red-100';
+                      break;
+                    case 'medium':
+                      rowStyle = 'bg-yellow-50 hover:bg-yellow-100';
+                      break;
+                    case 'low':
+                      rowStyle = 'bg-blue-50 hover:bg-blue-100';
+                      break;
+                    default:
+                      rowStyle = 'hover:bg-gray-50';
+                  }
                 }
-              }
-              
-              return (
-                <tr key={inquiry._id} className={`transition-colors ${rowStyle}`}>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {inquiry.inquiryID}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-medium">{inquiry.name.charAt(0).toUpperCase()}</span>
+                
+                return (
+                  <tr key={inquiry._id} className={`transition-colors ${rowStyle}`}>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {inquiry.inquiryID}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-medium">{inquiry.name.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div className="ml-3">
+                          {/* Company name made more prominent than person name */}
+                          <div className="text-sm font-bold text-sky-700">{inquiry.company}</div>
+                          <div className="text-xs text-gray-500">{inquiry.name}</div>
+                        </div>
                       </div>
-                      <div className="ml-3">
-                        {/* Company name made more prominent than person name */}
-                        <div className="text-sm font-bold text-sky-700">{inquiry.company}</div>
-                        <div className="text-xs text-gray-500">{inquiry.name}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                    {inquiry.phone}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 max-w-xs truncate">
-                    <div className="text-xs">{inquiry.email}</div>
-                  </td>
-                  <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate">
-                    {inquiry.subject}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-gray-900 max-w-xs truncate">
-                    {inquiry.category}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    {priorityBadge(inquiry.priority)}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs">
-                    {inquiry.assigned && inquiry.assigned.name ? (
-                      <span className="font-medium text-blue-600">{inquiry.assigned.name}</span>
-                    ) : (
-                      <span className="text-gray-400 italic">Unassigned</span>
-                    )}
-                    {inquiry.assigned && inquiry.assigned.userId && (
-                      <span className="hidden">ID: {inquiry.assigned.userId}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                    {formatDate(inquiry.createdAt)}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    {statusBadge(inquiry.status)}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-gray-900 max-w-xs truncate">
-                    {inquiry.message}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-gray-900 max-w-xs truncate">
-                    {inquiry.comments}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                    {formatDate(inquiry.updatedAt)}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
-                    <div className="flex justify-end space-x-1">
-                      {!hideAssignButton && (
-                        <button
-                          onClick={() => handleAssignClick(inquiry)}
-                          className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
-                            inquiry.status.toLowerCase() === 'closed'
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                            : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500'
-                          }`}
-                          disabled={inquiry.status.toLowerCase() === 'closed'}
-                        >
-                          <FiUserPlus className="mr-1" />
-                          Assign
-                        </button>
-                      )}
-                      {onRespond ? (
-                        <button
-                          onClick={() => onRespond(inquiry._id)}
-                          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-sky-500"
-                        >
-                          <FiSend className="mr-1" />
-                          Respond
-                        </button>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                      {inquiry.phone}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 max-w-xs truncate">
+                      <div className="text-xs">{inquiry.email}</div>
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate">
+                      {inquiry.subject}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-900 max-w-xs truncate">
+                      {inquiry.category}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {priorityBadge(inquiry.priority)}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs">
+                      {inquiry.assigned && inquiry.assigned.name ? (
+                        <span className="font-medium text-blue-600">{inquiry.assigned.name}</span>
                       ) : (
-                        <Link
-                          to={`/inquiry/response/${inquiry._id}`}
-                          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-sky-500"
-                        >
-                          <FiSend className="mr-1" />
-                          Respond
-                        </Link>
+                        <span className="text-gray-400 italic">Unassigned</span>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                      {inquiry.assigned && inquiry.assigned.userId && (
+                        <span className="hidden">ID: {inquiry.assigned.userId}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                      {formatDate(inquiry.createdAt)}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {statusBadge(inquiry.status)}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-900 max-w-xs truncate">
+                      {inquiry.message}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-900 max-w-xs truncate">
+                      {inquiry.comments}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                      {formatDate(inquiry.updatedAt)}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
+                      <div className="flex justify-end space-x-1">
+                        {!hideAssignButton && (
+                          <button
+                            onClick={() => handleAssignClick(inquiry)}
+                            className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
+                              inquiry.status.toLowerCase() === 'closed'
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                              : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500'
+                            }`}
+                            disabled={inquiry.status.toLowerCase() === 'closed'}
+                          >
+                            <FiUserPlus className="mr-1" />
+                            Assign
+                          </button>
+                        )}
+                        {onRespond ? (
+                          <button
+                            onClick={() => onRespond(inquiry._id)}
+                            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-sky-500"
+                          >
+                            <FiSend className="mr-1" />
+                            Respond
+                          </button>
+                        ) : (
+                          <Link
+                            to={`/inquiry/response/${inquiry._id}`}
+                            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-sky-500"
+                          >
+                            <FiSend className="mr-1" />
+                            Respond
+                          </Link>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
-
-      {/* Display "No inquiries found" message when filters return empty results */}
-      {filteredInquiries.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-gray-500 text-lg">No inquiries found matching your search criteria</p>
-          <button
-            onClick={clearFilters}
-            className="mt-2 text-sky-600 hover:text-sky-800 underline"
-          >
-            Clear filters
-          </button>
-        </div>
-      )}
 
       <AssignUserModal
         isOpen={assignModalOpen}
@@ -657,7 +658,7 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
         inquiryId={currentInquiryId}
         currentAssignee={currentAssignee}
       />
-    </>
+    </div>
   );
 };
 
