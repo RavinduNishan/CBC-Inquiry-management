@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, Fragment } from 'react';
 import { format } from 'date-fns';
-import { MdOutlineDelete, MdOutlineEdit, MdOutlinePersonOff, MdOutlinePersonAdd } from 'react-icons/md';
+import { MdOutlineDelete, MdOutlineEdit, MdOutlinePersonOff, MdOutlinePersonAdd, MdLockReset } from 'react-icons/md';
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
 import EditUserForm from './EditUserForm';
+import { Dialog, Transition } from '@headlessui/react';
 
 const UserDetail = ({ user, onBack, onUserUpdated }) => {
   const [showEditForm, setShowEditForm] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetPasswordError, setResetPasswordError] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
   
   // Format date for readability
   const formatDate = (dateString) => {
@@ -49,7 +55,67 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
     }
   };
 
-  
+  const handleResetPassword = async () => {
+    // Validate passwords match
+    if (newPassword !== confirmPassword) {
+      setResetPasswordError('Passwords do not match');
+      return;
+    }
+
+    // Validate password length
+    if (newPassword.length < 6) {
+      setResetPasswordError('Password must be at least 6 characters long');
+      return;
+    }
+
+    try {
+      setIsResetting(true);
+      setResetPasswordError('');
+      
+      // Get auth token
+      const token = localStorage.getItem('token');
+      
+      // Log request to help debug
+      console.log(`Sending password reset for user ${user._id} to ${user.name}`);
+      
+      // Use the endpoint from backend/routes/userRoute.js
+      await axios.post(
+        `http://localhost:5555/user/${user._id}/set-password`,
+        { 
+          newPassword
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      
+      // Close modal and show success message
+      setIsResetPasswordModalOpen(false);
+      setNewPassword('');
+      setConfirmPassword('');
+      enqueueSnackbar(`Password for ${user.name} has been reset successfully`, { variant: 'success' });
+    } catch (error) {
+      console.error('Admin password reset error:', error);
+      // More focused error message
+      let errorMsg = 'Failed to reset password';
+      
+      if (error.response) {
+        if (error.response.status === 403) {
+          errorMsg = 'You do not have permission to reset passwords';
+        } else if (error.response.status === 404) {
+          errorMsg = 'User not found';
+        } else if (error.response.data && error.response.data.message) {
+          errorMsg = error.response.data.message;
+        }
+      }
+      
+      setResetPasswordError(errorMsg);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
@@ -137,7 +203,13 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
                 Edit User
               </button>
               
-            
+              <button
+                onClick={() => setIsResetPasswordModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition"
+              >
+                <MdLockReset className="text-lg" />
+                Reset Password
+              </button>
               
               <button
                 onClick={handleDeleteUser}
@@ -160,6 +232,111 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
           }} 
         />
       )}
+
+      {/* Reset Password Modal */}
+      <Transition appear show={isResetPasswordModalOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-10" onClose={() => setIsResetPasswordModalOpen(false)}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all">
+                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
+                    Reset Password for {user.name}
+                  </Dialog.Title>
+                  
+                  {resetPasswordError && (
+                    <div className="mb-4 bg-red-50 text-red-700 p-3 rounded-md text-sm">
+                      {resetPasswordError}
+                    </div>
+                  )}
+                  
+                  {/* Proper form element to wrap password fields */}
+                  <form 
+                    name="passwordResetForm" 
+                    id="passwordResetForm"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleResetPassword();
+                    }}
+                  >
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          id="newPassword"
+                          name="newPassword"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                          disabled={isResetting}
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                          disabled={isResetting}
+                          required
+                        />
+                      </div>
+
+                      <div className="mt-6 flex justify-end space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsResetPasswordModalOpen(false)}
+                          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 text-sm font-medium transition-colors"
+                          disabled={isResetting}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className={`px-4 py-2 rounded-md text-white text-sm font-medium transition-colors ${isResetting ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'}`}
+                          disabled={isResetting}
+                        >
+                          {isResetting ? 'Resetting...' : 'Reset Password'}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 };

@@ -105,6 +105,39 @@ router.put("/reset-password", protect, async (req, res) => {
   }
 });
 
+// Admin set password endpoint - add this new route
+router.post("/:id/set-password", protect, admin, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const userId = req.params.id;
+    
+    // Validate input
+    if (!newPassword) {
+      return res.status(400).json({ message: 'New password is required' });
+    }
+    
+    // Find the user to reset password
+    const userToUpdate = await user.findById(userId);
+    
+    if (!userToUpdate) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    
+    // Update the user's password
+    userToUpdate.password = hashedPassword;
+    await userToUpdate.save();
+    
+    return res.status(200).json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({ message: error.message });
+  }
+});
+
 //create a new user
 router.post("/", async (req, res) => {
     try {
