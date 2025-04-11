@@ -1,15 +1,14 @@
-import React, { useState, Fragment } from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { MdOutlineDelete, MdOutlineEdit, MdOutlinePersonOff, MdOutlinePersonAdd, MdLockReset } from 'react-icons/md';
+import { MdOutlineDelete, MdOutlineEdit, MdLockReset, MdArrowBack, MdPerson, MdSecurity, MdAccessTime } from 'react-icons/md';
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
 import EditUserForm from './EditUserForm';
-import { Dialog, Transition } from '@headlessui/react';
 
 const UserDetail = ({ user, onBack, onUserUpdated }) => {
   const [showEditForm, setShowEditForm] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
-  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetPasswordError, setResetPasswordError] = useState('');
@@ -55,7 +54,9 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
     }
   };
 
-  const handleResetPassword = async () => {
+  const handleResetPassword = async (e) => {
+    if (e) e.preventDefault();
+    
     // Validate passwords match
     if (newPassword !== confirmPassword) {
       setResetPasswordError('Passwords do not match');
@@ -92,7 +93,7 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
       );
       
       // Close modal and show success message
-      setIsResetPasswordModalOpen(false);
+      setShowPasswordReset(false);
       setNewPassword('');
       setConfirmPassword('');
       enqueueSnackbar(`Password for ${user.name} has been reset successfully`, { variant: 'success' });
@@ -117,108 +118,302 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
     }
   };
 
+  const togglePasswordReset = () => {
+    setShowPasswordReset(!showPasswordReset);
+    if (!showPasswordReset) {
+      // Reset form state when opening
+      setNewPassword('');
+      setConfirmPassword('');
+      setResetPasswordError('');
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+    <div className="bg-gradient-to-b from-white to-gray-50 rounded-lg shadow-md border border-gray-200 p-6">
       {!showEditForm ? (
         // User Details View
         <>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-800">User Details</h2>
+          <div className="flex justify-between items-center mb-8">
+            <div className="flex items-center">
+              <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-sky-500 pb-1">User Profile</h2>
+              <span className="ml-2 px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-md">ID: {user._id?.substring(0, 8) || 'N/A'}</span>
+            </div>
             <button
               onClick={onBack}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-200"
+              className="bg-white hover:bg-gray-100 text-gray-700 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 shadow-sm border border-gray-200 flex items-center"
             >
-              Back to Users
+              <MdArrowBack className="mr-1" /> Back to Users
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Name</h3>
-                <p className="text-lg font-semibold">{user.name}</p>
+          {/* Enhanced user header with larger avatar */}
+          <div className="flex flex-col md:flex-row items-center md:items-start mb-8 p-5 bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-sky-100 rounded-bl-full opacity-50 z-0"></div>
+            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white text-3xl font-bold mr-5 shadow-lg z-10">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="text-center md:text-left mt-4 md:mt-0 z-10">
+              <h2 className="text-2xl font-bold text-gray-800">{user.name}</h2>
+              <div className="flex flex-col md:flex-row md:items-center mt-1 mb-2">
+                <p className="text-gray-600">{user.email}</p>
+                {user.phone && (
+                  <p className="md:ml-3 text-gray-500 text-sm">{user.phone}</p>
+                )}
               </div>
-              
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Email</h3>
-                <p className="text-lg">{user.email}</p>
+              <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                <span className="px-3 py-1 bg-sky-100 text-sky-800 text-sm rounded-full font-medium border border-sky-200 shadow-sm">
+                  {user.accessLevel}
+                </span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium shadow-sm ${
+                  user.status === 'active' 
+                    ? 'bg-green-100 text-green-800 border border-green-200' 
+                    : 'bg-red-100 text-red-800 border border-red-200'
+                }`}>
+                  {user.status === 'active' ? '● Active' : '● Inactive'}
+                </span>
               </div>
-              
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Phone</h3>
-                <p className="text-lg">{user.phone}</p>
+            </div>
+          </div>
+
+          {/* Main content with enhanced 3-column grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Column 1: User Details with icons */}
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transform transition-transform hover:scale-[1.02] hover:shadow-md">
+              <div className="flex items-center mb-4">
+                <MdPerson className="text-sky-500 text-xl mr-2" />
+                <h3 className="text-md font-semibold text-gray-700">Personal Information</h3>
               </div>
-              
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Access Level</h3>
-                <p className="text-lg">{user.accessLevel}</p>
+              <div className="space-y-4">
+                <div className="border-l-2 border-sky-200 pl-3">
+                  <p className="text-xs text-gray-500">Full Name</p>
+                  <p className="text-sm font-medium">{user.name}</p>
+                </div>
+                <div className="border-l-2 border-sky-200 pl-3">
+                  <p className="text-xs text-gray-500">Email Address</p>
+                  <p className="text-sm font-medium">{user.email}</p>
+                </div>
+                <div className="border-l-2 border-sky-200 pl-3">
+                  <p className="text-xs text-gray-500">Phone Number</p>
+                  <p className="text-sm font-medium">{user.phone || 'Not provided'}</p>
+                </div>
               </div>
             </div>
             
-            <div>
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Status</h3>
-                <span className={`px-3 py-1 text-sm font-medium rounded-full ${
-                  user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {user.status === 'active' ? 'Active' : 'Inactive'}
-                </span>
+            {/* Column 2: Account Info with icons */}
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transform transition-transform hover:scale-[1.02] hover:shadow-md">
+              <div className="flex items-center mb-4">
+                <MdSecurity className="text-sky-500 text-xl mr-2" />
+                <h3 className="text-md font-semibold text-gray-700">Access & Permissions</h3>
               </div>
-              
-              {/* Only show permissions section if user is not an Administrator */}
-              {user.accessLevel !== 'Administrator' && (
-                <div className="mb-4">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Permissions</h3>
-                  {user.permissions && user.permissions.length > 0 ? (
-                    <ul className="text-md list-disc pl-5">
-                      {user.permissions.map((permission, index) => (
-                        <li key={index}>{permission}</li>
-                      ))}
-                    </ul>
+              <div className="space-y-4">
+                <div className="border-l-2 border-sky-200 pl-3">
+                  <p className="text-xs text-gray-500">Access Level</p>
+                  <p className="text-sm font-medium">{user.accessLevel}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {user.accessLevel === 'Administrator' 
+                      ? 'Has full system access' 
+                      : user.accessLevel === 'Manager' 
+                        ? 'Can manage most system functions' 
+                        : 'Has limited system access'}
+                  </p>
+                </div>
+                <div className="border-l-2 border-sky-200 pl-3">
+                  <p className="text-xs text-gray-500">Account Status</p>
+                  <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                    user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {user.status === 'active' ? 'Active' : 'Inactive'}
+                  </span>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {user.status === 'active' 
+                      ? 'User can currently login and use the system' 
+                      : 'User is prevented from logging in'}
+                  </p>
+                </div>
+                <div className="border-l-2 border-sky-200 pl-3">
+                  <p className="text-xs text-gray-500">Permissions</p>
+                  {user.accessLevel === 'Administrator' ? (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">All permissions</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Administrator has full system access</p>
+                    </div>
                   ) : (
-                    <p className="text-gray-500">No specific permissions assigned</p>
+                    <div className="mt-1">
+                      {user.permissions && Array.isArray(user.permissions) && user.permissions.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {user.permissions.map((permission, index) => (
+                            <span 
+                              key={index} 
+                              className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-md border border-blue-200"
+                            >
+                              {permission}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-600 italic">No specific permissions assigned</p>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-              
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Created</h3>
-                <p className="text-md">{formatDate(user.createdAt)}</p>
               </div>
-              
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Last Updated</h3>
-                <p className="text-md">{formatDate(user.updatedAt)}</p>
+            </div>
+            
+            {/* Column 3: Timeline with icons */}
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transform transition-transform hover:scale-[1.02] hover:shadow-md">
+              <div className="flex items-center mb-4">
+                <MdAccessTime className="text-sky-500 text-xl mr-2" />
+                <h3 className="text-md font-semibold text-gray-700">Account Timeline</h3>
+              </div>
+              <div className="space-y-4">
+                <div className="relative pl-6">
+                  <div className="absolute left-0 top-0 h-full border-l-2 border-dashed border-sky-200"></div>
+                  <div className="absolute left-[-4px] top-0 w-2 h-2 rounded-full bg-sky-500"></div>
+                  <p className="text-xs text-gray-500">Account Created</p>
+                  <p className="text-sm font-medium">{formatDate(user.createdAt)}</p>
+                </div>
+                <div className="relative pl-6">
+                  <div className="absolute left-0 top-0 h-full border-l-2 border-dashed border-sky-200"></div>
+                  <div className="absolute left-[-4px] top-0 w-2 h-2 rounded-full bg-sky-500"></div>
+                  <p className="text-xs text-gray-500">Last Updated</p>
+                  <p className="text-sm font-medium">{formatDate(user.updatedAt)}</p>
+                </div>
+                <div className="relative pl-6 pb-4">
+                  <div className="absolute left-[-4px] top-0 w-2 h-2 rounded-full bg-sky-500"></div>
+                  <p className="text-xs text-gray-500">Last Activity</p>
+                  <p className="text-sm font-medium">
+                    {user.lastActivity ? formatDate(user.lastActivity) : 'No recent activity'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
           
-          <div className="mt-8 border-t border-gray-200 pt-6">
+          {/* Action buttons with enhanced styling */}
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mb-6">
+            <h3 className="text-md font-semibold text-gray-700 mb-4">User Management Actions</h3>
             <div className="flex flex-wrap gap-4">
               <button
                 onClick={handleEditUser}
-                className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition"
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-lg transition shadow-sm"
               >
                 <MdOutlineEdit className="text-lg" />
-                Edit User
-              </button>
-              
-              <button
-                onClick={() => setIsResetPasswordModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition"
-              >
-                <MdLockReset className="text-lg" />
-                Reset Password
+                Edit User Profile
               </button>
               
               <button
                 onClick={handleDeleteUser}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition"
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition shadow-sm"
+                title="Permanently delete this user"
               >
                 <MdOutlineDelete className="text-lg" />
                 Delete User
               </button>
             </div>
+            <p className="text-xs text-gray-500 mt-3">
+              Note: Editing a user allows you to change their details and permissions. Deleting a user cannot be undone.
+            </p>
+          </div>
+
+          {/* Password Reset Section - Enhanced design */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-sky-50 to-blue-50 p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-gray-800 text-md">Password Management</h4>
+                  <p className="text-sm text-gray-600">Reset password for {user.name}</p>
+                </div>
+                <button 
+                  onClick={togglePasswordReset}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center ${
+                    showPasswordReset 
+                      ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                      : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white'
+                  }`}
+                >
+                  <MdLockReset className="mr-1.5 text-lg" />
+                  {showPasswordReset ? 'Cancel' : 'Reset Password'}
+                </button>
+              </div>
+            </div>
+
+            {/* Enhanced Password Reset Form */}
+            {showPasswordReset && (
+              <div className="p-5">
+                <div className="mb-4 bg-blue-50 text-blue-700 p-3 rounded-md text-sm border-l-4 border-blue-400">
+                  <strong>Note:</strong> This will reset the user's password without requiring their old password.
+                  Make sure to communicate the new password securely to the user.
+                </div>
+              
+                {resetPasswordError && (
+                  <div className="mb-4 bg-red-50 text-red-700 p-3 rounded-md text-sm border-l-4 border-red-400">
+                    <strong>Error:</strong> {resetPasswordError}
+                  </div>
+                )}
+                
+                <form 
+                  id="passwordResetForm"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleResetPassword();
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                        New Password
+                      </label>
+                      <input
+                        type="password"
+                        id="newPassword"
+                        name="newPassword"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                        disabled={isResetting}
+                        placeholder="Enter new password"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Minimum 6 characters required</p>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                        disabled={isResetting}
+                        placeholder="Confirm new password"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Must match the password above</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      className={`px-4 py-2 rounded-lg shadow-sm font-medium flex items-center ${
+                        isResetting 
+                          ? 'bg-gray-400 text-white cursor-not-allowed' 
+                          : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white'
+                      }`}
+                      disabled={isResetting}
+                    >
+                      <MdLockReset className="mr-1.5" />
+                      {isResetting ? 'Resetting Password...' : 'Set New Password'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         </>
       ) : (
@@ -232,111 +427,6 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
           }} 
         />
       )}
-
-      {/* Reset Password Modal */}
-      <Transition appear show={isResetPasswordModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-10" onClose={() => setIsResetPasswordModalOpen(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
-          </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all">
-                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
-                    Reset Password for {user.name}
-                  </Dialog.Title>
-                  
-                  {resetPasswordError && (
-                    <div className="mb-4 bg-red-50 text-red-700 p-3 rounded-md text-sm">
-                      {resetPasswordError}
-                    </div>
-                  )}
-                  
-                  {/* Proper form element to wrap password fields */}
-                  <form 
-                    name="passwordResetForm" 
-                    id="passwordResetForm"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleResetPassword();
-                    }}
-                  >
-                    <div className="space-y-4">
-                      <div>
-                        <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                          New Password
-                        </label>
-                        <input
-                          type="password"
-                          id="newPassword"
-                          name="newPassword"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                          disabled={isResetting}
-                          required
-                        />
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                          Confirm New Password
-                        </label>
-                        <input
-                          type="password"
-                          id="confirmPassword"
-                          name="confirmPassword"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                          disabled={isResetting}
-                          required
-                        />
-                      </div>
-
-                      <div className="mt-6 flex justify-end space-x-3">
-                        <button
-                          type="button"
-                          onClick={() => setIsResetPasswordModalOpen(false)}
-                          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 text-sm font-medium transition-colors"
-                          disabled={isResetting}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className={`px-4 py-2 rounded-md text-white text-sm font-medium transition-colors ${isResetting ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'}`}
-                          disabled={isResetting}
-                        >
-                          {isResetting ? 'Resetting...' : 'Reset Password'}
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
     </div>
   );
 };
