@@ -315,7 +315,7 @@ function CreateUser({ onUserAdded }) {
                       onChange={handleToggleChange}
                       className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-gray-300 appearance-none cursor-pointer"
                       style={{
-                        transform: userData.status === 'active' ? 'translateX(100%)' : 'translateX(0)',
+                        transform: userData.status === 'active' ? 'translateX(0%)' : 'translateX(0)',
                         borderColor: userData.status === 'active' ? '#10B981' : '#D1D5DB'
                       }}
                     />

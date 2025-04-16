@@ -249,7 +249,7 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
                       right: editUserData.status === 'active' ? '0px' : 'auto',
                       left: editUserData.status === 'active' ? 'auto' : '0px',
                       transition: 'all 0.3s',
-                      transform: editUserData.status === 'active' ? 'translateX(100%)' : 'translateX(0)',
+                      transform: editUserData.status === 'active' ? 'translateX(0%)' : 'translateX(0)',
                       borderColor: editUserData.status === 'active' ? '#10B981' : '#D1D5DB'
                     }}
                   />
