@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { BsInfoCircle, BsSearch, BsDownload } from 'react-icons/bs';
 import { MdOutlineDelete } from 'react-icons/md';
-import { FiSend, FiUserPlus, FiCalendar, FiFilter } from 'react-icons/fi';
+import { FiSend, FiUserPlus, FiCalendar, FiFilter, FiChevronDown } from 'react-icons/fi';
 import AssignUserModal from './AssignUserModal';
 import axios from 'axios';
 
@@ -87,6 +87,11 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
   // Filtered inquiries
   const [filteredInquiries, setFilteredInquiries] = useState([]);
 
+  // Add new state variables for user search dropdown
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const userDropdownRef = useRef(null);
+
   // Fetch users for assignment filter
   useEffect(() => {
     const fetchUsers = async () => {
@@ -107,6 +112,25 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
   useEffect(() => {
     setFilteredInquiries(inquiries);
   }, [inquiries]);
+
+  // Handle clicks outside the dropdown to close it
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setShowUserDropdown(false);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [userDropdownRef]);
+
+  // Filter users based on search term
+  const filteredUsers = users.filter(user => 
+    user.name.toLowerCase().includes(userSearchTerm.toLowerCase())
+  );
 
   // Handle search button click
   const handleSearch = (e) => {
@@ -385,17 +409,75 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
                 <option value="closed">Closed</option>
               </select>
               
-              <select
-                value={inputAssignedFilter}
-                onChange={(e) => setInputAssignedFilter(e.target.value)}
-                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-              >
-                <option value="">Assigned</option>
-                <option value="unassigned">Unassigned</option>
-                {users.map(user => (
-                  <option key={user._id} value={user._id}>{user.name.split(' ')[0]}</option>
-                ))}
-              </select>
+              {/* Custom Assigned Users Dropdown with Search */}
+              <div className="relative" ref={userDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 bg-white flex items-center justify-between min-w-[100px]"
+                >
+                  <span>{inputAssignedFilter === 'unassigned' ? 'Unassigned' : 
+                         inputAssignedFilter ? 
+                         (users.find(u => u._id === inputAssignedFilter)?.name || 'Assigned') : 
+                         'Assigned'}</span>
+                  <FiChevronDown className="ml-1" />
+                </button>
+                
+                {showUserDropdown && (
+                  <div className="absolute mt-1 w-60 bg-white shadow-lg border border-gray-200 rounded-md z-50">
+                    <div className="p-2 border-b">
+                      <input
+                        type="text"
+                        placeholder="Search users..."
+                        value={userSearchTerm}
+                        onChange={(e) => setUserSearchTerm(e.target.value)}
+                        className="w-full px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="max-h-56 overflow-y-auto">
+                      <div 
+                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => {
+                          setInputAssignedFilter("");
+                          setShowUserDropdown(false);
+                        }}
+                      >
+                        All
+                      </div>
+                      <div 
+                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => {
+                          setInputAssignedFilter("unassigned");
+                          setShowUserDropdown(false);
+                        }}
+                      >
+                        Unassigned
+                      </div>
+                      {filteredUsers.map(user => (
+                        <div 
+                          key={user._id} 
+                          className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
+                          onClick={() => {
+                            setInputAssignedFilter(user._id);
+                            setShowUserDropdown(false);
+                          }}
+                        >
+                          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-2">
+                            <span className="text-blue-600 text-xs font-medium">{user.name.charAt(0).toUpperCase()}</span>
+                          </div>
+                          {user.name}
+                        </div>
+                      ))}
+                      {filteredUsers.length === 0 && userSearchTerm && (
+                        <div className="px-4 py-2 text-sm text-gray-500 italic">
+                          No users found
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* Action Buttons */}
@@ -535,7 +617,7 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
                   let rowStyle = '';
                   
                   if (inquiry.status.toLowerCase() === 'closed') {
-                    rowStyle = 'bg-gray-100';
+                    rowStyle = 'bg-white'; // Changed from bg-gray-100 to bg-white for closed inquiries
                   } else {
                     switch (inquiry.priority.toLowerCase()) {
                       case 'high':

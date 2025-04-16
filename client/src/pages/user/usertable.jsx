@@ -4,6 +4,24 @@ import { BsSearch, BsCheckCircle, BsXCircle } from 'react-icons/bs';
 import { FiEdit, FiTrash2, FiUser, FiMail, FiCalendar } from 'react-icons/fi';
 import axios from 'axios';
 
+// Access level badge component
+const accessLevelBadge = (accessLevel) => {
+  const baseClasses = "px-2 py-1 text-xs font-semibold rounded-full";
+  
+  if (!accessLevel) return <span className={`${baseClasses} bg-gray-100 text-gray-800`}>N/A</span>;
+  
+  switch (accessLevel.toLowerCase()) {
+    case 'administrator':
+      return <span className={`${baseClasses} bg-purple-100 text-purple-800`}>{accessLevel}</span>;
+    case 'manager':
+      return <span className={`${baseClasses} bg-blue-100 text-blue-800`}>{accessLevel}</span>;
+    case 'user':
+      return <span className={`${baseClasses} bg-green-100 text-green-800`}>{accessLevel}</span>;
+    default:
+      return <span className={`${baseClasses} bg-gray-100 text-gray-800`}>{accessLevel}</span>;
+  }
+};
+
 const UserTable = ({ users, fetchUsers, onViewDetails }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -26,7 +44,7 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
         user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesRole = !roleFilter || user.role?.toLowerCase() === roleFilter.toLowerCase();
+      const matchesRole = !roleFilter || user.accessLevel?.toLowerCase() === roleFilter.toLowerCase();
       const matchesStatus = !statusFilter || user.status?.toLowerCase() === statusFilter.toLowerCase();
       
       return matchesSearch && matchesRole && matchesStatus;
@@ -72,10 +90,10 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
                 onChange={(e) => setRoleFilter(e.target.value)}
                 className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
               >
-                <option value="">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="user">User</option>
+                <option value="">All Access Levels</option>
+                <option value="administrator">Administrator</option>
                 <option value="manager">Manager</option>
+                <option value="user">User</option>
               </select>
               
               <select
@@ -132,7 +150,7 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Access Level</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Created</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200 sticky top-0 right-0 z-30 shadow-lg">Actions</th>
@@ -142,7 +160,16 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
               {/* Table body */}
               <tbody className="divide-y divide-gray-200">
                 {filteredUsers.map((user) => (
-                  <tr key={user._id} className={`hover:bg-gray-50 ${user.status === 'inactive' ? 'bg-gray-100' : ''}`}>
+                  <tr 
+                    key={user._id} 
+                    className={`hover:bg-gray-50 ${
+                      user.status === 'inactive' 
+                        ? 'bg-gray-100' 
+                        : user.accessLevel === 'Administrator' && user.status === 'active'
+                          ? 'bg-red-50' // Light red background for active administrators
+                          : ''
+                    }`}
+                  >
                     <td className="px-3 py-2 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -157,9 +184,7 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
                       {user.email}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {user.role}
-                      </span>
+                      {accessLevelBadge(user.accessLevel)}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       {user.status === 'active' ? (
