@@ -9,7 +9,6 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
   const [inquiry, setInquiry] = useState(null);
   const [loading, setLoading] = useState(false);
   const [comments, setComments] = useState('');
-  const [status, setStatus] = useState('');
   const [users, setUsers] = useState([
     { id: '1', name: 'John Doe' },
     { id: '2', name: 'Jane Smith' },
@@ -30,7 +29,6 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
         const inquiryData = response.data;
         setInquiry(inquiryData);
         setComments(inquiryData.comments || '');
-        setStatus(inquiryData.status || 'pending');
         setLoading(false);
       })
       .catch((error) => {
@@ -40,28 +38,32 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
       });
   }, [id]);
 
-  
-
   const handleClose = () => {
     if (inquiry.status === 'closed') return;
     
     setLoading(true);
+    const updatedInquiry = {
+      ...inquiry,
+      status: 'closed',
+      comments
+    };
+    
     axios
-      .put(`http://localhost:5555/inquiry/${id}`, { 
-        ...inquiry,
-        status: 'closed',
-        comments 
-      })
-      .then(() => {
+      .put(`http://localhost:5555/inquiry/${id}`, updatedInquiry)
+      .then((response) => {
+        // Update local state with the closed inquiry data
+        setInquiry({...updatedInquiry, statusUpdatedAt: new Date().toISOString()});
         setLoading(false);
         enqueueSnackbar('Inquiry closed successfully', { variant: 'success' });
+        
         // Navigate based on mode
         if (dashboardMode) {
           // Return to inquiries view in dashboard
           // This will be handled by the parent component
         } else {
-          // Navigate back after closing
-          navigate('/');
+          // For standalone mode, you can either stay on the page with updated state
+          // or navigate back
+          // navigate('/');
         }
       })
       .catch((error) => {
@@ -77,7 +79,6 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
     setLoading(true);
     const updatedInquiry = {
       ...inquiry,
-      status,
       comments
     };
     
@@ -326,31 +327,6 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
             </div>
             
             <div className="p-6">
-              {/* Status Selection */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Update Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => !isClosed && setStatus(e.target.value)}
-                  disabled={isClosed}
-                  className={`w-full border-2 rounded-lg px-3 py-2 ${
-                    isClosed
-                      ? 'bg-gray-100 cursor-not-allowed border-gray-300'
-                      : 'border-sky-300 focus:border-sky-500 focus:ring focus:ring-sky-200 focus:ring-opacity-50'
-                  }`}
-                >
-                  <option value="pending">Pending</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {isClosed 
-                    ? "Status cannot be changed once an inquiry is closed" 
-                    : "Set the current status of this inquiry"}
-                </p>
-              </div>
-              
               {/* Comments */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Response Comments</label>
