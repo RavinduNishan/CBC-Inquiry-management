@@ -39,13 +39,14 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Return user data and token
+    // Return user data and token - ENSURE permissions is included
     res.status(200).json({
       _id: userFound._id,
       name: userFound.name,
       email: userFound.email,
       phone: userFound.phone,
       accessLevel: userFound.accessLevel,
+      permissions: userFound.permissions || [], // Make sure permissions are included
       status: userFound.status,
       token: generateToken(userFound._id)
     });

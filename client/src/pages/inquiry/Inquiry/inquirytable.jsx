@@ -56,7 +56,7 @@ const priorityBadge = (priority) => {
   }
 };
 
-const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButton = false }) => {
+const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButton = false, canAssign = false }) => {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
   const [currentAssignee, setCurrentAssignee] = useState(null);
@@ -348,8 +348,8 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
   };
 
   const handleAssignClick = (inquiry) => {
-    // Don't process if the inquiry is closed
-    if (inquiry.status.toLowerCase() === 'closed') return;
+    // Don't process if the inquiry is closed or user doesn't have assignment permission
+    if (inquiry.status.toLowerCase() === 'closed' || !canAssign) return;
     
     setCurrentInquiryId(inquiry._id);
     setCurrentAssignee(inquiry.assigned?.userId || null);
@@ -694,7 +694,8 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
                         <div className="flex justify-end space-x-1">
-                          {!hideAssignButton && (
+                          {/* Only show assign button if user has permission to assign */}
+                          {canAssign && (
                             <button
                               onClick={() => handleAssignClick(inquiry)}
                               className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MdArrowBack, MdPerson, MdEmail, MdPhone, MdSecurity, MdBadge, MdCheckCircle, MdVerifiedUser, MdSave } from 'react-icons/md';
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
@@ -10,7 +10,7 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
     email: user.email,
     phone: user.phone,
     accessLevel: user.accessLevel,
-    permissions: user.permissions || [],
+    permissions: Array.isArray(user.permissions) ? [...user.permissions] : [], // Ensure proper initialization
     status: user.status || 'active',
   });
   const [error, setError] = useState('');
@@ -18,10 +18,10 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
 
   // Available permissions for staff members
   const availablePermissions = [
-    { id: 'allInquiries', label: 'All Inquiries' },
-    { id: 'myInquiries', label: 'My Inquiries' },
-    { id: 'assignUsers', label: 'Assign Users' },
-    { id: 'addInquiries', label: 'Add Inquiries' },
+    { id: 'myInquiries', label: 'My Inquiries', description: 'Access to inquiries assigned to you', required: true },
+    { id: 'inquiries', label: 'All Inquiries', description: 'Can view and manage all inquiries in the system' },
+    { id: 'assignInquiries', label: 'Assign Users', description: 'Can assign inquiries to other users' },
+    { id: 'addInquiry', label: 'Add Inquiries', description: 'Can create new inquiries in the system' },
   ];
 
   const handleInputChange = (e) => {
@@ -40,6 +40,9 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
   };
 
   const handlePermissionChange = (permissionId) => {
+    // Don't allow unchecking the "myInquiries" permission
+    if (permissionId === 'myInquiries') return;
+    
     const currentPermissions = [...(editUserData.permissions || [])];
     if (currentPermissions.includes(permissionId)) {
       // Remove permission if already exists
@@ -56,6 +59,19 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
     }
   };
 
+  // Ensure myInquiries permission is always included for Staff Member
+  useEffect(() => {
+    if (editUserData.accessLevel === 'Staff Member') {
+      const hasMyInquiries = editUserData.permissions.includes('myInquiries');
+      if (!hasMyInquiries) {
+        setEditUserData(prev => ({
+          ...prev,
+          permissions: [...prev.permissions, 'myInquiries']
+        }));
+      }
+    }
+  }, [editUserData.accessLevel]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -67,16 +83,24 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
       return;
     }
 
-    // For staff members, at least one permission must be selected
-    if (editUserData.accessLevel === 'Staff Member' && 
-        (!editUserData.permissions || editUserData.permissions.length === 0)) {
-      setError('Please select at least one permission for the staff member');
-      enqueueSnackbar('Please select at least one permission', { variant: 'error' });
-      return;
+    // For staff members, ensure myInquiries permission is included and no duplicates
+    if (editUserData.accessLevel === 'Staff Member') {
+      // Use Set to remove duplicates and ensure myInquiries is included
+      const uniquePermissions = new Set(editUserData.permissions);
+      uniquePermissions.add('myInquiries');
+      
+      // Convert back to array for submission
+      editUserData.permissions = Array.from(uniquePermissions);
+    } else if (editUserData.accessLevel === 'Administrator') {
+      // For administrators, assign all permissions
+      editUserData.permissions = availablePermissions.map(p => p.id);
     }
 
     try {
       setLoading(true);
+      
+      // Log what we're sending for debugging
+      console.log('Submitting permissions:', editUserData.permissions);
       
       const response = await axios.put(`http://localhost:5555/user/${user._id}`, {
         name: editUserData.name,
@@ -285,23 +309,26 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {availablePermissions.map((permission) => (
-                        <div key={permission.id} className="flex items-center">
+                        <div key={permission.id} className={`flex items-center ${permission.required ? 'opacity-75' : ''}`}>
                           <input
                             id={`permission-${permission.id}`}
                             name={`permission-${permission.id}`}
                             type="checkbox"
-                            checked={editUserData.permissions?.includes(permission.id)}
+                            checked={editUserData.permissions?.includes(permission.id) || permission.required}
                             onChange={() => handlePermissionChange(permission.id)}
                             className="h-4 w-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500"
+                            disabled={permission.required}
                           />
-                          <label htmlFor={`permission-${permission.id}`} className="ml-3 text-sm text-gray-700">
-                            {permission.label}
+                          <label htmlFor={`permission-${permission.id}`} className="ml-3">
+                            <span className="text-sm text-gray-700">{permission.label}</span>
+                            {permission.required && <span className="text-xs text-sky-600 ml-1">(Required)</span>}
+                            <p className="text-xs text-gray-500">{permission.description}</p>
                           </label>
                         </div>
                       ))}
                     </div>
                     <p className="mt-3 text-xs text-gray-500 italic">
-                      Note: Staff members require at least one permission to access system features
+                      Note: "My Inquiries" permission is required and cannot be disabled
                     </p>
                   </div>
                 </fieldset>

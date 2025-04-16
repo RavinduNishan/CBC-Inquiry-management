@@ -54,6 +54,20 @@ const Master = () => {
     }
   };
 
+  // Check if user has a specific permission
+  const hasPermission = (permissionName) => {
+    console.log("Checking permission:", permissionName, "for user:", user);
+    console.log("User permissions:", user?.permissions);
+    
+    return (
+      user &&
+      (isAdmin || // Admins have all permissions
+       (user.permissions && 
+        Array.isArray(user.permissions) && 
+        user.permissions.includes(permissionName)))
+    );
+  };
+
   // Initialize axios with auth headers
   useEffect(() => {
     updateAxiosConfig();
@@ -65,6 +79,9 @@ const Master = () => {
       navigate('/login', { replace: true });
       return;
     }
+    
+    // Log user details to debug permissions
+    console.log("Current user in dashboard:", user);
     
     // Additional check to prevent inactive users from accessing the dashboard
     if (user.status === 'inactive') {
@@ -365,48 +382,61 @@ const Master = () => {
             </div>
           )}
           <ul>
-            <li className='px-3'>
-              <button 
-                className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
-                  ${activeMenu === 'dashboard' 
-                    ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
-                    : 'text-sky-100 hover:bg-sky-600/30'}
-                  ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
-                onClick={() => setActiveMenu('dashboard')}
-                title="My Inquiries"
-              >
-                <MdDashboard className={`text-lg ${activeMenu === 'dashboard' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
-                {sidebarOpen && <span className="ml-3">My Inquiries</span>}
-              </button>
-            </li>
-            <li className='px-3'>
-              <button 
-                className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
-                  ${activeMenu === 'inquiries' 
-                    ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
-                    : 'text-sky-100 hover:bg-sky-600/30'}
-                  ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
-                onClick={() => setActiveMenu('inquiries')}
-                title="Inquiries"
-              >
-                <FaClipboardList className={`text-lg ${activeMenu === 'inquiries' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
-                {sidebarOpen && <span className="ml-3">Inquiries</span>}
-              </button>
-            </li>
-            <li className='px-3'>
-              <button 
-                className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
-                  ${activeMenu === 'createInquiry' 
-                    ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
-                    : 'text-sky-100 hover:bg-sky-600/30'}
-                  ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
-                onClick={() => setActiveMenu('createInquiry')}
-                title="Add Inquiry"
-              >
-                <MdOutlineAddBox className={`text-lg ${activeMenu === 'createInquiry' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
-                {sidebarOpen && <span className="ml-3">Add Inquiry</span>}
-              </button>
-            </li>
+            {/* Only show My Inquiries if user has myInquiries permission - this is the default */}
+            {hasPermission('myInquiries') && (
+              <li className='px-3'>
+                <button 
+                  className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                    ${activeMenu === 'dashboard' 
+                      ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                      : 'text-sky-100 hover:bg-sky-600/30'}
+                    ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                  onClick={() => setActiveMenu('dashboard')}
+                  title="My Inquiries"
+                >
+                  <MdDashboard className={`text-lg ${activeMenu === 'dashboard' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                  {sidebarOpen && <span className="ml-3">My Inquiries</span>}
+                </button>
+              </li>
+            )}
+
+            {/* Only show All Inquiries if user has inquiries permission */}
+            {hasPermission('inquiries') && (
+              <li className='px-3'>
+                <button 
+                  className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                    ${activeMenu === 'inquiries' 
+                      ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                      : 'text-sky-100 hover:bg-sky-600/30'}
+                    ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                  onClick={() => setActiveMenu('inquiries')}
+                  title="Inquiries"
+                >
+                  <FaClipboardList className={`text-lg ${activeMenu === 'inquiries' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                  {sidebarOpen && <span className="ml-3">Inquiries</span>}
+                </button>
+              </li>
+            )}
+
+            {/* Only show Add Inquiry if user has addInquiry permission */}
+            {hasPermission('addInquiry') && (
+              <li className='px-3'>
+                <button 
+                  className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                    ${activeMenu === 'createInquiry' 
+                      ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                      : 'text-sky-100 hover:bg-sky-600/30'}
+                    ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                  onClick={() => setActiveMenu('createInquiry')}
+                  title="Add Inquiry"
+                >
+                  <MdOutlineAddBox className={`text-lg ${activeMenu === 'createInquiry' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                  {sidebarOpen && <span className="ml-3">Add Inquiry</span>}
+                </button>
+              </li>
+            )}
+            
+            {/* Admin section remains unchanged */}
             {isAdmin && (
               <>
                 {sidebarOpen && (
@@ -536,7 +566,8 @@ const Master = () => {
 
       {/* Main content - adjust padding based on sidebar state */}
       <div className='flex-1 overflow-auto relative transition-all duration-300'>
-        {activeMenu === 'createInquiry' && (
+        {/* Restrict access to createInquiry based on permission */}
+        {activeMenu === 'createInquiry' && hasPermission('addInquiry') && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3'>
               <h1 className='text-2xl font-bold text-gray-800'>Create New Inquiry</h1>
@@ -559,7 +590,8 @@ const Master = () => {
           </>
         )}
         
-        {activeMenu === 'inquiries' && (
+        {/* Restrict access to inquiries based on permission */}
+        {activeMenu === 'inquiries' && hasPermission('inquiries') && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
               <h1 className='text-2xl font-bold text-gray-800'>Inquiry Management</h1>
@@ -602,12 +634,14 @@ const Master = () => {
                   inquiries={inquiries} 
                   onRespond={handleRespond} 
                   onInquiriesUpdated={handleInquiriesUpdated}
+                  canAssign={hasPermission('assignInquiries')}
                 />
               ) : (
                 <InquiryCard 
                   inquiries={inquiries} 
                   onRespond={handleRespond}
                   onInquiriesUpdated={handleInquiriesUpdated}
+                  canAssign={hasPermission('assignInquiries')} // Pass assignment permission
                 />
               )}
             </div>
@@ -664,7 +698,7 @@ const Master = () => {
           </>
         )}
         
-        {activeMenu === 'dashboard' && (
+        {activeMenu === 'dashboard' && hasPermission('myInquiries') && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
               <h1 className='text-2xl font-bold text-gray-800'>My Assigned Inquiries</h1>
@@ -713,14 +747,14 @@ const Master = () => {
                   inquiries={myInquiries} 
                   onRespond={handleMyInquiryRespond}
                   onInquiriesUpdated={handleMyInquiriesUpdated}
-                  hideAssignButton={true}
+                  canAssign={hasPermission('assignInquiries')}
                 />
               ) : (
                 <InquiryCard 
                   inquiries={myInquiries} 
                   onRespond={handleMyInquiryRespond}
                   onInquiriesUpdated={handleMyInquiriesUpdated}
-                  hideAssignButton={true}
+                  hideAssignButton={!hasPermission('assignInquiries')} // Show assign button only if user has permission
                 />
               )}
             </div>

@@ -37,29 +37,29 @@ function CreateUser({ onUserAdded }) {
     email: '',
     phone: '',
     accessLevel: 'Staff Member',
-    permissions: [],
+    permissions: ['myInquiries'], // Initialize with required myInquiries
     password: '',
     confirmPassword: '',
     status: 'active', // Default status is active
   });
   const [error, setError] = useState('');
 
-  // Available permissions for staff members
+  // Available permissions for staff members - standardize with EditUserForm
   const availablePermissions = [
-    { id: 'allInquiries', label: 'All Inquiries', description: 'Can view and manage all inquiries in the system' },
-    { id: 'myInquiries', label: 'My Inquiries', description: 'Can only view and manage their own inquiries' },
-    { id: 'assignUsers', label: 'Assign Users', description: 'Can assign inquiries to other users' },
-    { id: 'addInquiries', label: 'Add Inquiries', description: 'Can create new inquiries in the system' },
+    { id: 'myInquiries', label: 'My Inquiries', description: 'Access to inquiries assigned to you', required: true },
+    { id: 'inquiries', label: 'All Inquiries', description: 'Can view and manage all inquiries in the system' },
+    { id: 'assignInquiries', label: 'Assign Users', description: 'Can assign inquiries to other users' },
+    { id: 'addInquiry', label: 'Add Inquiries', description: 'Can create new inquiries in the system' },
   ];
 
   // Default permissions for staff members
   useEffect(() => {
-    if (userData.accessLevel === 'Staff Member' && userData.permissions.length === 0) {
-      // Set default permissions for staff
-      setUserData({
-        ...userData,
-        permissions: ['myInquiries']
-      });
+    if (userData.accessLevel === 'Staff Member' && !userData.permissions.includes('myInquiries')) {
+      // Ensure myInquiries is always included
+      setUserData(prev => ({
+        ...prev,
+        permissions: [...prev.permissions, 'myInquiries']
+      }));
     } else if (userData.accessLevel === 'Administrator') {
       // Administrators get all permissions
       setUserData({
@@ -67,7 +67,7 @@ function CreateUser({ onUserAdded }) {
         permissions: availablePermissions.map(p => p.id)
       });
     }
-  }, [userData.accessLevel]);
+  }, [userData.accessLevel, userData.permissions]);
 
   const handleInputChange = (e) => {
     setUserData({
@@ -85,6 +85,9 @@ function CreateUser({ onUserAdded }) {
   };
 
   const handlePermissionChange = (permissionId) => {
+    // Don't allow unchecking the "myInquiries" permission
+    if (permissionId === 'myInquiries') return;
+    
     const currentPermissions = [...userData.permissions];
     if (currentPermissions.includes(permissionId)) {
       // Remove permission if already exists
@@ -119,11 +122,14 @@ function CreateUser({ onUserAdded }) {
       return;
     }
 
-    // For staff members, at least one permission must be selected
-    if (userData.accessLevel === 'Staff Member' && userData.permissions.length === 0) {
-      setError('Please select at least one permission for the staff member');
-      enqueueSnackbar('Please select at least one permission', { variant: 'error' });
-      return;
+    // For staff members, ensure myInquiries permission is included
+    if (userData.accessLevel === 'Staff Member') {
+      const updatedPermissions = [...userData.permissions];
+      if (!updatedPermissions.includes('myInquiries')) {
+        updatedPermissions.push('myInquiries');
+      }
+      
+      userData.permissions = updatedPermissions;
     }
 
     try {
@@ -353,20 +359,22 @@ function CreateUser({ onUserAdded }) {
                   <div className="bg-white rounded-lg p-3 border border-gray-100">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {availablePermissions.map((permission) => (
-                        <div key={permission.id} className="flex items-start p-2 rounded-md hover:bg-gray-50">
+                        <div key={permission.id} className={`flex items-start p-2 rounded-md hover:bg-gray-50 ${permission.required ? 'opacity-75' : ''}`}>
                           <div className="flex items-center h-5">
                             <input
                               id={`permission-${permission.id}`}
                               name={`permission-${permission.id}`}
                               type="checkbox"
-                              checked={userData.permissions.includes(permission.id)}
+                              checked={userData.permissions.includes(permission.id) || permission.required}
                               onChange={() => handlePermissionChange(permission.id)}
                               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                              disabled={permission.required}
                             />
                           </div>
                           <div className="ml-3 text-sm">
                             <label htmlFor={`permission-${permission.id}`} className="font-medium text-gray-700">
                               {permission.label}
+                              {permission.required && <span className="text-xs text-indigo-600 ml-1">(Required)</span>}
                             </label>
                             <p className="text-gray-500 text-xs mt-0.5">{permission.description}</p>
                           </div>
@@ -376,7 +384,7 @@ function CreateUser({ onUserAdded }) {
                   </div>
                   
                   <p className="mt-3 text-xs text-gray-500 italic">
-                    Note: Staff members require at least one permission to access system features
+                    Note: "My Inquiries" permission is required and cannot be disabled
                   </p>
                 </fieldset>
               </div>
