@@ -2,7 +2,7 @@ import express from "express";
 import Inquiry from "../models/inquirymodel.js";
 import { protect } from "../middleware/authMiddleware.js";
 import mongoose from "mongoose";
-import { sendInquiryConfirmation } from "../utils/emailService.js";
+import { sendInquiryConfirmation, sendInquiryClosure } from "../utils/emailService.js";
 
 const router = express.Router();  
 
@@ -178,7 +178,25 @@ router.put("/:id", async (req, res) => {
         if (!inquiry) return res.status(404).json({ message: "Inquiry not found" });
 
         console.log("Updated inquiry result:", inquiry);
-        return res.status(200).json(inquiry);
+        
+        // Check if inquiry is closed and email notification is requested
+        let emailSent = false;
+        if (updateData.status === 'closed' && req.body.sendClosureEmail) {
+            try {
+                console.log('Sending closure email notification...');
+                await sendInquiryClosure(inquiry);
+                emailSent = true;
+                console.log('Inquiry closure email sent successfully');
+            } catch (emailError) {
+                console.error('Failed to send closure email:', emailError);
+                // Continue with the response even if email fails
+            }
+        }
+
+        return res.status(200).json({
+            ...inquiry.toObject(),
+            emailSent
+        });
     } catch (error) {
         console.error("Error updating inquiry:", error.message);
         return res.status(500).send({ message: error.message });

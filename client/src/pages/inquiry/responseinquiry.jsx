@@ -45,7 +45,8 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
     const updatedInquiry = {
       ...inquiry,
       status: 'closed',
-      comments
+      comments,
+      sendClosureEmail: true // Add this flag to trigger email sending
     };
     
     axios
@@ -54,7 +55,13 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
         // Update local state with the closed inquiry data
         setInquiry({...updatedInquiry, statusUpdatedAt: new Date().toISOString()});
         setLoading(false);
-        enqueueSnackbar('Inquiry closed successfully', { variant: 'success' });
+        
+        // Show appropriate message based on email status
+        if (response.data.emailSent) {
+          enqueueSnackbar('Inquiry closed successfully and notification email sent', { variant: 'success' });
+        } else {
+          enqueueSnackbar('Inquiry closed successfully, but email notification failed', { variant: 'warning' });
+        }
         
         // Navigate based on mode
         if (dashboardMode) {

@@ -99,3 +99,73 @@ export const sendInquiryConfirmation = async (inquiry) => {
     throw error;
   }
 };
+
+/**
+ * Send an email notification about a closed inquiry to the inquiry submitter
+ * @param {Object} inquiry - The inquiry object with all details
+ * @returns {Promise} - Promise resolving to the sent mail info
+ */
+export const sendInquiryClosure = async (inquiry) => {
+  console.log('Preparing to send inquiry closure email to:', inquiry.email);
+  
+  // Define email content
+  const mailOptions = {
+    from: EMAIL_FROM,
+    to: inquiry.email, // Send to the email provided in the inquiry form
+    subject: `Your Inquiry [${inquiry.inquiryID}] has been closed`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 5px;">
+        <h2 style="color: #333; border-bottom: 1px solid #eaeaea; padding-bottom: 10px;">Inquiry Closure Notification</h2>
+        
+        <p>Dear ${inquiry.name},</p>
+        
+        <p>Your inquiry with ID <strong>${inquiry.inquiryID}</strong> has been closed. Thank you for reaching out to us.</p>
+        
+        <p>Here is a summary of your inquiry:</p>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eaeaea; font-weight: bold;">Subject:</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eaeaea;">${inquiry.subject}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eaeaea; font-weight: bold;">Category:</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eaeaea;">${inquiry.category}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eaeaea; font-weight: bold;">Status:</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eaeaea;">Closed</td>
+          </tr>
+        </table>
+        
+        ${inquiry.comments ? `
+        <p><strong>Comments:</strong></p>
+        <div style="background-color: #f9f9f9; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+          ${inquiry.comments.replace(/\n/g, '<br>')}
+        </div>
+        ` : ''}
+        
+        <p>If you have any further questions, please feel free to submit a new inquiry or contact our support team.</p>
+        
+        <p style="color: #666; font-size: 14px; margin-top: 30px;">
+          This is an automated message from the CBC Inquiry Management System. Please do not reply to this email.
+        </p>
+      </div>
+    `
+  };
+
+  try {
+    console.log('Sending closure email with configuration:', {
+      host: EMAIL_HOST,
+      port: EMAIL_PORT,
+      user: EMAIL_USER.substring(0, 5) + '...' // Log partial email for security
+    });
+    
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Closure email sent successfully:', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('Error sending closure email:', error);
+    throw error;
+  }
+};
