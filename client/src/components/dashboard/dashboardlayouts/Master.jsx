@@ -21,7 +21,7 @@ import UserDetail from '../../../pages/user/UserDetail';
 import UserProfile from '../../../pages/user/UserProfile';
 
 const Master = () => {
-  const { user, logout, isAdmin } = useContext(AuthContext);
+  const { user, logout, isAdmin, isFirstLogin, setIsFirstLogin } = useContext(AuthContext);
   const navigate = useNavigate();
   
   const [inquiries, setInquiries] = useState([]);
@@ -30,10 +30,10 @@ const Master = () => {
   const [loading, setLoading] = useState(false);
   const [showType, setShowType] = useState('table');
   const [myInquiriesShowType, setMyInquiriesShowType] = useState('table');
-  const [activeMenu, setActiveMenu] = useState('inquiries');
+  const [activeMenu, setActiveMenu] = useState('');  // Start with empty string to determine default view
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
   const [selectedUserForDetails, setSelectedUserForDetails] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true); // Add state for sidebar toggle
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Changed from true to false to start with closed sidebar
 
   // Add authorization headers to axios requests
   const updateAxiosConfig = () => {
@@ -334,7 +334,65 @@ const Master = () => {
   // Toggle sidebar function
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+    
+    // Optionally save preference to localStorage
+    localStorage.setItem('sidebarPreference', !sidebarOpen ? 'open' : 'closed');
   };
+
+  // Check for saved sidebar preference
+  useEffect(() => {
+    const savedPreference = localStorage.getItem('sidebarPreference');
+    if (savedPreference) {
+      setSidebarOpen(savedPreference === 'open');
+    }
+  }, []);
+
+  // Set default view based on user permissions
+  useEffect(() => {
+    if (user && activeMenu === '') {
+      console.log('Setting default view based on user permissions');
+      
+      // Default to 'dashboard' (My Inquiries) for regular staff
+      if (hasPermission('myInquiries')) {
+        console.log('Setting default view to My Inquiries (dashboard)');
+        setActiveMenu('dashboard');
+        
+        // Preload my inquiries data
+        if (user._id) {
+          fetchMyInquiries();
+        }
+      } 
+      // For users without myInquiries permission but with inquiries permission
+      else if (hasPermission('inquiries')) {
+        console.log('Setting default view to All Inquiries (inquiries)');
+        setActiveMenu('inquiries');
+        fetchInquiries();
+      }
+      // For admins without specific defaults set
+      else if (isAdmin) {
+        console.log('Setting default view for admin to users');
+        setActiveMenu('users');
+        fetchUsers();
+      }
+    }
+  }, [user]);
+
+  // When isFirstLogin changes, load appropriate data
+  useEffect(() => {
+    if (isFirstLogin && user) {
+      console.log('First login detected - loading default view data');
+      
+      // If dashboard is already the active menu or being set as active
+      if (activeMenu === 'dashboard' || 
+          (activeMenu === '' && hasPermission('myInquiries'))) {
+        console.log('Fetching my inquiries for first login');
+        fetchMyInquiries();
+      }
+      
+      // Reset first login flag
+      setIsFirstLogin(false);
+    }
+  }, [isFirstLogin, activeMenu, user]);
 
   if (!user) {
     return null;

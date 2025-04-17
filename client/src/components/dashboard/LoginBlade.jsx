@@ -14,7 +14,7 @@ export const LoginBlade = () => {
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [serverStatus, setServerStatus] = useState(null); // null=unknown, true=online, false=offline
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, loading, isAuthenticated, user, error: contextError } = useContext(AuthContext);
+  const { login, loading, isAuthenticated, user, error: contextError, isFirstLogin } = useContext(AuthContext);
   const navigate = useNavigate();
   const [mongoError, setMongoError] = useState(false);
 
@@ -111,8 +111,9 @@ export const LoginBlade = () => {
       const result = await login(email, password);
       
       if (result.success) {
-        console.log('Login successful');
-        // Navigation will be handled by the useEffect
+        console.log('Login successful - redirecting to dashboard');
+        // Navigation will be handled by the useEffect, default view will be set in Master component
+        navigate('/dashboard');
       } else {
         setError(result.message || 'Invalid credentials. Please try again.');
         

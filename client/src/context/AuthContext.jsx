@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isFirstLogin, setIsFirstLogin] = useState(false);
   
   useEffect(() => {
     // Check for user data in localStorage on mount
@@ -69,6 +70,9 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', res.data.token);
       localStorage.removeItem('loggedOut');
       
+      // Set first login flag to trigger initial data load
+      setIsFirstLogin(true);
+      
       // Set user context
       setUser(res.data);
       setIsAuthenticated(true);
@@ -106,6 +110,8 @@ export const AuthProvider = ({ children }) => {
       error,
       isAuthenticated,
       isAdmin,
+      isFirstLogin,
+      setIsFirstLogin,
       login,
       logout
     }}>
