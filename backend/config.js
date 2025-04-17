@@ -1,15 +1,14 @@
-// Remove the dotenv import and config call
-// import dotenv from 'dotenv';
-// dotenv.config();
+import dotenv from 'dotenv';
+dotenv.config();
 
-// Export direct values without relying on process.env
-export const MONGODBURL = 'mongodb+srv://nishravindu:pass@inquiry.ojuojk0.mongodb.net/Inquirycollection?retryWrites=true&w=majority&appName=Inquiry';
-export const PORT = 5555;
-export const JWT_SECRET = 'mysecretkey123'; // Replace with a more secure secret in production
+// Export values from environment variables
+export const MONGODBURL = process.env.MONGODB_URL;
+export const PORT = process.env.PORT || 5555;
+export const JWT_SECRET = process.env.JWT_SECRET;
 
-// Email configuration for Gmail
-export const EMAIL_HOST = 'smtp.gmail.com';
-export const EMAIL_PORT = 587;
-export const EMAIL_USER = 'nish.ravindu@gmail.com';
-export const EMAIL_PASS = 'dcvyzyvhctfcebjk'; // Your app password
-export const EMAIL_FROM = 'CBC Inquiry System <nish.ravindu@gmail.com>';
+// Email configuration from environment
+export const EMAIL_HOST = process.env.EMAIL_HOST;
+export const EMAIL_PORT = process.env.EMAIL_PORT;
+export const EMAIL_USER = process.env.EMAIL_USER;
+export const EMAIL_PASS = process.env.EMAIL_PASS;
+export const EMAIL_FROM = process.env.EMAIL_FROM;
