@@ -111,7 +111,7 @@ const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee }) => {
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-20" onClose={() => onClose(false)}>
+      <Dialog as="div" className="relative z-50" onClose={() => onClose(false)}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
