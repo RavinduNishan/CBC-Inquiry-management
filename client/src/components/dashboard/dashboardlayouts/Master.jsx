@@ -674,7 +674,7 @@ const Master = () => {
               </button>
             </div>
             
-            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6 mx-6'>
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6 mx-0'>
               <CreateInquiry 
                 onSuccess={() => {
                   setActiveMenu('inquiries');
@@ -721,7 +721,7 @@ const Master = () => {
               </div>
             </div>
             
-            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-6 mb-6 flex-1 h-[calc(100vh-106px)]'>
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-0 mb-0 flex-1 h-[calc(100vh-106px)]'>
               {loading ? (
                 <Spinner />
               ) : showType === 'table' ? (
@@ -756,7 +756,7 @@ const Master = () => {
               <h1 className='text-2xl font-bold text-gray-800'>User Management</h1>
             </div>
             
-            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-6 mb-6 flex-1 h-[calc(100vh-92px)]'>
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-0 mb-0 flex-1 h-[calc(100vh-92px)]'>
               {loading ? (
                 <Spinner />
               ) : (
@@ -772,7 +772,7 @@ const Master = () => {
         
         {activeMenu === 'addUser' && isAdmin && (
           <>
-            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-10 py-3'>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-10 py-3 px-6'>
               <h1 className='text-2xl font-bold text-gray-800'>Add New User</h1>
               <button
                 onClick={() => setActiveMenu('users')}
@@ -782,7 +782,7 @@ const Master = () => {
               </button>
             </div>
             
-            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6'>
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6 mx-0'>
               <CreateUser 
                 onUserAdded={() => {
                   fetchUsers();
@@ -827,7 +827,7 @@ const Master = () => {
               </div>
             </div>
             
-            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-6 mb-6 flex-1 h-[calc(100vh-110px)]'>
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-0 mb-0 flex-1 h-[calc(100vh-110px)]'>
               {loading ? (
                 <Spinner />
               ) : myInquiries.length === 0 ? (
@@ -857,7 +857,7 @@ const Master = () => {
         )}
         
         {activeMenu === 'reports' && isAdmin && (
-          <div className='p-4'>
+          <div className='p-4 mx-0'>
             <h1 className='text-3xl mb-4'>Reports</h1>
             <p>Reports content will be displayed here.</p>
           </div>

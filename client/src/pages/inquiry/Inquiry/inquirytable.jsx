@@ -110,7 +110,17 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
 
   // Initialize filtered inquiries with all inquiries on component mount
   useEffect(() => {
-    setFilteredInquiries(inquiries);
+    if (inquiries && inquiries.length > 0) {
+      // Sort inquiries by creation date (newest first)
+      const sortedInquiries = [...inquiries].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA; // Reverse chronological: newest first
+      });
+      setFilteredInquiries(sortedInquiries);
+    } else {
+      setFilteredInquiries([]);
+    }
   }, [inquiries]);
 
   // Handle clicks outside the dropdown to close it
@@ -252,7 +262,15 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
     });
     
     console.log(`Filtered from ${inquiries.length} to ${result.length} inquiries`);
-    setFilteredInquiries(result);
+
+    // Sort inquiries in reverse chronological order (newest first)
+    const sortedResults = [...result].sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateB - dateA; // Reverse chronological: newest first
+    });
+    
+    setFilteredInquiries(sortedResults);
   };
 
   // Clear all filters
@@ -279,8 +297,17 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
     setInquiryIdFrom('');
     setInquiryIdTo('');
     
-    // Reset to show all inquiries
-    setFilteredInquiries(inquiries);
+    // Reset to show all inquiries sorted newest first
+    if (inquiries && inquiries.length > 0) {
+      const sortedInquiries = [...inquiries].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA; // Reverse chronological: newest first
+      });
+      setFilteredInquiries(sortedInquiries);
+    } else {
+      setFilteredInquiries([]);
+    }
   };
 
   // Generate CSV data from filtered inquiries

@@ -192,7 +192,7 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
   }, [user]);
 
   return (
-    <div className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6">
+    <div className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6 m-0">
       <div className='flex justify-between items-center mb-6'>
         <div className="flex items-center">
           <h1 className='text-2xl font-bold text-gray-800 border-b-2 border-sky-500 pb-1'>My Profile</h1>
