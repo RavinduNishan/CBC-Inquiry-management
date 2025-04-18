@@ -25,15 +25,23 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
   const availablePermissions = [
     { id: 'myInquiries', label: 'My Inquiries', description: 'Access to inquiries assigned to you', required: true },
     { id: 'inquiries', label: 'All Inquiries', description: 'Can view and manage all inquiries in the system' },
-    { id: 'assignInquiries', label: 'Assign Users', description: 'Can assign inquiries to other users' },
+    { id: 'assignInquiries', label: 'Assign Users', description: 'Can assign inquiries to other users (requires "All Inquiries" permission)' },
     { id: 'addInquiry', label: 'Add Inquiries', description: 'Can create new inquiries in the system' },
   ];
 
   const handleInputChange = (e) => {
-    setEditUserData({
-      ...editUserData,
-      [e.target.name]: e.target.value
-    });
+    // For email field, trim spaces as the user types
+    if (e.target.name === 'email') {
+      setEditUserData({
+        ...editUserData,
+        [e.target.name]: e.target.value.trim()
+      });
+    } else {
+      setEditUserData({
+        ...editUserData,
+        [e.target.name]: e.target.value
+      });
+    }
   };
 
   // Handle status toggle change
@@ -49,18 +57,54 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
     if (permissionId === 'myInquiries') return;
     
     const currentPermissions = [...(editUserData.permissions || [])];
-    if (currentPermissions.includes(permissionId)) {
-      // Remove permission if already exists
-      setEditUserData({
-        ...editUserData,
-        permissions: currentPermissions.filter(id => id !== permissionId)
-      });
-    } else {
-      // Add permission if it doesn't exist
-      setEditUserData({
-        ...editUserData,
-        permissions: [...currentPermissions, permissionId]
-      });
+    
+    // Special handling for permission dependencies
+    if (permissionId === 'inquiries') {
+      // If unchecking "All Inquiries", also remove "Assign Users"
+      if (currentPermissions.includes(permissionId)) {
+        setEditUserData({
+          ...editUserData,
+          permissions: currentPermissions.filter(id => id !== permissionId && id !== 'assignInquiries')
+        });
+      } else {
+        setEditUserData({
+          ...editUserData,
+          permissions: [...currentPermissions, permissionId]
+        });
+      }
+    } 
+    // Only allow adding "Assign Users" if "All Inquiries" is checked
+    else if (permissionId === 'assignInquiries') {
+      // Only add if "inquiries" permission exists
+      if (currentPermissions.includes('inquiries')) {
+        if (currentPermissions.includes(permissionId)) {
+          setEditUserData({
+            ...editUserData,
+            permissions: currentPermissions.filter(id => id !== permissionId)
+          });
+        } else {
+          setEditUserData({
+            ...editUserData,
+            permissions: [...currentPermissions, permissionId]
+          });
+        }
+      }
+    }
+    // Normal handling for other permissions
+    else {
+      if (currentPermissions.includes(permissionId)) {
+        // Remove permission if already exists
+        setEditUserData({
+          ...editUserData,
+          permissions: currentPermissions.filter(id => id !== permissionId)
+        });
+      } else {
+        // Add permission if it doesn't exist
+        setEditUserData({
+          ...editUserData,
+          permissions: [...currentPermissions, permissionId]
+        });
+      }
     }
   };
 
@@ -88,6 +132,9 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
       return;
     }
 
+    // Normalize email address (trim spaces and convert to lowercase)
+    const normalizedEmail = editUserData.email.trim().toLowerCase();
+
     // For staff members, ensure myInquiries permission is included and no duplicates
     if (editUserData.accessLevel === 'Staff Member') {
       // Use Set to remove duplicates and ensure myInquiries is included
@@ -109,7 +156,7 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
       
       const response = await axios.put(`http://localhost:5555/user/${user._id}`, {
         name: editUserData.name,
-        email: editUserData.email,
+        email: normalizedEmail, // Use the normalized email
         phone: editUserData.phone,
         accessLevel: editUserData.accessLevel,
         permissions: editUserData.permissions,
@@ -334,27 +381,36 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
                   </legend>
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {availablePermissions.map((permission) => (
-                        <div key={permission.id} className={`flex items-center ${permission.required ? 'opacity-75' : ''}`}>
-                          <input
-                            id={`permission-${permission.id}`}
-                            name={`permission-${permission.id}`}
-                            type="checkbox"
-                            checked={editUserData.permissions?.includes(permission.id) || permission.required}
-                            onChange={() => handlePermissionChange(permission.id)}
-                            className="h-4 w-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500"
-                            disabled={permission.required}
-                          />
-                          <label htmlFor={`permission-${permission.id}`} className="ml-3">
-                            <span className="text-sm text-gray-700">{permission.label}</span>
-                            {permission.required && <span className="text-xs text-sky-600 ml-1">(Required)</span>}
-                            <p className="text-xs text-gray-500">{permission.description}</p>
-                          </label>
-                        </div>
-                      ))}
+                      {availablePermissions.map((permission) => {
+                        // Check if permission should be disabled
+                        const isDisabled = permission.required || 
+                          (permission.id === 'assignInquiries' && !editUserData.permissions?.includes('inquiries'));
+                        
+                        return (
+                          <div key={permission.id} className={`flex items-center ${isDisabled ? 'opacity-75' : ''}`}>
+                            <input
+                              id={`permission-${permission.id}`}
+                              name={`permission-${permission.id}`}
+                              type="checkbox"
+                              checked={editUserData.permissions?.includes(permission.id) || permission.required}
+                              onChange={() => handlePermissionChange(permission.id)}
+                              className="h-4 w-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500"
+                              disabled={isDisabled}
+                            />
+                            <label htmlFor={`permission-${permission.id}`} className="ml-3">
+                              <span className="text-sm text-gray-700">{permission.label}</span>
+                              {permission.required && <span className="text-xs text-sky-600 ml-1">(Required)</span>}
+                              {permission.id === 'assignInquiries' && !editUserData.permissions?.includes('inquiries') && 
+                                <span className="text-xs text-orange-600 ml-1">(Requires "All Inquiries")</span>
+                              }
+                              <p className="text-xs text-gray-500">{permission.description}</p>
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
                     <p className="mt-3 text-xs text-gray-500 italic">
-                      Note: "My Inquiries" permission is required and cannot be disabled
+                      Note: "My Inquiries" permission is required and cannot be disabled. "Assign Users" requires "All Inquiries" permission.
                     </p>
                   </div>
                 </fieldset>

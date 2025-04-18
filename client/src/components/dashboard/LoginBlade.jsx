@@ -86,10 +86,18 @@ export const LoginBlade = () => {
   }, []);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    // For email field, trim spaces as the user types
+    if (e.target.name === 'email') {
+      setFormData({
+        ...formData,
+        [e.target.name]: e.target.value.trim()
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [e.target.name]: e.target.value
+      });
+    }
     // Clear error on input change
     setError('');
   };
@@ -99,7 +107,12 @@ export const LoginBlade = () => {
     setError('');
     setIsSubmitting(true);
 
-    const { email, password } = formData;
+    // Get form data and normalize email
+    let { email, password } = formData;
+    
+    // Normalize email (trim spaces and convert to lowercase)
+    email = email.trim().toLowerCase();
+    
     if (!email || !password) {
       setError('Please enter both email and password');
       setIsSubmitting(false);
@@ -120,7 +133,7 @@ export const LoginBlade = () => {
       // Count connection attempt
       setConnectionAttempts(prev => prev + 1);
       
-      // Use the context's login function
+      // Use the context's login function with normalized email
       const result = await login(email, password);
       
       if (result.success) {
