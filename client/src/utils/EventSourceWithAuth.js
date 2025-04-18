@@ -1,5 +1,5 @@
 /**
- * EventSource polyfill that supports custom headers for authentication
+ * Custom EventSource implementation with authorization header support
  */
 class EventSourceWithAuth {
   constructor(url, options = {}) {
@@ -21,105 +21,161 @@ class EventSourceWithAuth {
     
     // Set up headers with auth token
     const token = localStorage.getItem('token');
-    const headers = new Headers({
-      'Authorization': `Bearer ${token}`
-    });
+    if (!token) {
+      console.error('No token available for EventSource connection');
+      this.readyState = 2; // CLOSED
+      return;
+    }
     
-    // Create fetch request for SSE
-    fetch(this.url, {
-      method: 'GET',
-      headers,
-      credentials: 'include'
-    }).then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error, status = ${response.status}`);
-      }
-      
-      this.readyState = 1; // OPEN
-      
-      // Call onopen handlers
-      this._dispatchEvent({
-        type: 'open'
-      });
-      
-      const reader = response.body.getReader();
-      let buffer = '';
-      
-      const processStream = ({ done, value }) => {
-        if (done) {
-          this.reconnect();
-          return;
+    const fetchController = new AbortController();
+    this._controller = fetchController;
+    
+    try {
+      // Create fetch request for SSE
+      fetch(this.url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'text/event-stream'
+        },
+        credentials: 'include',
+        signal: fetchController.signal
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error, status = ${response.status}`);
         }
         
-        // Convert bytes to text
-        const chunk = new TextDecoder().decode(value);
-        buffer += chunk;
+        this.readyState = 1; // OPEN
         
-        // Process complete events in buffer
-        const lines = buffer.split('\n');
-        let eventData = {};
-        let eventName = 'message';
+        // Call onopen handlers
+        this._dispatchEvent({
+          type: 'open'
+        });
         
-        for (let i = 0; i < lines.length - 1; i++) {
-          const line = lines[i];
-          if (line.trim() === '') {
-            // Empty line means end of event
-            if (Object.keys(eventData).length) {
-              this._dispatchEvent({
-                type: eventName,
-                data: eventData.data,
-                id: eventData.id
-              });
-              eventData = {};
-              eventName = 'message';
-            }
-          } else if (line.startsWith('event:')) {
-            eventName = line.substring(6).trim();
-          } else if (line.startsWith('data:')) {
-            const data = line.substring(5).trim();
-            try {
-              eventData.data = JSON.parse(data);
-            } catch (e) {
-              eventData.data = data;
-            }
-          } else if (line.startsWith('id:')) {
-            eventData.id = line.substring(3).trim();
+        const reader = response.body.getReader();
+        let buffer = '';
+        
+        // Process the stream
+        const processStream = ({ done, value }) => {
+          if (done) {
+            console.log('EventSource stream closed by server');
+            this._attemptReconnect();
+            return;
           }
-        }
+          
+          // Convert bytes to text
+          const chunk = new TextDecoder().decode(value);
+          buffer += chunk;
+          
+          // Process complete events in buffer
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || ''; // Keep the last incomplete event in buffer
+          
+          events.forEach(event => {
+            if (event.trim() === '') return;
+            
+            const lines = event.split('\n');
+            let eventData = {};
+            let eventName = 'message';
+            
+            lines.forEach(line => {
+              if (line.startsWith('event:')) {
+                eventName = line.substring(6).trim();
+              } else if (line.startsWith('data:')) {
+                const dataContent = line.substring(5).trim();
+                try {
+                  eventData = JSON.parse(dataContent);
+                } catch (e) {
+                  console.warn('Error parsing SSE data JSON:', e);
+                  eventData = dataContent;
+                }
+              }
+            });
+            
+            // Dispatch the event to listeners
+            this._dispatchEvent({
+              type: eventName,
+              data: eventData
+            });
+          });
+          
+          // Continue reading
+          reader.read().then(processStream).catch(err => {
+            console.error('Error reading SSE stream:', err);
+            this._attemptReconnect();
+          });
+        };
         
-        // Save incomplete event data
-        buffer = lines[lines.length - 1];
+        // Start reading
+        reader.read().then(processStream).catch(err => {
+          console.error('Initial SSE stream read error:', err);
+          this._attemptReconnect();
+        });
         
-        // Continue reading
-        return reader.read().then(processStream);
-      };
-      
-      // Start reading
-      reader.read().then(processStream);
-      
-      // Reset reconnect attempts on successful connection
-      this.reconnectAttempts = 0;
-    }).catch(error => {
-      console.error('EventSource error:', error);
+        // Reset reconnect attempts on successful connection
+        this.reconnectAttempts = 0;
+      })
+      .catch(error => {
+        console.error('EventSource fetch error:', error);
+        this._dispatchEvent({
+          type: 'error',
+          error
+        });
+        this._attemptReconnect();
+      });
+    } catch (error) {
+      console.error('EventSource connection error:', error);
       this._dispatchEvent({
         type: 'error',
         error
       });
-      this.reconnect();
-    });
+      this._attemptReconnect();
+    }
   }
   
   _dispatchEvent(event) {
-    if (this.listeners.has(event.type)) {
-      this.listeners.get(event.type).forEach(listener => {
-        listener(event);
-      });
-    }
-    
-    // Also handle onX properties
+    // Handle standard event handlers (onmessage, onerror, etc.)
     const handlerName = `on${event.type}`;
     if (typeof this[handlerName] === 'function') {
-      this[handlerName](event);
+      try {
+        this[handlerName](event);
+      } catch (err) {
+        console.error(`Error in ${handlerName} handler:`, err);
+      }
+    }
+    
+    // Handle custom event listeners
+    if (this.listeners.has(event.type)) {
+      const listeners = this.listeners.get(event.type);
+      listeners.forEach(listener => {
+        try {
+          listener(event);
+        } catch (err) {
+          console.error(`Error in "${event.type}" event listener:`, err);
+        }
+      });
+    }
+  }
+  
+  _attemptReconnect() {
+    if (this.readyState === 2) {
+      // Don't reconnect if we're explicitly closed
+      return;
+    }
+    
+    this.reconnectAttempts++;
+    if (this.reconnectAttempts <= this.maxReconnectAttempts) {
+      console.log(`Reconnecting EventSource (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+      setTimeout(() => this.connect(), this.reconnectInterval);
+    } else {
+      console.error(`Max reconnection attempts (${this.maxReconnectAttempts}) reached for EventSource.`);
+      this.readyState = 2; // CLOSED
+      
+      this._dispatchEvent({
+        type: 'error',
+        data: { message: 'Max reconnection attempts reached' }
+      });
     }
   }
   
@@ -143,22 +199,9 @@ class EventSourceWithAuth {
     this.readyState = 2; // CLOSED
     if (this._controller) {
       this._controller.abort();
+      this._controller = null;
     }
-  }
-  
-  reconnect() {
-    if (this.readyState === 2) {
-      // Don't reconnect if we're explicitly closed
-      return;
-    }
-    
-    this.reconnectAttempts++;
-    if (this.reconnectAttempts <= this.maxReconnectAttempts) {
-      setTimeout(() => {
-        console.log(`Reconnecting EventSource (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-        this.connect();
-      }, this.reconnectInterval);
-    }
+    console.log('EventSource connection closed by client');
   }
 }
 

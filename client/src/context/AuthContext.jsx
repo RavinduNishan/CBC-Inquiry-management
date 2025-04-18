@@ -12,6 +12,95 @@ export const AuthProvider = ({ children }) => {
   const [isFirstLogin, setIsFirstLogin] = useState(false);
   const eventSourceRef = useRef(null);
   
+  // Define logout function FIRST to avoid the "Cannot access before initialization" error
+  const logout = useCallback((message = null, redirect = '/login') => {
+    console.log('Logging out user:', message);
+    
+    // Clean up SSE connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    
+    // Clear auth data
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('profileVersion');
+    localStorage.setItem('loggedOut', 'true');
+    
+    // Remove auth headers
+    delete axios.defaults.headers.common['Authorization'];
+    
+    // Store logout message if provided
+    if (message) {
+      localStorage.setItem('logoutMessage', message);
+    }
+    
+    // Update state
+    setUser(null);
+    setIsAuthenticated(false);
+    
+    // Force a full page reload to clear all React state
+    if (redirect) {
+      window.location.href = redirect;
+    }
+  }, []);
+
+  // Now setup notifications using the already defined logout function
+  const setupNotifications = useCallback(() => {
+    if (!isAuthenticated || !user || !user._id) return;
+    
+    // Clean up any existing connection
+    if (eventSourceRef.current) {
+      console.log('Closing existing SSE connection before creating new one');
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    
+    try {
+      console.log('Setting up SSE notifications for user:', user._id);
+      
+      // Create new EventSourceWithAuth instance
+      const es = new EventSourceWithAuth('http://localhost:5555/user/notifications');
+      
+      // Set up message handler
+      es.onmessage = (event) => {
+        try {
+          // Make sure we have valid data
+          const data = event.data || {};
+          console.log('Received SSE notification:', data);
+          
+          // Handle force logout notification
+          if (data.type === 'forceLogout') {
+            console.log('Force logout notification received:', data.message);
+            
+            // Add a small delay before logout to ensure the message is displayed
+            setTimeout(() => {
+              logout(data.message || 'Your account has been updated by an administrator. Please log in again.');
+            }, 500);
+          }
+        } catch (err) {
+          console.error('Error handling SSE message:', err);
+        }
+      };
+      
+      // Handle connection open
+      es.addEventListener('open', () => {
+        console.log('SSE connection established successfully');
+      });
+      
+      // Handle errors
+      es.onerror = (event) => {
+        console.error('SSE connection error:', event);
+      };
+      
+      // Store the EventSource reference
+      eventSourceRef.current = es;
+    } catch (err) {
+      console.error('Error setting up SSE notifications:', err);
+    }
+  }, [isAuthenticated, user, logout]);
+  
   // Set up axios interceptor for token handling
   useEffect(() => {
     const setupAxiosInterceptor = () => {
@@ -42,46 +131,7 @@ export const AuthProvider = ({ children }) => {
     };
     
     setupAxiosInterceptor();
-  }, [isAuthenticated]);
-  
-  // Set up real-time notification system for account changes
-  const setupNotifications = useCallback(() => {
-    if (!isAuthenticated || !user || !user._id) return;
-    
-    // Clean up any existing connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    
-    try {
-      console.log('Setting up SSE notifications for user:', user._id);
-      const es = new EventSourceWithAuth('http://localhost:5555/user/notifications');
-      
-      es.onmessage = (event) => {
-        try {
-          const data = event.data || {};
-          console.log('Received notification:', data);
-          
-          if (data.type === 'forceLogout') {
-            console.log('Force logout notification received:', data.message);
-            logout(data.message || 'Your account has been updated. Please log in again.');
-          }
-        } catch (err) {
-          console.error('Error handling SSE message:', err);
-        }
-      };
-      
-      es.onerror = (event) => {
-        console.error('SSE connection error:', event);
-      };
-      
-      eventSourceRef.current = es;
-      console.log('SSE notification system set up successfully');
-    } catch (err) {
-      console.error('Error setting up SSE notifications:', err);
-    }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, logout]);
   
   // Set up notifications whenever auth state changes
   useEffect(() => {
@@ -95,15 +145,14 @@ export const AuthProvider = ({ children }) => {
         eventSourceRef.current = null;
       }
     };
-  }, [isAuthenticated, user, setupNotifications]);
+  }, [setupNotifications]);
   
   // Setup a helper function to manually check for profile changes
   const startSSEConnection = useCallback(() => {
     if (isAuthenticated && user && user._id) {
-      // Implementation similar to the useEffect above
-      // This can be called after login or to re-establish connection
+      setupNotifications();
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, setupNotifications]);
   
   // Check for stored user on mount
   useEffect(() => {
@@ -180,7 +229,7 @@ export const AuthProvider = ({ children }) => {
     };
     
     loadUser();
-  }, []);
+  }, [logout]);
   
   // Login user
   const login = async (email, password) => {
@@ -232,40 +281,6 @@ export const AuthProvider = ({ children }) => {
       return { success: false, message };
     }
   };
-  
-  // Improved logout function that handles redirection
-  const logout = useCallback((message = null, redirect = '/login') => {
-    console.log('Logging out user:', message);
-    
-    // Clean up SSE connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    
-    // Clear auth data
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('profileVersion');
-    localStorage.setItem('loggedOut', 'true');
-    
-    // Remove auth headers
-    delete axios.defaults.headers.common['Authorization'];
-    
-    // Store logout message if provided
-    if (message) {
-      localStorage.setItem('logoutMessage', message);
-    }
-    
-    // Update state
-    setUser(null);
-    setIsAuthenticated(false);
-    
-    // Force a full page reload to clear all React state
-    if (redirect) {
-      window.location.href = redirect;
-    }
-  }, []);
   
   // Check if user is admin
   const isAdmin = user && user.accessLevel === 'Administrator';

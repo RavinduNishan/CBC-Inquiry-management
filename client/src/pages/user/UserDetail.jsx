@@ -41,7 +41,7 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
         });
         
         // Show success notification
-        enqueueSnackbar('User deleted successfully', { variant: 'success' });
+        enqueueSnackbar(`User ${user.name} was deleted successfully and logged out if they were online.`, { variant: 'success' });
         
         // Call the callback to refresh the list and go back to the users list
         if (onUserUpdated) onUserUpdated();
@@ -77,10 +77,10 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
       const token = localStorage.getItem('token');
       
       // Log request to help debug
-      console.log(`Sending password reset for user ${user._id} to ${user.name}`);
+      console.log(`Sending password reset for user ${user._id}`);
       
       // Use the endpoint from backend/routes/userRoute.js
-      await axios.post(
+      const response = await axios.post(
         `http://localhost:5555/user/${user._id}/set-password`,
         { 
           newPassword
@@ -96,7 +96,16 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
       setShowPasswordReset(false);
       setNewPassword('');
       setConfirmPassword('');
-      enqueueSnackbar(`Password for ${user.name} has been reset successfully`, { variant: 'success' });
+      
+      // Get notification status from response
+      const notificationSent = response.data.notificationSent;
+      
+      // Show appropriate success message
+      if (notificationSent) {
+        enqueueSnackbar(`Password for ${user.name} has been reset. User has been notified and logged out.`, { variant: 'success' });
+      } else {
+        enqueueSnackbar(`Password for ${user.name} has been reset successfully. User will be logged out on next login.`, { variant: 'success' });
+      }
     } catch (error) {
       console.error('Admin password reset error:', error);
       // More focused error message

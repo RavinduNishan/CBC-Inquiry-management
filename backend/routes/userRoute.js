@@ -225,9 +225,19 @@ router.post("/:id/set-password", protect, admin, async (req, res) => {
     
     await userToUpdate.save();
     
+    // Send immediate logout notification if the user is currently logged in
+    const notificationSent = notifyUserOfAccountChange(
+      userId,
+      'forceLogout',
+      'Your password has been reset by an administrator. Please log in with your new password.'
+    );
+    
+    console.log(`Password reset notification sent: ${notificationSent}`);
+    
     return res.status(200).json({ 
       message: 'Password updated successfully',
-      profileVersion: userToUpdate.profileVersion
+      profileVersion: userToUpdate.profileVersion,
+      notificationSent
     });
   } catch (error) {
     console.log(error.message);
@@ -372,12 +382,22 @@ router.put("/:id", protect, async (req, res) => {
   }
 });
 
-// delete an user
+// delete a user
 router.delete("/:id", protect, admin, async (req, res) => {
     try {
-        const User = await user.findByIdAndDelete(req.params.id);
+        const userToDelete = await user.findById(req.params.id);
 
-        if (!User) return res.status(404).json({ message: "user not found" });
+        if (!userToDelete) return res.status(404).json({ message: "user not found" });
+
+        // Send a notification to force logout before deletion if the user is currently logged in
+        notifyUserOfAccountChange(
+          req.params.id,
+          'forceLogout',
+          'Your account has been deleted by an administrator.'
+        );
+        
+        // Delete the user
+        await user.findByIdAndDelete(req.params.id);
 
         return res.status(200).json({ message: "user deleted successfully" });
     } catch (error) {
