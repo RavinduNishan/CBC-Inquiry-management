@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import EventSourceWithAuth from '../utils/EventSourceWithAuth';
 
 const AuthContext = createContext();
 
@@ -9,13 +10,117 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isFirstLogin, setIsFirstLogin] = useState(false);
+  const eventSourceRef = useRef(null);
   
+  // Set up axios interceptor for token handling
+  useEffect(() => {
+    const setupAxiosInterceptor = () => {
+      axios.interceptors.request.use(
+        (config) => {
+          const token = localStorage.getItem('token');
+          if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+          }
+          return config;
+        },
+        (error) => Promise.reject(error)
+      );
+      
+      // Add a response interceptor to handle 401 errors
+      axios.interceptors.response.use(
+        (response) => response,
+        (error) => {
+          console.log("API error response:", error);
+          // If 401 error on a protected route when we think we're authenticated, logout
+          if (error.response && error.response.status === 401 && isAuthenticated) {
+            console.log("Received 401 while authenticated - logging out");
+            logout("Your session has expired. Please log in again.");
+          }
+          return Promise.reject(error);
+        }
+      );
+    };
+    
+    setupAxiosInterceptor();
+  }, [isAuthenticated]);
+  
+  // Set up real-time notification system for account changes
+  const setupNotifications = useCallback(() => {
+    if (!isAuthenticated || !user || !user._id) return;
+    
+    // Clean up any existing connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    
+    try {
+      console.log('Setting up SSE notifications for user:', user._id);
+      const es = new EventSourceWithAuth('http://localhost:5555/user/notifications');
+      
+      es.onmessage = (event) => {
+        try {
+          const data = event.data || {};
+          console.log('Received notification:', data);
+          
+          if (data.type === 'forceLogout') {
+            console.log('Force logout notification received:', data.message);
+            logout(data.message || 'Your account has been updated. Please log in again.');
+          }
+        } catch (err) {
+          console.error('Error handling SSE message:', err);
+        }
+      };
+      
+      es.onerror = (event) => {
+        console.error('SSE connection error:', event);
+      };
+      
+      eventSourceRef.current = es;
+      console.log('SSE notification system set up successfully');
+    } catch (err) {
+      console.error('Error setting up SSE notifications:', err);
+    }
+  }, [isAuthenticated, user]);
+  
+  // Set up notifications whenever auth state changes
+  useEffect(() => {
+    setupNotifications();
+    
+    // Cleanup on unmount
+    return () => {
+      if (eventSourceRef.current) {
+        console.log('Closing SSE connection on unmount');
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, [isAuthenticated, user, setupNotifications]);
+  
+  // Setup a helper function to manually check for profile changes
+  const startSSEConnection = useCallback(() => {
+    if (isAuthenticated && user && user._id) {
+      // Implementation similar to the useEffect above
+      // This can be called after login or to re-establish connection
+    }
+  }, [isAuthenticated, user]);
+  
+  // Check for stored user on mount
   useEffect(() => {
     // Check for user data in localStorage on mount
     const loadUser = async () => {
       try {
         const storedUser = localStorage.getItem('user');
         const token = localStorage.getItem('token');
+        const localProfileVersion = localStorage.getItem('profileVersion');
+        const justLoggedOut = localStorage.getItem('justLoggedOut');
+        
+        // Skip profile check if user just logged out with profile update message
+        if (justLoggedOut === 'true') {
+          localStorage.removeItem('justLoggedOut');
+          setLoading(false);
+          return;
+        }
         
         if (storedUser && token) {
           const userData = JSON.parse(storedUser);
@@ -30,17 +135,40 @@ export const AuthProvider = ({ children }) => {
             
             const res = await axios.get('http://localhost:5555/user/profile', config);
             
-            // Update user with fresh data from the server, including permissions
+            // Check if profile version has changed - if so, force logout
+            const serverProfileVersion = res.data.profileVersion || 0;
+            const storedVersion = localProfileVersion ? parseInt(localProfileVersion) : 0;
+            
+            if (serverProfileVersion > storedVersion) {
+              console.log('Profile has been updated since last login, forcing logout');
+              logout('Your account information has been updated. Please log in again.');
+              // Set a flag that we just logged out due to profile update
+              localStorage.setItem('justLoggedOut', 'true');
+              return;
+            }
+            
+            // If profile is still valid, update user data
             setUser({
               ...userData,
               ...res.data, // This ensures we have the latest data including permissions
             });
             
+            // Store the latest profile version
+            localStorage.setItem('profileVersion', serverProfileVersion.toString());
             setIsAuthenticated(true);
           } catch (err) {
-            console.error('Error verifying token:', err);
-            localStorage.removeItem('user');
-            localStorage.removeItem('token');
+            console.error('Error verifying token:', err.response?.data?.message || err.message);
+            // Only logout if we have a 401 Unauthorized or other clear auth failure
+            // (Network errors shouldn't automatically logout the user)
+            if (err.response && [401, 403].includes(err.response.status)) {
+              logout("Your session has expired. Please log in again.");
+            } else {
+              // For other errors, we'll consider the user authenticated based on local storage
+              // but will update the UI to reflect the error status
+              setUser(userData);
+              setIsAuthenticated(true);
+              setError("Couldn't refresh your profile. Some features may be limited.");
+            }
           }
         }
         
@@ -60,15 +188,29 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
+      // Clear any previous profile update flags
+      localStorage.removeItem('justLoggedOut');
+      
       const res = await axios.post('http://localhost:5555/user/login', {
         email,
         password
       });
       
+      if (!res.data || !res.data.token) {
+        throw new Error('Invalid response from server - missing token');
+      }
+      
       // Store user data and token in localStorage
       localStorage.setItem('user', JSON.stringify(res.data));
       localStorage.setItem('token', res.data.token);
       localStorage.removeItem('loggedOut');
+      
+      // Store profile version to track changes
+      if (res.data.profileVersion) {
+        localStorage.setItem('profileVersion', res.data.profileVersion.toString());
+      } else {
+        localStorage.setItem('profileVersion', "1"); // Default if not provided
+      }
       
       // Set first login flag to trigger initial data load
       setIsFirstLogin(true);
@@ -83,24 +225,77 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (err) {
       setLoading(false);
-      const message = err.response?.data?.message || 'Login failed';
+      console.error('Login error:', err);
+      
+      const message = err.response?.data?.message || 'Login failed. Please check your credentials or try again later.';
       setError(message);
       return { success: false, message };
     }
   };
   
-  // Logout user
-  const logout = () => {
+  // Improved logout function that handles redirection
+  const logout = useCallback((message = null, redirect = '/login') => {
+    console.log('Logging out user:', message);
+    
+    // Clean up SSE connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    
+    // Clear auth data
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem('profileVersion');
     localStorage.setItem('loggedOut', 'true');
     
+    // Remove auth headers
+    delete axios.defaults.headers.common['Authorization'];
+    
+    // Store logout message if provided
+    if (message) {
+      localStorage.setItem('logoutMessage', message);
+    }
+    
+    // Update state
     setUser(null);
     setIsAuthenticated(false);
-  };
+    
+    // Force a full page reload to clear all React state
+    if (redirect) {
+      window.location.href = redirect;
+    }
+  }, []);
   
   // Check if user is admin
   const isAdmin = user && user.accessLevel === 'Administrator';
+  
+  // Enhanced security check function that uses the updated logout
+  const checkSecurityChanges = useCallback(async () => {
+    if (!user || !user._id) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const localProfileVersion = localStorage.getItem('profileVersion');
+      if (!localProfileVersion) return;
+      
+      const res = await axios.get('http://localhost:5555/user/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const serverProfileVersion = res.data.profileVersion || 0;
+      const storedVersion = parseInt(localProfileVersion);
+      
+      if (serverProfileVersion > storedVersion) {
+        console.log('Profile has been updated since last login, forcing logout');
+        logout('Your account information has been updated. Please log in again.');
+      }
+    } catch (err) {
+      console.error('Error checking security changes:', err);
+    }
+  }, [user, logout]);
   
   return (
     <AuthContext.Provider value={{
@@ -113,7 +308,10 @@ export const AuthProvider = ({ children }) => {
       isFirstLogin,
       setIsFirstLogin,
       login,
-      logout
+      logout,
+      checkSecurityChanges,
+      startSSEConnection,
+      setupNotifications
     }}>
       {children}
     </AuthContext.Provider>

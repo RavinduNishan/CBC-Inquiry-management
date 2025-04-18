@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { MdArrowBack, MdPerson, MdSecurity, MdAccessTime, MdLock, MdEmail, MdPhone } from 'react-icons/md';
+import AuthContext from '../../context/AuthContext';
 
 const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -14,6 +15,7 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
   const [resetSuccess, setResetSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(initialUser);
+  const { logout } = useContext(AuthContext);
 
   // Fetch complete user data directly from API to ensure we have all fields
   useEffect(() => {
@@ -65,42 +67,15 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
     try {
       setIsLoading(true);
       
-      // Try different ways to get the authentication token
-      let token = null;
-      
-      // Method 1: Check if user object passed as prop has token
-      if (user && user.token) {
-        token = user.token;
-      } 
-      // Method 2: Try to retrieve from localStorage as userInfo object
-      else {
-        try {
-          const userInfo = localStorage.getItem('userInfo');
-          if (userInfo) {
-            const parsedUserInfo = JSON.parse(userInfo);
-            if (parsedUserInfo && parsedUserInfo.token) {
-              token = parsedUserInfo.token;
-            }
-          }
-        } catch (err) {
-          console.error('Error parsing localStorage data:', err);
-        }
-      }
-      
-      // Method 3: Try direct token storage
-      if (!token) {
-        token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      }
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
       
       if (!token) {
-        console.error('No authentication token found in storage');
         setResetError('Authentication required. Please log in again.');
         setIsLoading(false);
         return;
       }
 
-      console.log('Using token for authentication:', token.substring(0, 10) + '...');
-      
       const response = await axios.put(
         'http://localhost:5555/user/reset-password',
         {
@@ -114,26 +89,26 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
         }
       );
 
-      setResetSuccess('Password has been reset successfully');
+      setResetSuccess('Password has been reset successfully. You will need to log in again.');
       setPasswordData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
       });
       
+      // Make sure we clear this flag to prevent auto-logout loop
+      localStorage.removeItem('profileVersion');
+      
       // Close the password reset form after successful reset
       setTimeout(() => {
         setShowPasswordReset(false);
         
-        // If onProfileUpdate callback exists, use it to refresh user data
-        if (typeof onProfileUpdate === 'function') {
-          onProfileUpdate();
-        } else {
-          // Otherwise, reload the page after a short delay to show the success message
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        }
+        // Force logout with a message - but set a flag to avoid immediate re-login checks
+        setTimeout(() => {
+          localStorage.setItem('justLoggedOut', 'true');
+          logout('Your password has been updated. Please log in again with your new password.', '/login');
+          // No need for window.location.href redirect as the logout function handles it
+        }, 1500);
       }, 1500);
       
     } catch (error) {

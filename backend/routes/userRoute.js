@@ -1,16 +1,16 @@
 import express from "express";
-import user from "../models/usermodel.js"; // Adjust the path as necessary
+import user from "../models/usermodel.js"; 
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { protect, admin } from "../middleware/authMiddleware.js";
-import { JWT_SECRET } from "../config.js";  // Import JWT_SECRET from config
+import { JWT_SECRET } from "../config.js";
 import { format } from 'date-fns';
 
 const router = express.Router();  
 
 // Generate JWT
 const generateToken = (id) => {
-  return jwt.sign({ id }, JWT_SECRET, {  // Use imported JWT_SECRET instead of hardcoded value
+  return jwt.sign({ id }, JWT_SECRET, {
     expiresIn: '30d',
   });
 };
@@ -19,6 +19,79 @@ const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
   return format(new Date(dateString), 'PPP p');
 };
+
+// Map to store SSE clients for each user ID
+const userConnections = new Map();
+
+// Add a new SSE endpoint to receive notifications
+router.get("/notifications", protect, (req, res) => {
+  const userId = req.user._id.toString();
+  
+  console.log(`User ${userId} connected to notifications endpoint`);
+  
+  // Set headers for SSE
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no' // Disable proxy buffering
+  });
+  
+  // Send an initial connection test message
+  res.write(`data: ${JSON.stringify({ type: 'connected', time: new Date().toISOString() })}\n\n`);
+  
+  // Store the connection in the map
+  if (!userConnections.has(userId)) {
+    userConnections.set(userId, new Set());
+  }
+  
+  userConnections.get(userId).add(res);
+  console.log(`User ${userId} added to notifications. Active connections: ${userConnections.get(userId).size}`);
+  
+  // Handle client disconnection
+  req.on('close', () => {
+    if (userConnections.has(userId)) {
+      console.log(`User ${userId} disconnected from notifications`);
+      userConnections.get(userId).delete(res);
+      
+      if (userConnections.get(userId).size === 0) {
+        console.log(`Removing empty connection set for user ${userId}`);
+        userConnections.delete(userId);
+      }
+    }
+  });
+});
+
+// Function to notify a user about account changes - improved reliability
+function notifyUserOfAccountChange(userId, type, message) {
+  if (!userConnections.has(userId)) {
+    console.log(`No active connections for user ${userId} to send ${type} notification`);
+    return false;
+  }
+  
+  const connections = userConnections.get(userId);
+  const notification = { 
+    type, 
+    message, 
+    timestamp: new Date().toISOString() 
+  };
+  
+  console.log(`Sending ${type} notification to user ${userId}, active connections: ${connections.size}`);
+  
+  let successCount = 0;
+  connections.forEach(res => {
+    try {
+      // Format properly for SSE
+      res.write(`data: ${JSON.stringify(notification)}\n\n`);
+      successCount++;
+    } catch (err) {
+      console.error(`Failed to send notification to user ${userId}:`, err);
+    }
+  });
+  
+  console.log(`Successfully sent ${type} notification to ${successCount}/${connections.size} connections`);
+  return successCount > 0;
+}
 
 // Login user
 router.post("/login", async (req, res) => {
@@ -32,6 +105,11 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // Check if user is active
+    if (userFound.status === 'inactive') {
+      return res.status(401).json({ message: "Your account is inactive. Please contact an administrator." });
+    }
+
     // Check if password matches
     const isMatch = await bcrypt.compare(password, userFound.password);
 
@@ -39,19 +117,23 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Return user data and token - ENSURE permissions is included
+    // Create token with a more reliable JWT_SECRET value
+    const token = generateToken(userFound._id);
+
+    // Return user data and token
     res.status(200).json({
       _id: userFound._id,
       name: userFound.name,
       email: userFound.email,
       phone: userFound.phone,
       accessLevel: userFound.accessLevel,
-      permissions: userFound.permissions || [], // Make sure permissions are included
+      permissions: userFound.permissions || [],
       status: userFound.status,
-      token: generateToken(userFound._id)
+      profileVersion: userFound.profileVersion || 1,
+      token: token
     });
   } catch (error) {
-    console.log(error.message);
+    console.log("Login error:", error.message);
     return res.status(500).send({ message: error.message });
   }
 });
@@ -62,6 +144,7 @@ router.get("/profile", protect, async (req, res) => {
     const userProfile = await user.findById(req.user._id).select('-password');
     
     if (userProfile) {
+      // Include the profileVersion field in the response
       res.status(200).json(userProfile);
     } else {
       res.status(404).json({ message: "User not found" });
@@ -95,11 +178,18 @@ router.put("/reset-password", protect, async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
     
-    // Update the password
+    // Update the password and set requiresRelogin flag
     userFound.password = hashedPassword;
+    userFound.profileVersion = (userFound.profileVersion || 0) + 1;
+    userFound.lastSecurityUpdate = new Date();
+    
     await userFound.save();
     
-    res.status(200).json({ message: "Password updated successfully" });
+    res.status(200).json({ 
+      message: "Password updated successfully",
+      requiresRelogin: true,
+      profileVersion: userFound.profileVersion
+    });
   } catch (error) {
     console.log(error.message);
     return res.status(500).send({ message: error.message });
@@ -128,11 +218,17 @@ router.post("/:id/set-password", protect, admin, async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
     
-    // Update the user's password
+    // Update the user's password and increment profileVersion
     userToUpdate.password = hashedPassword;
+    userToUpdate.profileVersion = (userToUpdate.profileVersion || 0) + 1;
+    userToUpdate.lastSecurityUpdate = new Date();
+    
     await userToUpdate.save();
     
-    return res.status(200).json({ message: 'Password updated successfully' });
+    return res.status(200).json({ 
+      message: 'Password updated successfully',
+      profileVersion: userToUpdate.profileVersion
+    });
   } catch (error) {
     console.log(error.message);
     return res.status(500).send({ message: error.message });
@@ -211,20 +307,69 @@ router.get("/:id", protect, async (req, res) => {
 
 //update an existing user
 router.put("/:id", protect, async (req, res) => {
-    try {
-        const User = await user.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true }
-        );
-
-        if (!User) return res.status(404).json({ message: "user not found" });
-
-        return res.status(200).json({message: "user updated successfully" });
-    } catch (error) {
-        console.log(error.message);
-        return res.status(500).send({ message: error.message });
+  try {
+    const userId = req.params.id;
+    
+    // Get the user before update to compare changes
+    const existingUser = await user.findById(userId);
+    if (!existingUser) return res.status(404).json({ message: "User not found" });
+    
+    // Detect which critical fields are changing
+    const criticalFieldsChanged = {
+      email: req.body.email && req.body.email !== existingUser.email,
+      name: req.body.name && req.body.name !== existingUser.name,
+      accessLevel: req.body.accessLevel && req.body.accessLevel !== existingUser.accessLevel,
+      status: req.body.status && req.body.status !== existingUser.status,
+      // Check if permissions have changed
+      permissions: req.body.permissions && JSON.stringify(req.body.permissions) !== JSON.stringify(existingUser.permissions)
+    };
+    
+    // If any critical fields changed, increment profileVersion
+    const securityChanged = Object.values(criticalFieldsChanged).some(changed => changed);
+    
+    // Update profile version if security-related fields changed
+    if (securityChanged) {
+      req.body.profileVersion = (existingUser.profileVersion || 0) + 1;
+      req.body.lastSecurityUpdate = new Date();
     }
+    
+    // Update user
+    const updatedUser = await user.findByIdAndUpdate(
+      userId,
+      req.body,
+      { new: true }
+    );
+
+    // Send immediate logout notification if security was changed 
+    // and the user being updated is not the current user
+    if (securityChanged && userId !== req.user._id.toString()) {
+      console.log(`Critical security changes detected for user ${userId}. Sending force logout notification.`);
+      
+      // Try to notify the user immediately
+      const notificationSent = notifyUserOfAccountChange(
+        userId,
+        'forceLogout',
+        'Your account has been updated by an administrator. Please log in again with your updated credentials.'
+      );
+      
+      // Log the notification result
+      console.log(`Force logout notification sent: ${notificationSent}`);
+    }
+
+    return res.status(200).json({
+      message: "User updated successfully",
+      requiresRelogin: securityChanged,
+      profileVersion: updatedUser.profileVersion,
+      notificationSent: true,
+      // Include which fields changed to help client decide what to do
+      changedFields: Object.entries(criticalFieldsChanged)
+        .filter(([_, changed]) => changed)
+        .map(([field]) => field)
+    });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({ message: error.message });
+  }
 });
 
 // delete an user

@@ -21,7 +21,7 @@ import UserDetail from '../../../pages/user/UserDetail';
 import UserProfile from '../../../pages/user/UserProfile';
 
 const Master = () => {
-  const { user, logout, isAdmin, isFirstLogin, setIsFirstLogin } = useContext(AuthContext);
+  const { user, logout, isAdmin, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications } = useContext(AuthContext);
   const navigate = useNavigate();
   
   const [inquiries, setInquiries] = useState([]);
@@ -185,12 +185,14 @@ const Master = () => {
       });
   };
 
-  const handleLogout = () => {
-    // Call the logout function from context
-    logout();
+  const handleLogout = (e) => {
+    if (e) e.preventDefault();
     
-    // Use replace instead of push to prevent back navigation
-    navigate('/login', { replace: true });
+    // Use the logout function to handle everything in one place
+    // Pass true to redirect to login page
+    logout(null, '/login');
+    
+    // No need to call navigate, logout function will handle redirection
   };
 
   // Add this with your other functions
@@ -393,6 +395,41 @@ const Master = () => {
       setIsFirstLogin(false);
     }
   }, [isFirstLogin, activeMenu, user]);
+
+  // Add a security check that runs periodically
+  useEffect(() => {
+    // Check security changes on first render
+    if (user && user._id) {
+      checkSecurityChanges();
+    }
+    
+    // Set up a periodic check (every 5 minutes)
+    const securityInterval = setInterval(() => {
+      if (user && user._id) {
+        checkSecurityChanges();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    return () => clearInterval(securityInterval);
+  }, [user]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      // Cancel any pending axios requests when component unmounts
+      // This helps prevent state updates after logout
+      const source = axios.CancelToken.source();
+      source.cancel('Component unmounted');
+    };
+  }, []);
+
+  // Ensure notifications are running
+  useEffect(() => {
+    if (user && user._id) {
+      console.log('Setting up notifications in Master component');
+      setupNotifications();
+    }
+  }, [user, setupNotifications]);
 
   if (!user) {
     return null;

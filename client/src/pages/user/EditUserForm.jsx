@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { MdArrowBack, MdPerson, MdEmail, MdPhone, MdSecurity, MdBadge, MdCheckCircle, MdVerifiedUser, MdSave } from 'react-icons/md';
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
+import AuthContext from '../../context/AuthContext';
 
 const EditUserForm = ({ user, onBack, onUserUpdated }) => {
   const [loading, setLoading] = useState(false);
@@ -15,6 +16,10 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
   });
   const [error, setError] = useState('');
   const { enqueueSnackbar } = useSnackbar();
+  const { user: currentUser, logout } = useContext(AuthContext);
+  
+  // Check if the user being edited is the current logged-in user
+  const isEditingSelf = currentUser && user._id === currentUser._id;
 
   // Available permissions for staff members
   const availablePermissions = [
@@ -112,13 +117,34 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
       });
       
       setLoading(false);
-      enqueueSnackbar('User updated successfully', { variant: 'success' });
       
-      // Notify parent component to refresh data
-      if (onUserUpdated) {
-        onUserUpdated();
+      // Check if the update requires a re-login
+      if (response.data.requiresRelogin && isEditingSelf) {
+        // Show success message but prepare for logout
+        enqueueSnackbar('Your profile has been updated. You will be logged out.', { 
+          variant: 'info',
+          autoHideDuration: 3000
+        });
+        
+        // Clear existing profile version to prevent auto-login loop
+        localStorage.removeItem('profileVersion');
+        
+        // Add a delay to show the message before logout
+        setTimeout(() => {
+          // Set flag to prevent immediate check on logout
+          localStorage.setItem('justLoggedOut', 'true');
+          logout('Your account information has been updated. Please log in again.', '/login');
+          // No need for window.location.href as the logout function handles it
+        }, 3000);
+      } else {
+        // Regular success message for admin editing other users
+        enqueueSnackbar('User updated successfully', { variant: 'success' });
+        
+        // Notify parent component to refresh data
+        if (onUserUpdated) {
+          onUserUpdated();
+        }
       }
-      
     } catch (error) {
       setLoading(false);
       const errorMessage = error.response?.data?.message || 'Error updating user';

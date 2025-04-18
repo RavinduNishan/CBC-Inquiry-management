@@ -17,6 +17,7 @@ export const LoginBlade = () => {
   const { login, loading, isAuthenticated, user, error: contextError, isFirstLogin } = useContext(AuthContext);
   const navigate = useNavigate();
   const [mongoError, setMongoError] = useState(false);
+  const [logoutMessage, setLogoutMessage] = useState('');
 
   // Check if user is already authenticated and redirect
   useEffect(() => {
@@ -72,6 +73,18 @@ export const LoginBlade = () => {
     checkServerHealth();
   }, []);
 
+  // Check for logout message
+  useEffect(() => {
+    const message = localStorage.getItem('logoutMessage');
+    if (message) {
+      setLogoutMessage(message);
+      // Remove the message after showing it
+      setTimeout(() => {
+        localStorage.removeItem('logoutMessage');
+      }, 100);
+    }
+  }, []);
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -112,8 +125,10 @@ export const LoginBlade = () => {
       
       if (result.success) {
         console.log('Login successful - redirecting to dashboard');
+        // Clear any previous errors
+        setError('');
         // Navigation will be handled by the useEffect, default view will be set in Master component
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
         setError(result.message || 'Invalid credentials. Please try again.');
         
@@ -136,6 +151,8 @@ export const LoginBlade = () => {
       if (error.response?.data?.code === 'MONGODB_UNAVAILABLE') {
         setMongoError(true);
         setError('The database connection is currently unavailable. See details below.');
+      } else if (error.response?.status === 401) {
+        setError('Invalid email or password. Please try again.');
       } else {
         setError('An unexpected error occurred. Please try again later.');
       }
@@ -161,6 +178,14 @@ export const LoginBlade = () => {
             Ceylon Beverage Can (Pvt) Ltd.
           </p>
         </div>
+
+        {/* Logout Message */}
+        {logoutMessage && (
+          <div className="mb-6 p-3 bg-blue-100 text-blue-700 rounded-md">
+            <p className="font-medium mb-1">Information</p>
+            <p className="text-sm">{logoutMessage}</p>
+          </div>
+        )}
 
         {/* Server Status Alert */}
         {serverStatus === false && (
