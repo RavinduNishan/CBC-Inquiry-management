@@ -1,5 +1,5 @@
 import express from "express";
-import user from "../models/usermodel.js"; 
+import users from "../models/usermodel.js"; 
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { protect, admin } from "../middleware/authMiddleware.js";
@@ -27,7 +27,7 @@ const userConnections = new Map();
 router.get("/notifications", protect, (req, res) => {
   const userId = req.user._id.toString();
   
-  console.log(`User ${userId} connected to notifications endpoint`);
+  console.log(`users${userId} connected to notifications endpoint`);
   
   // Set headers for SSE
   res.writeHead(200, {
@@ -46,16 +46,16 @@ router.get("/notifications", protect, (req, res) => {
   }
   
   userConnections.get(userId).add(res);
-  console.log(`User ${userId} added to notifications. Active connections: ${userConnections.get(userId).size}`);
+  console.log(`users${userId} added to notifications. Active connections: ${userConnections.get(userId).size}`);
   
   // Handle client disconnection
   req.on('close', () => {
     if (userConnections.has(userId)) {
-      console.log(`User ${userId} disconnected from notifications`);
+      console.log(`users${userId} disconnected from notifications`);
       userConnections.get(userId).delete(res);
       
       if (userConnections.get(userId).size === 0) {
-        console.log(`Removing empty connection set for user ${userId}`);
+        console.log(`Removing empty connection set for users${userId}`);
         userConnections.delete(userId);
       }
     }
@@ -65,7 +65,7 @@ router.get("/notifications", protect, (req, res) => {
 // Function to notify a user about account changes - improved reliability
 function notifyUserOfAccountChange(userId, type, message) {
   if (!userConnections.has(userId)) {
-    console.log(`No active connections for user ${userId} to send ${type} notification`);
+    console.log(`No active connections for users${userId} to send ${type} notification`);
     return false;
   }
   
@@ -76,7 +76,7 @@ function notifyUserOfAccountChange(userId, type, message) {
     timestamp: new Date().toISOString() 
   };
   
-  console.log(`Sending ${type} notification to user ${userId}, active connections: ${connections.size}`);
+  console.log(`Sending ${type} notification to users${userId}, active connections: ${connections.size}`);
   
   let successCount = 0;
   connections.forEach(res => {
@@ -85,7 +85,7 @@ function notifyUserOfAccountChange(userId, type, message) {
       res.write(`data: ${JSON.stringify(notification)}\n\n`);
       successCount++;
     } catch (err) {
-      console.error(`Failed to send notification to user ${userId}:`, err);
+      console.error(`Failed to send notification to users${userId}:`, err);
     }
   });
   
@@ -96,17 +96,42 @@ function notifyUserOfAccountChange(userId, type, message) {
 // Login user
 router.post("/login", async (req, res) => {
   try {
+    console.log("Login attempt received:", JSON.stringify(req.body, null, 2));
+    
+    // Check for required fields
     const { email, password } = req.body;
+    
+    if (!email || !password) {
+      console.log("Missing email or password in login request");
+      return res.status(400).json({ message: "Email and password are required" });
+    }
 
-    // Check if user exists
-    const userFound = await user.findOne({ email });
+    // Normalize email (trim and lowercase)
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log(`Searching for user with normalized email: ${normalizedEmail}`);
+    
+    // Check if user exists (case-insensitive search)
+    const userFound = await users.findOne({ 
+      email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') }
+    });
 
+    // Debug - log all users if none found
     if (!userFound) {
+      console.log(`Login failed: No user found with email ${email}`);
+      
+      // For debugging: Check if the collection has any users at all
+      const allUsers = await users.find({}, { email: 1 });
+      console.log(`Available users in database: ${allUsers.length}`);
+      console.log(`User emails: ${allUsers.map(u => u.email).join(', ')}`);
+      
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    console.log(`User found: ${userFound._id} (${userFound.email})`);
+
     // Check if user is active
     if (userFound.status === 'inactive') {
+      console.log(`Login failed: User ${email} is inactive`);
       return res.status(401).json({ message: "Your account is inactive. Please contact an administrator." });
     }
 
@@ -114,11 +139,14 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, userFound.password);
 
     if (!isMatch) {
+      console.log(`Login failed: Invalid password for user ${email}`);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     // Create token with a more reliable JWT_SECRET value
     const token = generateToken(userFound._id);
+    
+    console.log(`Login successful for user: ${email}`);
 
     // Return user data and token
     res.status(200).json({
@@ -133,7 +161,7 @@ router.post("/login", async (req, res) => {
       token: token
     });
   } catch (error) {
-    console.log("Login error:", error.message);
+    console.log("Login error:", error.message, error.stack);
     return res.status(500).send({ message: error.message });
   }
 });
@@ -141,7 +169,7 @@ router.post("/login", async (req, res) => {
 // Get current user profile
 router.get("/profile", protect, async (req, res) => {
   try {
-    const userProfile = await user.findById(req.user._id).select('-password');
+    const userProfile = await users.findById(req.user._id).select('-password');
     
     if (userProfile) {
       // Include the profileVersion field in the response
@@ -155,13 +183,13 @@ router.get("/profile", protect, async (req, res) => {
   }
 });
 
-// Reset password endpoint - MOVED UP before the ID routes
+// Reset password endpoint
 router.put("/reset-password", protect, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     
     // Find the current user by ID
-    const userFound = await user.findById(req.user._id);
+    const userFound = await users.findById(req.user._id);
     
     if (!userFound) {
       return res.status(404).json({ message: "User not found" });
@@ -196,7 +224,7 @@ router.put("/reset-password", protect, async (req, res) => {
   }
 });
 
-// Admin set password endpoint - add this new route
+// Admin set password endpoint
 router.post("/:id/set-password", protect, admin, async (req, res) => {
   try {
     const { newPassword } = req.body;
@@ -208,7 +236,7 @@ router.post("/:id/set-password", protect, admin, async (req, res) => {
     }
     
     // Find the user to reset password
-    const userToUpdate = await user.findById(userId);
+    const userToUpdate = await users.findById(userId);
     
     if (!userToUpdate) {
       return res.status(404).json({ message: 'User not found' });
@@ -264,7 +292,7 @@ router.post("/", async (req, res) => {
         const hashedPassword = await bcrypt.hash(req.body.password, salt);
 
         // Create new user
-        const newUser = await user.create({
+        const newUser = await users.create({
             name: req.body.name,
             email: req.body.email,
             phone: req.body.phone,
@@ -286,11 +314,11 @@ router.post("/", async (req, res) => {
 //get all users
 router.get("/", protect, async (req, res) => {
     try {
-        const users = await user.find({});
+        const allUsers = await users.find({});
         return res.status(200).json({
           success: true,
-          count: users.length,
-          data: users
+          count: allUsers.length,
+          data: allUsers
         });
     } catch (error) {
         console.log(error.message);
@@ -301,14 +329,14 @@ router.get("/", protect, async (req, res) => {
 //get users by id
 router.get("/:id", protect, async (req, res) => {
     try {
-        const User = await user.findById(req.params.id);
+        const user = await users.findById(req.params.id);
 
-        if (!User) return res.status(404).json({ message: "user not found" });
+        if (!user) return res.status(404).json({ message: "user not found" });
 
         const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
-        const createdDate = User.createdAt ? new Date(User.createdAt).toLocaleString('en-US', dateOptions) : 'N/A';
+        const createdDate = user.createdAt ? new Date(user.createdAt).toLocaleString('en-US', dateOptions) : 'N/A';
 
-        return res.status(200).json({ ...User._doc, createdDate });
+        return res.status(200).json({ ...user._doc, createdDate });
     } catch (error) {
         console.log(error.message);
         return res.status(500).send({ message: error.message });
@@ -321,7 +349,7 @@ router.put("/:id", protect, async (req, res) => {
     const userId = req.params.id;
     
     // Get the user before update to compare changes
-    const existingUser = await user.findById(userId);
+    const existingUser = await users.findById(userId);
     if (!existingUser) return res.status(404).json({ message: "User not found" });
     
     // Detect which critical fields are changing
@@ -344,7 +372,7 @@ router.put("/:id", protect, async (req, res) => {
     }
     
     // Update user
-    const updatedUser = await user.findByIdAndUpdate(
+    const updatedUser = await users.findByIdAndUpdate(
       userId,
       req.body,
       { new: true }
@@ -353,7 +381,7 @@ router.put("/:id", protect, async (req, res) => {
     // Send immediate logout notification if security was changed 
     // and the user being updated is not the current user
     if (securityChanged && userId !== req.user._id.toString()) {
-      console.log(`Critical security changes detected for user ${userId}. Sending force logout notification.`);
+      console.log(`Critical security changes detected for users${userId}. Sending force logout notification.`);
       
       // Try to notify the user immediately
       const notificationSent = notifyUserOfAccountChange(
@@ -385,7 +413,7 @@ router.put("/:id", protect, async (req, res) => {
 // delete a user
 router.delete("/:id", protect, admin, async (req, res) => {
     try {
-        const userToDelete = await user.findById(req.params.id);
+        const userToDelete = await users.findById(req.params.id);
 
         if (!userToDelete) return res.status(404).json({ message: "user not found" });
 
@@ -397,13 +425,36 @@ router.delete("/:id", protect, admin, async (req, res) => {
         );
         
         // Delete the user
-        await user.findByIdAndDelete(req.params.id);
+        await users.findByIdAndDelete(req.params.id);
 
         return res.status(200).json({ message: "user deleted successfully" });
     } catch (error) {
         console.log(error.message);
         return res.status(500).send({ message: error.message });
     }
+});
+
+// Public diagnostic route - add this near the top of your routes
+router.get("/check", async (req, res) => {
+  try {
+    // Count users to verify database connection without exposing data
+    const userCount = await users.countDocuments();
+    
+    return res.status(200).json({
+      status: "API is operational",
+      message: "Authentication required for protected endpoints",
+      authInstructions: "Include 'Authorization: Bearer YOUR_TOKEN_HERE' header with requests",
+      databaseConnection: "Connected",
+      userCount
+    });
+  } catch (error) {
+    console.log("API check error:", error.message);
+    return res.status(500).json({ 
+      status: "API error", 
+      databaseConnection: "Failed",
+      message: error.message 
+    });
+  }
 });
 
 export default router;
