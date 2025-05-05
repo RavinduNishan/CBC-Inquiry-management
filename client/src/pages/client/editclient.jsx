@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
-import { MdPersonAdd, MdPerson, MdEmail, MdPhone, MdBusiness } from 'react-icons/md';
+import { MdSave, MdPerson, MdEmail, MdPhone, MdBusiness, MdClose } from 'react-icons/md';
 import Spinner from '../user/Spinner';
 
-function CreateClient({ onClientAdded }) {
+function EditClient({ client, onClose, onClientUpdated }) {
   const { enqueueSnackbar } = useSnackbar();
   const [loading, setLoading] = useState(false);
   const [clientData, setClientData] = useState({
@@ -17,6 +17,18 @@ function CreateClient({ onClientAdded }) {
 
   // Department options
   const departments = ['CBC', 'CBI', 'M~Line'];
+
+  // Load client data when component mounts or client prop changes
+  useEffect(() => {
+    if (client) {
+      setClientData({
+        name: client.name || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        department: client.department || 'CBC'
+      });
+    }
+  }, [client]);
 
   const handleInputChange = (e) => {
     // For email field, trim spaces as the user types
@@ -50,7 +62,7 @@ function CreateClient({ onClientAdded }) {
     try {
       setLoading(true);
       
-      const response = await axios.post('http://localhost:5555/client', {
+      await axios.put(`http://localhost:5555/client/${client._id}`, {
         name: clientData.name,
         email: normalizedEmail,
         phone: clientData.phone,
@@ -58,24 +70,21 @@ function CreateClient({ onClientAdded }) {
       });
       
       setLoading(false);
-      enqueueSnackbar('Client created successfully', { variant: 'success' });
-      
-      // Reset form
-      setClientData({
-        name: '',
-        email: '',
-        phone: '',
-        department: 'CBC'
-      });
+      enqueueSnackbar('Client updated successfully', { variant: 'success' });
       
       // Notify parent component if callback provided
-      if (onClientAdded) {
-        onClientAdded();
+      if (onClientUpdated) {
+        onClientUpdated();
+      }
+      
+      // Close the edit form
+      if (onClose) {
+        onClose();
       }
       
     } catch (error) {
       setLoading(false);
-      const errorMessage = error.response?.data?.message || 'Error creating client';
+      const errorMessage = error.response?.data?.message || 'Error updating client';
       setError(errorMessage);
       enqueueSnackbar(errorMessage, { variant: 'error' });
     }
@@ -83,14 +92,23 @@ function CreateClient({ onClientAdded }) {
 
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6">
-      <div className="flex items-center mb-6">
-        <div className="h-16 w-16 rounded-full bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center text-white text-2xl font-bold mr-4 shadow-lg">
-          <MdPersonAdd className="text-2xl" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <div className="h-16 w-16 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 flex items-center justify-center text-white text-2xl font-bold mr-4 shadow-lg">
+            <MdPerson className="text-2xl" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800 border-b-2 border-amber-500 pb-1">Edit Client</h1>
+            <p className="text-gray-600 mt-1">Update client information</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 border-b-2 border-blue-500 pb-1">Add New Client</h1>
-          <p className="text-gray-600 mt-1">Add a new client to the system</p>
-        </div>
+        <button
+          onClick={onClose}
+          className="text-gray-600 hover:text-red-500 transition duration-150 p-2 rounded-full hover:bg-gray-100"
+          title="Close"
+        >
+          <MdClose className="text-xl" />
+        </button>
       </div>
 
       {error && (
@@ -109,14 +127,14 @@ function CreateClient({ onClientAdded }) {
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <Spinner />
-          <span className="ml-3 text-gray-600">Creating client...</span>
+          <span className="ml-3 text-gray-600">Updating client...</span>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Client Information Section */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center">
-              <MdPerson className="text-blue-500 mr-2" />
+              <MdPerson className="text-amber-500 mr-2" />
               Client Information
             </h3>
 
@@ -133,7 +151,7 @@ function CreateClient({ onClientAdded }) {
                     name="name"
                     value={clientData.name}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                    className="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
                     placeholder="Enter client's name"
                   />
@@ -152,7 +170,7 @@ function CreateClient({ onClientAdded }) {
                     name="phone"
                     value={clientData.phone}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                    className="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
                     placeholder="Enter phone number"
                   />
@@ -170,7 +188,7 @@ function CreateClient({ onClientAdded }) {
                     name="department"
                     value={clientData.department}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                    className="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
                   >
                     {departments.map(dept => (
@@ -192,7 +210,7 @@ function CreateClient({ onClientAdded }) {
                     name="email"
                     value={clientData.email}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                    className="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
                     placeholder="Enter email address"
                   />
@@ -202,14 +220,22 @@ function CreateClient({ onClientAdded }) {
           </div>
 
           {/* Action buttons */}
-          <div className="flex justify-end">
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center justify-center px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg shadow-sm transition-all"
+            >
+              <MdClose className="mr-2" />
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white rounded-lg shadow-sm transition-all"
+              className="flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg shadow-sm transition-all"
             >
-              <MdPersonAdd className="mr-2" />
-              {loading ? 'Creating...' : 'Add Client'}
+              <MdSave className="mr-2" />
+              {loading ? 'Updating...' : 'Save Changes'}
             </button>
           </div>
         </form>
@@ -218,4 +244,4 @@ function CreateClient({ onClientAdded }) {
   );
 }
 
-export default CreateClient;
+export default EditClient;

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { MdEdit, MdDelete, MdBusiness } from 'react-icons/md';
 import { useSnackbar } from 'notistack';
 import axios from 'axios';
+import EditClient from './editclient';
 
 function ClientTable({ clients, fetchClients }) {
   const { enqueueSnackbar } = useSnackbar();
   const [loading, setLoading] = useState(false);
+  const [editingClient, setEditingClient] = useState(null);
   
   // Function to handle deleting a client
   const handleDeleteClient = async (clientId, clientName) => {
@@ -28,6 +30,16 @@ function ClientTable({ clients, fetchClients }) {
     }
   };
 
+  // Function to handle edit client action
+  const handleEditClient = (client) => {
+    setEditingClient(client);
+  };
+
+  // Function to close edit form
+  const handleCloseEdit = () => {
+    setEditingClient(null);
+  };
+
   // Function to get badge color based on department
   const getDepartmentBadgeColor = (department) => {
     switch (department) {
@@ -42,6 +54,18 @@ function ClientTable({ clients, fetchClients }) {
     }
   };
 
+  // If we're editing a client, show the edit form
+  if (editingClient) {
+    return (
+      <EditClient 
+        client={editingClient}
+        onClose={handleCloseEdit}
+        onClientUpdated={fetchClients}
+      />
+    );
+  }
+
+  // Otherwise show the client table
   return (
     <div className="overflow-x-auto h-full">
       <div className="relative overflow-x-auto rounded-lg">
@@ -91,6 +115,7 @@ function ClientTable({ clients, fetchClients }) {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
                       <button
+                        onClick={() => handleEditClient(client)}
                         className="text-gray-500 hover:text-blue-600 transition duration-150 hover:bg-blue-50 p-1.5 rounded-md"
                         title="Edit Client"
                       >
