@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import inquiryRoutes from './routes/inquiryRoute.js';
 import userRoutes from './routes/userRoute.js';
+import clientRoutes from './routes/clientRoute.js';
 import { PORT, MONGODBURL } from './config.js';
 
 const app = express();
@@ -120,6 +121,7 @@ const connectDB = async (retryCount = 5) => {
 // Routes
 app.use('/inquiry', inquiryRoutes);
 app.use('/user', userRoutes);
+app.use('/client', clientRoutes);
 
 // Expose MongoDB connection status via API
 app.get('/api/mongodb/status', (req, res) => {

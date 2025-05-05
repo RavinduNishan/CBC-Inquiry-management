@@ -10,6 +10,7 @@ import { FaUserFriends, FaClipboardList, FaChartBar, FaCog, FaSignOutAlt, FaBars
 import InquiryTable from '../../../pages/inquiry/Inquiry/inquirytable';
 import InquiryCard from '../../../pages/inquiry/Inquiry/inquirycard';
 import UserTable from '../../../pages/user/usertable';
+import ClientTable from '../../../pages/client/clienttable';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import AuthContext from '../../../context/AuthContext';
@@ -17,6 +18,7 @@ import loginImg from '../../../assets/loginImg.png';
 import CreateInquiry from '../../../pages/inquiry/Inquiry/CreateInquiry';
 import DashboardResponseInquiry from '../../../pages/inquiry/Inquiry/DashboardResponseInquiry';
 import CreateUser from '../../../pages/user/createuser';
+import CreateClient from '../../../pages/client/createclient';
 import UserDetail from '../../../pages/user/UserDetail';
 import UserProfile from '../../../pages/user/UserProfile';
 
@@ -27,6 +29,7 @@ const Master = () => {
   const [inquiries, setInquiries] = useState([]);
   const [myInquiries, setMyInquiries] = useState([]);
   const [users, setUsers] = useState([]);
+  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showType, setShowType] = useState('table');
   const [myInquiriesShowType, setMyInquiriesShowType] = useState('table');
@@ -98,6 +101,8 @@ const Master = () => {
       fetchMyInquiries();
     } else if (activeMenu === 'users') {
       fetchUsers();
+    } else if (activeMenu === 'clients') {
+      fetchClients();
     }
   }, [activeMenu]);
 
@@ -172,6 +177,32 @@ const Master = () => {
       })
       .then((response) => {
         setUsers(response.data.data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.log(error);
+        // If unauthorized, redirect to login
+        if (error.response && error.response.status === 401) {
+          logout();
+          navigate('/login');
+        }
+        setLoading(false);
+      });
+  };
+
+  const fetchClients = () => {
+    setLoading(true);
+    // Get the token directly to ensure it's included
+    const token = localStorage.getItem('token');
+    
+    axios
+      .get('http://localhost:5555/client', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then((response) => {
+        setClients(response.data.data);
         setLoading(false);
       })
       .catch((error) => {
@@ -917,6 +948,55 @@ const Master = () => {
             user={user} 
             onBack={() => setActiveMenu('dashboard')} 
           />
+        )}
+
+        {activeMenu === 'clients' && isAdmin && (
+          <>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
+              <h1 className='text-2xl font-bold text-gray-800'>Client Management</h1>
+              <button
+                onClick={() => setActiveMenu('addClient')}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 flex items-center text-sm font-medium transition-all duration-200 shadow-sm"
+              >
+                <MdOutlineAddBox className="mr-1.5" />
+                Add New Client
+              </button>
+            </div>
+            
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-0 mb-0 flex-1 h-[calc(100vh-92px)]'>
+              {loading ? (
+                <Spinner />
+              ) : (
+                <ClientTable 
+                  clients={clients} 
+                  fetchClients={fetchClients}
+                />
+              )}
+            </div>
+          </>
+        )}
+        
+        {activeMenu === 'addClient' && isAdmin && (
+          <>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-10 py-3 px-6'>
+              <h1 className='text-2xl font-bold text-gray-800'>Add New Client</h1>
+              <button
+                onClick={() => setActiveMenu('clients')}
+                className='bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg px-4 py-2 flex items-center text-sm font-medium transition-all duration-200 shadow-sm'
+              >
+                Back to Client List
+              </button>
+            </div>
+            
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-6 mx-0'>
+              <CreateClient 
+                onClientAdded={() => {
+                  fetchClients();
+                  setActiveMenu('clients');
+                }}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>
