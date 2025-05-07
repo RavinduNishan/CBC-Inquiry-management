@@ -276,6 +276,7 @@ export const createUser = async (req, res) => {
         !req.body.name ||
         !req.body.email ||
         !req.body.phone ||
+        !req.body.department ||
         !req.body.accessLevel ||
         !req.body.permissions ||
         !req.body.password
@@ -292,6 +293,7 @@ export const createUser = async (req, res) => {
         name: req.body.name,
         email: req.body.email,
         phone: req.body.phone,
+        department: req.body.department,
         accessLevel: req.body.accessLevel || "",
         permissions: req.body.permissions || [],
         status: req.body.status || "active",
@@ -352,6 +354,7 @@ export const updateUser = async (req, res) => {
     const criticalFieldsChanged = {
       email: req.body.email && req.body.email !== existingUser.email,
       name: req.body.name && req.body.name !== existingUser.name,
+      department: req.body.department && req.body.department !== existingUser.department,
       accessLevel: req.body.accessLevel && req.body.accessLevel !== existingUser.accessLevel,
       status: req.body.status && req.body.status !== existingUser.status,
       // Check if permissions have changed

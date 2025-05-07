@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BsSearch, BsCheckCircle, BsXCircle } from 'react-icons/bs';
 import { FiEdit, FiTrash2, FiUser, FiMail, FiCalendar } from 'react-icons/fi';
+import { MdBusiness } from 'react-icons/md'; // Added for department icon
 import axios from 'axios';
 
 // Access level badge component
@@ -22,21 +23,56 @@ const accessLevelBadge = (accessLevel) => {
   }
 };
 
+// Department badge component
+const departmentBadge = (department) => {
+  const baseClasses = "px-2 py-1 text-xs font-semibold rounded-full";
+  
+  if (!department) return <span className={`${baseClasses} bg-gray-100 text-gray-800`}>N/A</span>;
+  
+  // Color-coding for different departments
+  switch (department.toLowerCase()) {
+    case 'finance':
+      return <span className={`${baseClasses} bg-yellow-100 text-yellow-800`}>{department}</span>;
+    case 'marketing':
+      return <span className={`${baseClasses} bg-pink-100 text-pink-800`}>{department}</span>;
+    case 'operations':
+      return <span className={`${baseClasses} bg-indigo-100 text-indigo-800`}>{department}</span>;
+    case 'it':
+    case 'information technology':
+      return <span className={`${baseClasses} bg-cyan-100 text-cyan-800`}>{department}</span>;
+    case 'hr':
+    case 'human resources':
+      return <span className={`${baseClasses} bg-orange-100 text-orange-800`}>{department}</span>;
+    case 'customer service':
+      return <span className={`${baseClasses} bg-teal-100 text-teal-800`}>{department}</span>;
+    default:
+      return <span className={`${baseClasses} bg-gray-100 text-gray-800`}>{department}</span>;
+  }
+};
+
 const UserTable = ({ users, fetchUsers, onViewDetails }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState(''); // Added department filter
   const [filteredUsers, setFilteredUsers] = useState([]);
+  const [departments, setDepartments] = useState([]); // To store unique departments
 
   // Initialize filtered users with all users on component mount
   useEffect(() => {
     setFilteredUsers(users);
+    
+    // Extract unique departments for filter dropdown
+    if (users && users.length > 0) {
+      const uniqueDepartments = [...new Set(users.map(user => user.department).filter(Boolean))];
+      setDepartments(uniqueDepartments.sort());
+    }
   }, [users]);
 
   // Apply filters whenever filter criteria change
   useEffect(() => {
     applyFilters();
-  }, [searchTerm, roleFilter, statusFilter, users]);
+  }, [searchTerm, roleFilter, statusFilter, departmentFilter, users]);
 
   const applyFilters = () => {
     const filtered = users.filter(user => {
@@ -46,8 +82,9 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
       
       const matchesRole = !roleFilter || user.accessLevel?.toLowerCase() === roleFilter.toLowerCase();
       const matchesStatus = !statusFilter || user.status?.toLowerCase() === statusFilter.toLowerCase();
+      const matchesDepartment = !departmentFilter || user.department?.toLowerCase() === departmentFilter.toLowerCase();
       
-      return matchesSearch && matchesRole && matchesStatus;
+      return matchesSearch && matchesRole && matchesStatus && matchesDepartment;
     });
     
     setFilteredUsers(filtered);
@@ -61,6 +98,7 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
     setSearchTerm('');
     setRoleFilter('');
     setStatusFilter('');
+    setDepartmentFilter('');
   };
 
   return (
@@ -83,7 +121,7 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
               />
             </div>
             
-            {/* Role and Status Filters */}
+            {/* Role, Department and Status Filters */}
             <div className="flex space-x-1 flex-wrap">
               <select
                 value={roleFilter}
@@ -94,6 +132,17 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
                 <option value="administrator">Administrator</option>
                 <option value="manager">Manager</option>
                 <option value="user">User</option>
+              </select>
+              
+              <select
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+              >
+                <option value="">All Departments</option>
+                {departments.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
               </select>
               
               <select
@@ -150,6 +199,7 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Department</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Access Level</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Created</th>
@@ -182,6 +232,9 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                       {user.email}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {departmentBadge(user.department)}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       {accessLevelBadge(user.accessLevel)}

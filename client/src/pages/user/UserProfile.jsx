@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { MdArrowBack, MdPerson, MdSecurity, MdAccessTime, MdLock, MdEmail, MdPhone } from 'react-icons/md';
+import { MdArrowBack, MdPerson, MdSecurity, MdAccessTime, MdLock, MdEmail, MdPhone, MdBusiness } from 'react-icons/md';
 import AuthContext from '../../context/AuthContext';
 
 const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
@@ -263,6 +263,10 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
             <div className="border-l-2 border-sky-200 pl-3">
               <p className="text-xs text-gray-500">Phone Number</p>
               <p className="text-sm font-medium">{user.phone || 'Not specified'}</p>
+            </div>
+            <div className="border-l-2 border-sky-200 pl-3">
+              <p className="text-xs text-gray-500">Department</p>
+              <p className="text-sm font-medium">{user.department || 'Not assigned'}</p>
             </div>
           </div>
         </div>

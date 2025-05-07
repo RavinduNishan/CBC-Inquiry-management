@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Spinner from './Spinner';
 import { useSnackbar } from 'notistack';
-import { MdPersonAdd, MdPerson, MdEmail, MdPhone, MdSecurity, MdBadge, MdCheckCircle, MdVerifiedUser, MdLock, MdShield } from 'react-icons/md';
+import { MdPersonAdd, MdPerson, MdEmail, MdPhone, MdSecurity, MdBadge, MdCheckCircle, MdVerifiedUser, MdLock, MdShield, MdBusiness } from 'react-icons/md';
 
 // Custom CSS for toggle
 const toggleStyles = `
@@ -36,6 +36,7 @@ function CreateUser({ onUserAdded }) {
     name: '',
     email: '',
     phone: '',
+    department: '', // Added department field
     accessLevel: 'Staff Member',
     permissions: ['myInquiries'], // Initialize with required myInquiries
     password: '',
@@ -43,6 +44,13 @@ function CreateUser({ onUserAdded }) {
     status: 'active', // Default status is active
   });
   const [error, setError] = useState('');
+
+  // Department options
+  const departments = [
+    'CBC',
+    'CBI',
+    'M~Line'
+  ];
 
   // Available permissions for staff members - standardize with EditUserForm
   const availablePermissions = [
@@ -74,7 +82,7 @@ function CreateUser({ onUserAdded }) {
     if (e.target.name === 'email') {
       setUserData({
         ...userData,
-        [e.target.name]: e.target.value.trim()
+        [e.target.name]: e.target.value.trim().toLowerCase()
       });
     } else {
       setUserData({
@@ -148,6 +156,11 @@ function CreateUser({ onUserAdded }) {
     }
   };
 
+  const validateEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -160,9 +173,16 @@ function CreateUser({ onUserAdded }) {
     }
 
     // Validate form data
-    if (!userData.name || !userData.email || !userData.phone || !userData.password) {
+    if (!userData.name || !userData.email || !userData.phone || !userData.password || !userData.department) {
       setError('Please fill in all required fields');
       enqueueSnackbar('Please fill in all required fields', { variant: 'error' });
+      return;
+    }
+    
+    // Validate email format
+    if (!validateEmail(userData.email)) {
+      setError('Please enter a valid email address');
+      enqueueSnackbar('Please enter a valid email address', { variant: 'error' });
       return;
     }
 
@@ -182,10 +202,22 @@ function CreateUser({ onUserAdded }) {
     try {
       setLoading(true);
       
+      console.log('Sending user data:', {
+        name: userData.name,
+        email: normalizedEmail,
+        phone: userData.phone,
+        department: userData.department,
+        accessLevel: userData.accessLevel,
+        permissions: userData.permissions,
+        password: userData.password,
+        status: userData.status
+      });
+      
       const response = await axios.post('http://localhost:5555/user', {
         name: userData.name,
         email: normalizedEmail, // Use the normalized email
         phone: userData.phone,
+        department: userData.department, // Include department field
         accessLevel: userData.accessLevel,
         permissions: userData.permissions,
         password: userData.password,
@@ -200,6 +232,7 @@ function CreateUser({ onUserAdded }) {
         name: '',
         email: '',
         phone: '',
+        department: '', // Reset department
         accessLevel: 'Staff Member',
         permissions: ['myInquiries'],
         password: '',
@@ -214,6 +247,7 @@ function CreateUser({ onUserAdded }) {
       
     } catch (error) {
       setLoading(false);
+      console.error('Error creating user:', error.response || error);
       const errorMessage = error.response?.data?.message || 'Error creating user';
       setError(errorMessage);
       enqueueSnackbar(errorMessage, { variant: 'error' });
@@ -298,7 +332,7 @@ function CreateUser({ onUserAdded }) {
                 </div>
               </div>
 
-              <div className="sm:col-span-6">
+              <div className="sm:col-span-3">
                 <label htmlFor="phone" className="flex items-center text-sm font-medium text-gray-700 mb-1">
                   <MdPhone className="text-gray-500 mr-1.5" />
                   Phone Number
@@ -314,6 +348,29 @@ function CreateUser({ onUserAdded }) {
                     required
                     placeholder="Enter phone number"
                   />
+                </div>
+              </div>
+              
+              {/* Department dropdown */}
+              <div className="sm:col-span-3">
+                <label htmlFor="department" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <MdBusiness className="text-gray-500 mr-1.5" />
+                  Department
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="department"
+                    name="department"
+                    value={userData.department}
+                    onChange={handleInputChange}
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                    required
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>

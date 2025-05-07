@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { MdArrowBack, MdPerson, MdEmail, MdPhone, MdSecurity, MdBadge, MdCheckCircle, MdVerifiedUser, MdSave } from 'react-icons/md';
+import { MdArrowBack, MdPerson, MdEmail, MdPhone, MdSecurity, MdBadge, MdCheckCircle, MdVerifiedUser, MdSave, MdBusiness } from 'react-icons/md';
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
 import AuthContext from '../../context/AuthContext';
@@ -10,6 +10,7 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
     name: user.name,
     email: user.email,
     phone: user.phone,
+    department: user.department || '',
     accessLevel: user.accessLevel,
     permissions: Array.isArray(user.permissions) ? [...user.permissions] : [], // Ensure proper initialization
     status: user.status || 'active',
@@ -27,6 +28,20 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
     { id: 'inquiries', label: 'All Inquiries', description: 'Can view and manage all inquiries in the system' },
     { id: 'assignInquiries', label: 'Assign Users', description: 'Can assign inquiries to other users (requires "All Inquiries" permission)' },
     { id: 'addInquiry', label: 'Add Inquiries', description: 'Can create new inquiries in the system' },
+  ];
+
+  // Department options - can be expanded or fetched from API
+  const departments = [
+    'Finance',
+    'Marketing',
+    'Operations',
+    'Information Technology',
+    'Human Resources',
+    'Customer Service',
+    'Sales',
+    'Research & Development',
+    'Legal',
+    'Executive'
   ];
 
   const handleInputChange = (e) => {
@@ -126,7 +141,7 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
     setError('');
     
     // Validate form data
-    if (!editUserData.name || !editUserData.email || !editUserData.phone) {
+    if (!editUserData.name || !editUserData.email || !editUserData.phone || !editUserData.department) {
       setError('Please fill in all required fields');
       enqueueSnackbar('Please fill in all required fields', { variant: 'error' });
       return;
@@ -158,6 +173,7 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
         name: editUserData.name,
         email: normalizedEmail, // Use the normalized email
         phone: editUserData.phone,
+        department: editUserData.department,
         accessLevel: editUserData.accessLevel,
         permissions: editUserData.permissions,
         status: editUserData.status
@@ -290,6 +306,28 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
                     className="shadow-sm focus:ring-sky-500 focus:border-sky-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2 px-3 border"
                     required
                   />
+                </div>
+              </div>
+
+              <div className="sm:col-span-3">
+                <label htmlFor="department" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <MdBusiness className="text-gray-500 mr-1.5" />
+                  Department
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="department"
+                    name="department"
+                    value={editUserData.department}
+                    onChange={handleInputChange}
+                    className="shadow-sm focus:ring-sky-500 focus:border-sky-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2 px-3 border"
+                    required
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

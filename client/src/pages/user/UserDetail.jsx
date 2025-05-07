@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { MdOutlineDelete, MdOutlineEdit, MdLockReset, MdArrowBack, MdPerson, MdSecurity, MdAccessTime } from 'react-icons/md';
+import { MdOutlineDelete, MdOutlineEdit, MdLockReset, MdArrowBack, MdPerson, MdSecurity, MdAccessTime, MdBusiness } from 'react-icons/md';
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
 import EditUserForm from './EditUserForm';
@@ -204,6 +204,10 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
                 <div className="border-l-2 border-sky-200 pl-3">
                   <p className="text-xs text-gray-500">Phone Number</p>
                   <p className="text-sm font-medium">{user.phone || 'Not provided'}</p>
+                </div>
+                <div className="border-l-2 border-sky-200 pl-3">
+                  <p className="text-xs text-gray-500">Department</p>
+                  <p className="text-sm font-medium">{user.department || 'Not assigned'}</p>
                 </div>
               </div>
             </div>
