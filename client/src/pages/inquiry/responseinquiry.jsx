@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import Spinner from '../user/Spinner';
 import { useSnackbar } from 'notistack';
-import { MdPerson, MdEmail, MdPhone, MdBusiness, MdLabel, MdAccessTime, MdMessage, MdOutlineAttachment, MdSave, MdClose, MdFlag } from 'react-icons/md';
+import { MdPerson, MdEmail, MdPhone, MdBusiness, MdLabel, MdAccessTime, MdMessage, MdOutlineAttachment, MdSave, MdClose, MdFlag, MdSend } from 'react-icons/md';
+import AuthContext from '../../context/AuthContext';
 
 const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
+  const { user } = useContext(AuthContext);
   const [inquiry, setInquiry] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [comments, setComments] = useState('');
-  const [users, setUsers] = useState([
-    { id: '1', name: 'John Doe' },
-    { id: '2', name: 'Jane Smith' },
-    { id: '3', name: 'Mark Johnson' },
-    // In a real app, you would fetch this list from your API
-  ]);
+  const [newComment, setNewComment] = useState('');
+  const [users, setUsers] = useState([]);
 
   const { id: paramId } = useParams();
   const id = propId || paramId;
@@ -28,7 +25,6 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
       .then((response) => {
         const inquiryData = response.data;
         setInquiry(inquiryData);
-        setComments(inquiryData.comments || '');
         setLoading(false);
       })
       .catch((error) => {
@@ -45,8 +41,7 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
     const updatedInquiry = {
       ...inquiry,
       status: 'closed',
-      comments,
-      sendClosureEmail: true // Add this flag to trigger email sending
+      sendClosureEmail: true
     };
     
     axios
@@ -62,16 +57,6 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
         } else {
           enqueueSnackbar('Inquiry closed successfully, but email notification failed', { variant: 'warning' });
         }
-        
-        // Navigate based on mode
-        if (dashboardMode) {
-          // Return to inquiries view in dashboard
-          // This will be handled by the parent component
-        } else {
-          // For standalone mode, you can either stay on the page with updated state
-          // or navigate back
-          // navigate('/');
-        }
       })
       .catch((error) => {
         console.error('Error closing inquiry:', error);
@@ -80,25 +65,31 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
       });
   };
 
-  const handleUpdate = () => {
-    if (inquiry.status === 'closed') return;
+  const handleAddComment = () => {
+    if (!newComment.trim() || !user) return;
     
     setLoading(true);
-    const updatedInquiry = {
-      ...inquiry,
-      comments
+    
+    const commentData = {
+      newComment: {
+        text: newComment.trim(),
+        userId: user._id,
+        userName: user.name
+      }
     };
     
     axios
-      .put(`http://localhost:5555/inquiry/${id}`, updatedInquiry)
-      .then(() => {
+      .put(`http://localhost:5555/inquiry/${id}`, commentData)
+      .then((response) => {
+        setInquiry(response.data);
+        setNewComment(''); // Clear input after successful submission
         setLoading(false);
-        enqueueSnackbar('Inquiry updated successfully', { variant: 'success' });
+        enqueueSnackbar('Comment added successfully', { variant: 'success' });
       })
       .catch((error) => {
-        console.error('Error updating inquiry:', error);
+        console.error('Error adding comment:', error);
         setLoading(false);
-        enqueueSnackbar('Error updating inquiry', { variant: 'error' });
+        enqueueSnackbar('Error adding comment', { variant: 'error' });
       });
   };
 
@@ -162,6 +153,7 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
   );
 
   const isClosed = inquiry.status === 'closed';
+  const hasComments = Array.isArray(inquiry.comments) && inquiry.comments.length > 0;
 
   return (
     <div className="p-6">
@@ -320,6 +312,75 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
                   </div>
                 </div>
               )}
+              
+              {/* Comment Thread Section */}
+              <div className="mt-8">
+                <h3 className="text-md font-semibold text-gray-700 mb-3 flex items-center">
+                  <MdMessage className="text-gray-500 mr-2" /> Comments Thread
+                </h3>
+                
+                <div className="border rounded-lg bg-gray-50 border-gray-200 mb-4">
+                  {/* Chat-style comment display */}
+                  <div className="h-80 overflow-y-auto p-4 space-y-4">
+                    {hasComments ? (
+                      inquiry.comments.map((comment, index) => (
+                        <div key={index} className="flex flex-col">
+                          <div className={`max-w-3/4 rounded-lg p-3 shadow-sm ${
+                            comment.userId === user?._id ? 
+                            'bg-blue-100 text-blue-900 ml-auto' : 
+                            'bg-white text-gray-800 border border-gray-200'
+                          }`}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="font-medium text-sm">{comment.userName || 'Unknown User'}</span>
+                              <span className="text-xs text-gray-500">{formatDate(comment.createdAt)}</span>
+                            </div>
+                            <p className="text-sm whitespace-pre-wrap">{comment.text}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                        <p>No comments yet. Be the first to add a comment.</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* New comment input */}
+                  <div className="p-3 border-t border-gray-200">
+                    <div className="flex items-center">
+                      <input
+                        type="text"
+                        value={newComment}
+                        onChange={(e) => !isClosed && setNewComment(e.target.value)}
+                        disabled={isClosed}
+                        placeholder={isClosed ? "Comments disabled for closed inquiries" : "Type your comment here..."}
+                        className={`flex-1 border rounded-l-lg py-2 px-3 ${
+                          isClosed ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'focus:outline-none focus:ring-1 focus:ring-sky-500'
+                        }`}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && !isClosed && newComment.trim()) {
+                            handleAddComment();
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={handleAddComment}
+                        disabled={isClosed || !newComment.trim()}
+                        className={`flex items-center justify-center bg-sky-500 text-white px-4 py-2 rounded-r-lg ${
+                          isClosed || !newComment.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:bg-sky-600'
+                        }`}
+                      >
+                        <MdSend className="text-lg" />
+                      </button>
+                    </div>
+                    {isClosed && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Comments are disabled for closed inquiries
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -334,42 +395,8 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
             </div>
             
             <div className="p-6">
-              {/* Comments */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Response Comments</label>
-                <textarea
-                  value={comments}
-                  onChange={(e) => !isClosed && setComments(e.target.value)}
-                  className={`w-full border-2 rounded-lg px-3 py-2 ${
-                    isClosed
-                      ? 'bg-gray-100 cursor-not-allowed border-gray-300' 
-                      : 'border-sky-300 focus:border-sky-500 focus:ring focus:ring-sky-200 focus:ring-opacity-50'
-                  }`}
-                  rows="6"
-                  placeholder={isClosed ? "Comments are locked for closed inquiries" : "Add your response or internal notes here..."}
-                  disabled={isClosed}
-                ></textarea>
-                <p className="text-xs text-gray-500 mt-1">
-                  {isClosed 
-                    ? "Comments cannot be modified in closed inquiries" 
-                    : "These comments will be saved with the inquiry"}
-                </p>
-              </div>
-              
               {/* Action Buttons */}
               <div className="flex flex-col gap-3">
-                <button 
-                  onClick={handleUpdate}
-                  className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-white font-medium ${
-                    isClosed 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 shadow-sm'
-                  }`}
-                  disabled={isClosed}
-                >
-                  <MdSave className="text-lg" />
-                  Update Inquiry
-                </button>
                 <button 
                   onClick={handleClose}
                   className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-white font-medium ${

@@ -726,7 +726,11 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
                         {inquiry.message}
                       </td>
                       <td className="px-3 py-2 text-xs text-gray-900 max-w-xs truncate">
-                        {inquiry.comments}
+                        {Array.isArray(inquiry.comments) 
+                          ? inquiry.comments.length > 0 
+                            ? inquiry.comments.map(comment => comment.text).join(', ').substring(0, 100) + (inquiry.comments.map(comment => comment.text).join(', ').length > 100 ? '...' : '')
+                            : "No comments" 
+                          : inquiry.comments || "No comments"}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                         {formatDate(inquiry.updatedAt)}

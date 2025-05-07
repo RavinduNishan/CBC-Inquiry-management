@@ -104,14 +104,30 @@ const InquiryModal = ({ inquiry, isOpen, onClose }) => {
             </div>
           </div>
 
-          {inquiry.comments && (
+          {/* Comments section */}
+          {(Array.isArray(inquiry.comments) && inquiry.comments.length > 0) || 
+          (!Array.isArray(inquiry.comments) && inquiry.comments) ? (
             <div className="mb-6">
               <div className="text-gray-500 text-sm mb-2">Comments</div>
-              <div className="border rounded-lg p-4 bg-yellow-50 border-yellow-200 whitespace-pre-wrap">
-                {inquiry.comments}
-              </div>
+              {Array.isArray(inquiry.comments) ? (
+                <div className="space-y-2">
+                  {inquiry.comments.map((comment, idx) => (
+                    <div key={idx} className="border rounded-lg p-3 bg-yellow-50 border-yellow-200">
+                      <div className="flex justify-between mb-1">
+                        <span className="font-medium text-xs">{comment.userName || 'Unknown'}</span>
+                        <span className="text-xs text-gray-500">{formatDate(comment.createdAt)}</span>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap">{comment.text}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="border rounded-lg p-4 bg-yellow-50 border-yellow-200 whitespace-pre-wrap">
+                  {inquiry.comments}
+                </div>
+              )}
             </div>
-          )}
+          ) : null}
 
           {inquiry.assigned && inquiry.assigned.name && (
             <div className="border-t pt-4">

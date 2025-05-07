@@ -639,7 +639,17 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                                         {formatDate(inquiry.createdAt).split(',')[0]}
                                     </span>
                                     {inquiry.comments && (
-                                        <span className="italic">{inquiry.comments.length > 20 ? `${inquiry.comments.substring(0, 20)}...` : inquiry.comments}</span>
+                                        <span className="italic">
+                                            {Array.isArray(inquiry.comments)
+                                                ? inquiry.comments.length > 0
+                                                    ? inquiry.comments[0].text.length > 20 
+                                                        ? `${inquiry.comments[0].text.substring(0, 20)}...` 
+                                                        : inquiry.comments[0].text
+                                                    : ""
+                                                : inquiry.comments.length > 20 
+                                                    ? `${inquiry.comments.substring(0, 20)}...` 
+                                                    : inquiry.comments}
+                                        </span>
                                     )}
                                 </div>
                             </div>

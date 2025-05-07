@@ -13,7 +13,13 @@ const inquirySchema = mongoose.Schema(
         attachments: [String],
         message: { type: String, required: true },
         status: { type: String, default: "pending" },
-        comments: { type: String },
+        // Replace string comments with an array of comment objects
+        comments: [{
+            text: { type: String, required: true },
+            userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+            userName: { type: String },
+            createdAt: { type: Date, default: Date.now }
+        }],
         priority: { type: String, required: true },
         assigned: { 
             userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

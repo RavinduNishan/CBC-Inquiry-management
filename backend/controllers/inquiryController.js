@@ -143,7 +143,29 @@ export const updateInquiry = async (req, res) => {
         
         // Copy simple fields
         if (req.body.status) updateData.status = req.body.status;
-        if (req.body.comments) updateData.comments = req.body.comments;
+        
+        // Handle new comment addition
+        if (req.body.newComment) {
+            // Find the current inquiry to get existing comments
+            const currentInquiry = await Inquiry.findById(req.params.id);
+            if (!currentInquiry) {
+                return res.status(404).json({ message: "Inquiry not found" });
+            }
+            
+            // Initialize comments array if it doesn't exist
+            const existingComments = Array.isArray(currentInquiry.comments) ? currentInquiry.comments : [];
+            
+            // Add the new comment to the array
+            const newComment = {
+                text: req.body.newComment.text,
+                userId: req.body.newComment.userId,
+                userName: req.body.newComment.userName,
+                createdAt: new Date()
+            };
+            
+            updateData.comments = [...existingComments, newComment];
+            console.log("Adding new comment:", newComment);
+        }
         
         // Handle assigned user data
         if (req.body.assigned) {
