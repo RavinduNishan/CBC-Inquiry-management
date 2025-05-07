@@ -7,7 +7,7 @@ const MONGODB_DATABASE = 'Inquirycollection';
 const REQUIRED_COLLECTIONS = ['inquiries', 'users'];
 
 // Get MongoDB URI from env, or use default with correct database name
-let mongoUri = process.env.MONGODB_URI || `mongodb+srv://nishravindu:nishravindu@${MONGODB_HOST}/?retryWrites=true&w=majority&appName=Inquiry`;
+let mongoUri = process.env.MONGODB_URI ;
 
 // Ensure the connection string includes the database name
 if (!mongoUri.includes(`/${MONGODB_DATABASE}?`)) {

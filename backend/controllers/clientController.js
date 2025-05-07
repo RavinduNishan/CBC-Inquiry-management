@@ -45,6 +45,33 @@ export const getAllClients = async (req, res) => {
     }
 };
 
+// Controller for getting clients formatted for dropdown selection
+export const getClientsForDropdown = async (req, res) => {
+    try {
+        const clients = await Client.find({}, 'name email phone department');
+        
+        // Format clients specifically for dropdown display
+        const formattedClients = clients.map(client => ({
+            _id: client._id,
+            name: client.name,
+            email: client.email,
+            phone: client.phone,
+            department: client.department,
+            // Add a displayName property that combines name and department for easier selection
+            displayName: `${client.name} - ${client.department} (${client.email})`
+        }));
+        
+        return res.status(200).json({
+            success: true,
+            count: formattedClients.length,
+            data: formattedClients
+        });
+    } catch (error) {
+        console.log(error.message);
+        return res.status(500).send({ message: error.message });
+    }
+};
+
 // Controller for getting client by id
 export const getClientById = async (req, res) => {
     try {
