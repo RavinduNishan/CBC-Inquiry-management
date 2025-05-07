@@ -34,6 +34,9 @@ export async function generateInquiryID() {
 // Controller for creating a new inquiry
 export const createInquiry = async (req, res) => {
     try {
+        console.log('Create inquiry request body:', req.body);
+        
+        // Validate required fields
         if (
             !req.body.client ||
             !req.body.category ||
@@ -42,30 +45,51 @@ export const createInquiry = async (req, res) => {
             !req.body.priority ||
             !req.body.createdBy
         ) {
-            return res.status(400).send({ message: "All required fields must be provided." });
+            console.error('Missing required fields in inquiry creation');
+            return res.status(400).send({ 
+                message: "All required fields must be provided.",
+                missingFields: [
+                    !req.body.client ? 'client' : null,
+                    !req.body.category ? 'category' : null,
+                    !req.body.subject ? 'subject' : null, 
+                    !req.body.message ? 'message' : null,
+                    !req.body.priority ? 'priority' : null,
+                    !req.body.createdBy ? 'createdBy' : null
+                ].filter(Boolean)
+            });
         }
 
-        // Validate if client exists
-        const client = await Client.findById(req.body.client);
-        if (!client) {
-            return res.status(404).send({ message: "Selected client not found." });
+        // Validate if client exists and store for later use
+        let clientData;
+        try {
+            clientData = await Client.findById(req.body.client);
+            if (!clientData) {
+                console.error('Client not found with ID:', req.body.client);
+                return res.status(404).send({ message: "Selected client not found." });
+            }
+        } catch (clientErr) {
+            console.error('Error validating client:', clientErr);
+            return res.status(400).send({ message: "Invalid client ID format or client not found." });
         }
 
         // Generate the inquiry ID
         const inquiryID = await generateInquiryID();
+        
+        // Ensure comments is an array
+        const comments = Array.isArray(req.body.comments) ? req.body.comments : [];
 
-        // Create new inquiry
+        // Create new inquiry with properly structured data
         const newInquiry = await Inquiry.create({
-            inquiryID: inquiryID,
+            inquiryID,
             client: req.body.client,
             category: req.body.category,
             subject: req.body.subject,
             attachments: req.body.attachments || [], // Optional field
             message: req.body.message,
             status: req.body.status || "pending", // Default value
-            comments: req.body.comments || "", // Optional field
+            comments: comments, // Ensure this is an array
             priority: req.body.priority,
-            assigned: req.body.assigned || "",
+            assigned: req.body.assigned || { userId: null, name: null }, // Initialize with empty structure
             createdBy: req.body.createdBy
         });
 
@@ -77,11 +101,11 @@ export const createInquiry = async (req, res) => {
             // Create a combined object with inquiry and client data for the email
             const emailData = {
                 ...newInquiry.toObject(),
-                // Add client fields directly for the email service
-                name: client.name,
-                email: client.email,
-                phone: client.phone,
-                company: client.department
+                // Add client fields directly from the validated clientData
+                name: clientData.name,
+                email: clientData.email,
+                phone: clientData.phone,
+                company: clientData.department
             };
             
             await sendInquiryConfirmation(emailData);
@@ -98,8 +122,11 @@ export const createInquiry = async (req, res) => {
             emailSent: emailSent
         });
     } catch (error) {
-        console.log(error.message);
-        return res.status(500).send({ message: error.message });
+        console.error('Error creating inquiry:', error.message, error.stack);
+        return res.status(500).send({ 
+            message: "Server error while creating inquiry",
+            error: error.message
+        });
     }
 };
 

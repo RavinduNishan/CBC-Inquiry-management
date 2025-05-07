@@ -18,8 +18,13 @@ export const AuthProvider = ({ children }) => {
     
     // Clean up SSE connection
     if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+      try {
+        eventSourceRef.current.close();
+      } catch (err) {
+        console.warn('Error closing SSE connection:', err);
+      } finally {
+        eventSourceRef.current = null;
+      }
     }
     
     // Clear auth data
@@ -53,8 +58,13 @@ export const AuthProvider = ({ children }) => {
     // Clean up any existing connection
     if (eventSourceRef.current) {
       console.log('Closing existing SSE connection before creating new one');
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+      try {
+        eventSourceRef.current.close();
+      } catch (err) {
+        console.warn('Error closing existing SSE connection:', err);
+      } finally {
+        eventSourceRef.current = null;
+      }
     }
     
     try {
@@ -135,17 +145,24 @@ export const AuthProvider = ({ children }) => {
   
   // Set up notifications whenever auth state changes
   useEffect(() => {
-    setupNotifications();
+    if (isAuthenticated && user && user._id) {
+      setupNotifications();
+    }
     
     // Cleanup on unmount
     return () => {
       if (eventSourceRef.current) {
         console.log('Closing SSE connection on unmount');
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+        try {
+          eventSourceRef.current.close();
+        } catch (err) {
+          console.warn('Error closing SSE connection on unmount:', err);
+        } finally {
+          eventSourceRef.current = null;
+        }
       }
     };
-  }, [setupNotifications]);
+  }, [setupNotifications, isAuthenticated, user]);
   
   // Setup a helper function to manually check for profile changes
   const startSSEConnection = useCallback(() => {
@@ -249,8 +266,14 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Invalid response from server - missing token');
       }
       
+      // Ensure permissions are properly formatted
+      const userData = {
+        ...res.data,
+        permissions: res.data.permissions || [] // Ensure permissions is an array
+      };
+      
       // Store user data and token in localStorage
-      localStorage.setItem('user', JSON.stringify(res.data));
+      localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', res.data.token);
       localStorage.removeItem('loggedOut');
       
@@ -264,11 +287,11 @@ export const AuthProvider = ({ children }) => {
       // Set first login flag to trigger initial data load
       setIsFirstLogin(true);
       
-      // Set user context
-      setUser(res.data);
+      // Set user context with ensured permissions
+      setUser(userData);
       setIsAuthenticated(true);
       
-      console.log('User logged in, permissions:', res.data.permissions);
+      console.log('User logged in, permissions:', userData.permissions);
       
       setLoading(false);
       return { success: true };
@@ -312,6 +335,27 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, logout]);
   
+  // Check if user has a specific permission - with better error handling
+  const hasPermission = useCallback((permissionName) => {
+    // Basic checks
+    if (!user) return false;
+    if (user.accessLevel === 'Administrator') return true; // Admins have all permissions
+    
+    // Handle missing permissions gracefully
+    if (!user.permissions) {
+      console.warn('User has no permissions array:', user);
+      return false;
+    }
+    
+    // Validate permissions is an array
+    if (!Array.isArray(user.permissions)) {
+      console.error('User permissions is not an array:', user.permissions);
+      return false;
+    }
+    
+    return user.permissions.includes(permissionName);
+  }, [user]);
+  
   return (
     <AuthContext.Provider value={{
       user,
@@ -326,7 +370,8 @@ export const AuthProvider = ({ children }) => {
       logout,
       checkSecurityChanges,
       startSSEConnection,
-      setupNotifications
+      setupNotifications,
+      hasPermission // Add the hasPermission utility function to the context
     }}>
       {children}
     </AuthContext.Provider>

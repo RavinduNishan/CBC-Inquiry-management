@@ -21,7 +21,8 @@ const CreateInquiry = ({ onSuccess }) => {
     subject: '',
     message: '',
     priority: 'Medium',
-    createdBy: user?.name || 'System'
+    createdBy: user?.name || 'System',
+    comments: [] // Initialize comments as an array to match the updated schema
   });
 
   // Fetch clients on component mount
@@ -58,9 +59,19 @@ const CreateInquiry = ({ onSuccess }) => {
     e.preventDefault();
     setLoading(true);
     
+    // Create a new inquiry object with proper structure
+    const inquiryData = {
+      ...inquiry,
+      // Make sure comments is an empty array, not an empty string
+      comments: Array.isArray(inquiry.comments) ? inquiry.comments : []
+    };
+    
+    console.log('Submitting inquiry data:', inquiryData);
+    
     axios
-      .post('http://localhost:5555/inquiry', inquiry)
-      .then(() => {
+      .post('http://localhost:5555/inquiry', inquiryData)
+      .then((response) => {
+        console.log('Inquiry created successfully:', response.data);
         setLoading(false);
         // If onSuccess callback exists, call it to navigate within dashboard
         if (onSuccess && typeof onSuccess === 'function') {
@@ -72,8 +83,13 @@ const CreateInquiry = ({ onSuccess }) => {
       })
       .catch((error) => {
         setLoading(false);
-        console.log(error);
-        alert('An error occurred while creating the inquiry');
+        console.log('Error creating inquiry:', error);
+        // Show more detailed error message if available
+        if (error.response && error.response.data && error.response.data.message) {
+          alert(`Error creating inquiry: ${error.response.data.message}`);
+        } else {
+          alert('An error occurred while creating the inquiry');
+        }
       });
   };
 
