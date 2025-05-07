@@ -171,11 +171,11 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
     
     // Apply filters
     const result = inquiries.filter(inquiry => {
-      // Text search (name, email, company, subject, message)
+      // Text search (client info, subject, message)
       const matchesSearchTerm = !inputSearchTerm || 
-        inquiry.name?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
-        inquiry.email?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
-        inquiry.company?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
+        inquiry.client?.name?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
+        inquiry.client?.email?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
+        inquiry.client?.department?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
         inquiry.subject?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
         inquiry.message?.toLowerCase().includes(inputSearchTerm.toLowerCase());
       
@@ -314,7 +314,7 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
   const generateCSV = () => {
     // Define the headers
     const headers = [
-      'Inquiry ID', 'Name', 'Email', 'Phone', 'Company', 'Subject', 
+      'Inquiry ID', 'Client Name', 'Client Email', 'Client Phone', 'Client Department', 'Subject', 
       'Category', 'Priority', 'Status', 'Message', 'Comments', 
       'Assigned To', 'Created By', 'Created At', 'Updated At'
     ];
@@ -331,13 +331,19 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
       // Format assigned user
       const assignedTo = inquiry.assigned && inquiry.assigned.name ? inquiry.assigned.name : 'Unassigned';
       
+      // Get client information safely
+      const clientName = inquiry.client?.name || 'N/A';
+      const clientEmail = inquiry.client?.email || 'N/A';
+      const clientPhone = inquiry.client?.phone || 'N/A';
+      const clientDepartment = inquiry.client?.department || 'N/A';
+      
       // Create CSV row and escape values that might contain commas
       const row = [
         `"${inquiry.inquiryID || ''}"`,
-        `"${inquiry.name || ''}"`,
-        `"${inquiry.email || ''}"`,
-        `"${inquiry.phone || ''}"`,
-        `"${inquiry.company || ''}"`,
+        `"${clientName}"`,
+        `"${clientEmail}"`,
+        `"${clientPhone}"`,
+        `"${clientDepartment}"`,
         `"${inquiry.subject || ''}"`,
         `"${inquiry.category || ''}"`,
         `"${inquiry.priority || ''}"`,
@@ -621,9 +627,9 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
               <thead className="bg-gray-50 sticky top-0 z-20">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Inquiry ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Client</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Contact</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Company</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Subject</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">category</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Priority</th>
@@ -662,6 +668,12 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
                     }
                   }
                   
+                  // Safely access client data with optional chaining
+                  const clientName = inquiry.client?.name || 'Unknown';
+                  const clientEmail = inquiry.client?.email || 'No email';
+                  const clientPhone = inquiry.client?.phone || 'No phone';
+                  const clientDepartment = inquiry.client?.department || 'No department';
+                  
                   return (
                     <tr key={inquiry._id} className={`transition-colors ${rowStyle}`}>
                       <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -670,20 +682,20 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
                       <td className="px-3 py-2 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-medium">{inquiry.name.charAt(0).toUpperCase()}</span>
+                            <span className="text-blue-600 font-medium">{clientName.charAt(0).toUpperCase()}</span>
                           </div>
                           <div className="ml-3">
-                            {/* Company name made more prominent than person name */}
-                            <div className="text-sm font-bold text-sky-700">{inquiry.company}</div>
-                            <div className="text-xs text-gray-500">{inquiry.name}</div>
+                            {/* Client name made more prominent */}
+                            <div className="text-sm font-bold text-sky-700">{clientName}</div>
+                            <div className="text-xs text-gray-500">{clientDepartment}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                        {inquiry.phone}
+                        {clientPhone}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 max-w-xs truncate">
-                        <div className="text-xs">{inquiry.email}</div>
+                        <div className="text-xs">{clientEmail}</div>
                       </td>
                       <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate">
                         {inquiry.subject}

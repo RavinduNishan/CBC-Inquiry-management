@@ -119,11 +119,11 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
         
         // Apply filters
         const result = inquiries.filter(inquiry => {
-            // Text search (name, email, company, subject, message)
+            // Text search (client info, subject, message)
             const matchesSearchTerm = !inputSearchTerm || 
-                inquiry.name?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
-                inquiry.email?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
-                inquiry.company?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
+                inquiry.client?.name?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
+                inquiry.client?.email?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
+                inquiry.client?.department?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
                 inquiry.subject?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
                 inquiry.message?.toLowerCase().includes(inputSearchTerm.toLowerCase());
             
@@ -293,6 +293,12 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
             doc.text(`${index + 1}. ${inquiry.subject || 'No Subject'}`, 14, yPos);
             yPos += 8;
             
+            // Get client information safely
+            const clientName = inquiry.client?.name || 'N/A';
+            const clientEmail = inquiry.client?.email || 'N/A';
+            const clientPhone = inquiry.client?.phone || 'N/A';
+            const clientDepartment = inquiry.client?.department || 'N/A';
+            
             // Inquiry details
             doc.setFontSize(10);
             doc.setTextColor(80, 80, 80);
@@ -302,13 +308,13 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
             doc.text(`Priority: ${inquiry.priority}`, 140, yPos);
             yPos += 6;
             
-            doc.text(`From: ${inquiry.name}`, 14, yPos);
-            doc.text(`Company: ${inquiry.company}`, 80, yPos);
+            doc.text(`Client: ${clientName}`, 14, yPos);
+            doc.text(`Department: ${clientDepartment}`, 80, yPos);
             doc.text(`Category: ${inquiry.category}`, 140, yPos);
             yPos += 6;
             
-            doc.text(`Email: ${inquiry.email}`, 14, yPos);
-            doc.text(`Phone: ${inquiry.phone}`, 80, yPos);
+            doc.text(`Email: ${clientEmail}`, 14, yPos);
+            doc.text(`Phone: ${clientPhone}`, 80, yPos);
             yPos += 6;
             
             const assignedName = inquiry.assigned?.name || 'Unassigned';
@@ -550,16 +556,22 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                         }
                     }
                     
+                    // Safely access client data with optional chaining
+                    const clientName = inquiry.client?.name || 'Unknown';
+                    const clientEmail = inquiry.client?.email || 'No email';
+                    const clientPhone = inquiry.client?.phone || 'No phone';
+                    const clientDepartment = inquiry.client?.department || 'No department';
+                    
                     return (
                         <div key={inquiry._id} className={`bg-white rounded-lg border-2 ${cardBorderStyle} overflow-hidden shadow-sm hover:shadow-md transition-all duration-300`}>
                             {/* Card Header */}
                             <div className="bg-gradient-to-r from-sky-50 to-gray-50 px-3 py-2 border-b border-gray-200">
                                 <div className="flex justify-between items-start">
                                     <div className="w-3/4">
-                                        {/* Company name more prominently displayed */}
+                                        {/* Client name more prominently displayed */}
                                         <h3 className="text-base font-bold text-sky-700 flex items-center mb-1">
                                             <FiBriefcase className="mr-1 text-sky-500 flex-shrink-0" />
-                                            {inquiry.company}
+                                            {clientName}
                                         </h3>
                                         {/* Inquiry ID and contact smaller */}
                                         <div className="text-xs font-medium text-gray-500 mb-1 flex items-center">
@@ -568,7 +580,7 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                                         </div>
                                         <div className="text-xs text-gray-600">
                                             <FiUser className="inline mr-1" />
-                                            {inquiry.name}
+                                            {clientDepartment}
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end space-y-1">
@@ -594,11 +606,11 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                                 <div className="flex justify-between mb-2 text-xs">
                                     <div className="flex items-center">
                                         <FiMail className="mr-1 text-gray-400" />
-                                        <span className="truncate max-w-[140px]">{inquiry.email}</span>
+                                        <span className="truncate max-w-[140px]">{clientEmail}</span>
                                     </div>
                                     <div className="flex items-center">
                                         <FiPhone className="mr-1 text-gray-400" />
-                                        <span>{inquiry.phone}</span>
+                                        <span>{clientPhone}</span>
                                     </div>
                                 </div>
                                 

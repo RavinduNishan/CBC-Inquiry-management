@@ -3,10 +3,11 @@ import mongoose from "mongoose";
 const inquirySchema = mongoose.Schema(
     {
         inquiryID: { type: String, required: true, unique: true },
-        name: { type: String, required: true },
-        email: { type: String, required: true },
-        phone: { type: String, required: true },
-        company: { type: String, required: true },
+        client: { 
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: 'Client', 
+            required: true 
+        },
         category: { type: String, required: true },
         subject: { type: String, required: true },
         attachments: [String],

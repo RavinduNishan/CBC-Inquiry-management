@@ -7,6 +7,7 @@ import {
   updateInquiry,
   deleteInquiry
 } from "../controllers/inquiryController.js";
+import { testEmailConfiguration } from "../utils/emailService.js";
 
 const router = express.Router();  
 
@@ -27,5 +28,19 @@ router.put("/:id", updateInquiry);
 
 // Delete an inquiry
 router.delete("/:id", deleteInquiry);
+
+// Test email configuration
+router.get("/test/email-config", async (req, res) => {
+  try {
+    const result = await testEmailConfiguration();
+    res.status(result.status === 'success' ? 200 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to test email configuration',
+      error: error.message
+    });
+  }
+});
 
 export default router;

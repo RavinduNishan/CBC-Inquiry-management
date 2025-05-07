@@ -1,4 +1,5 @@
 import Inquiry from "../models/inquirymodel.js";
+import Client from "../models/clientmodel.js";
 import mongoose from "mongoose";
 import { sendInquiryConfirmation, sendInquiryClosure } from "../utils/emailService.js";
 
@@ -34,10 +35,7 @@ export async function generateInquiryID() {
 export const createInquiry = async (req, res) => {
     try {
         if (
-            !req.body.name ||
-            !req.body.email ||
-            !req.body.phone ||
-            !req.body.company ||
+            !req.body.client ||
             !req.body.category ||
             !req.body.subject ||
             !req.body.message ||
@@ -47,16 +45,19 @@ export const createInquiry = async (req, res) => {
             return res.status(400).send({ message: "All required fields must be provided." });
         }
 
+        // Validate if client exists
+        const client = await Client.findById(req.body.client);
+        if (!client) {
+            return res.status(404).send({ message: "Selected client not found." });
+        }
+
         // Generate the inquiry ID
         const inquiryID = await generateInquiryID();
 
         // Create new inquiry
         const newInquiry = await Inquiry.create({
             inquiryID: inquiryID,
-            name: req.body.name,
-            email: req.body.email,
-            phone: req.body.phone,
-            company: req.body.company,
+            client: req.body.client,
             category: req.body.category,
             subject: req.body.subject,
             attachments: req.body.attachments || [], // Optional field
@@ -72,7 +73,18 @@ export const createInquiry = async (req, res) => {
         let emailSent = false;
         try {
             console.log('Attempting to send email notification...');
-            await sendInquiryConfirmation(newInquiry);
+            
+            // Create a combined object with inquiry and client data for the email
+            const emailData = {
+                ...newInquiry.toObject(),
+                // Add client fields directly for the email service
+                name: client.name,
+                email: client.email,
+                phone: client.phone,
+                company: client.department
+            };
+            
+            await sendInquiryConfirmation(emailData);
             console.log('Inquiry confirmation email sent successfully');
             emailSent = true;
         } catch (emailError) {
@@ -82,6 +94,7 @@ export const createInquiry = async (req, res) => {
 
         return res.status(201).json({
             message: `Inquiry created successfully with ID: ${newInquiry.inquiryID}`,
+            inquiry: newInquiry,
             emailSent: emailSent
         });
     } catch (error) {
@@ -93,7 +106,7 @@ export const createInquiry = async (req, res) => {
 // Controller for getting all inquiries
 export const getAllInquiries = async (req, res) => {
     try {
-        const inquiries = await Inquiry.find({});
+        const inquiries = await Inquiry.find({}).populate('client');
         return res.status(200).json({
           success: true,
           count: inquiries.length,
@@ -108,7 +121,7 @@ export const getAllInquiries = async (req, res) => {
 // Controller for getting inquiry by id
 export const getInquiryById = async (req, res) => {
     try {
-        const inquiry = await Inquiry.findById(req.params.id);
+        const inquiry = await Inquiry.findById(req.params.id).populate('client');
 
         if (!inquiry) return res.status(404).json({ message: "Inquiry not found" });
 
@@ -176,9 +189,17 @@ export const updateInquiry = async (req, res) => {
         if (updateData.status === 'closed' && req.body.sendClosureEmail) {
             try {
                 console.log('Sending closure email notification...');
-                await sendInquiryClosure(inquiry);
-                emailSent = true;
-                console.log('Inquiry closure email sent successfully');
+                
+                // First, find the updated inquiry and populate client information
+                const updatedInquiry = await Inquiry.findById(req.params.id).populate('client');
+                
+                if (!updatedInquiry.client) {
+                    console.error('Cannot send closure email: Client information not found');
+                } else {
+                    await sendInquiryClosure(updatedInquiry);
+                    emailSent = true;
+                    console.log('Inquiry closure email sent successfully');
+                }
             } catch (emailError) {
                 console.error('Failed to send closure email:', emailError);
                 // Continue with the response even if email fails
