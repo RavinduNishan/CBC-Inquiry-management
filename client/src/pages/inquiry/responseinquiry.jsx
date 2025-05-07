@@ -3,10 +3,10 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import Spinner from '../user/Spinner';
 import { useSnackbar } from 'notistack';
-import { MdPerson, MdEmail, MdPhone, MdBusiness, MdLabel, MdAccessTime, MdMessage, MdOutlineAttachment, MdSave, MdClose, MdFlag, MdSend } from 'react-icons/md';
+import { MdPerson, MdEmail, MdPhone, MdBusiness, MdLabel, MdAccessTime, MdMessage, MdOutlineAttachment, MdSave, MdClose, MdFlag, MdSend, MdArrowBack } from 'react-icons/md';
 import AuthContext from '../../context/AuthContext';
 
-const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
+const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false, onBack }) => {
   const { user } = useContext(AuthContext);
   const [inquiry, setInquiry] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -156,8 +156,26 @@ const ResponseInquiry = ({ inquiryId: propId, dashboardMode = false }) => {
   const hasComments = Array.isArray(inquiry.comments) && inquiry.comments.length > 0;
 
   return (
-    <div className="p-6">
-      {!dashboardMode && (
+    <div className={dashboardMode ? "p-0" : "p-6"}>
+      {dashboardMode ? (
+        <div className='flex justify-between items-center p-6 border-b border-gray-200 bg-white'>
+          <div className="flex items-center">
+            <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 mr-4">
+              <MdMessage className="text-xl" />
+            </div>
+            <div>
+              <h1 className='text-2xl font-bold text-gray-800'>Respond to Inquiry</h1>
+              <p className="text-sm text-gray-500">Review and respond to customer inquiries</p>
+            </div>
+          </div>
+          <button
+            onClick={() => onBack()}
+            className='bg-white hover:bg-gray-50 text-gray-700 rounded-lg px-4 py-2 flex items-center text-sm font-medium transition-all duration-200 shadow-sm border border-gray-200'
+          >
+            <MdArrowBack className="mr-2" /> Back to Inquiry List
+          </button>
+        </div>
+      ) : (
         <div className="flex items-center mb-6">
           <div className="h-12 w-12 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 mr-4">
             <MdMessage className="text-2xl" />

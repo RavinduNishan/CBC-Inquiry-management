@@ -2,8 +2,8 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import Spinner from '../../user/Spinner';
-import AuthContext from '../../../context/AuthContext';
+import Spinner from '../user/Spinner';
+import AuthContext from '../../context/AuthContext';
 import { MdPerson, MdEmail, MdPhone, MdBusiness, MdFlag, MdDescription, MdLabel, MdSend, MdClose, MdPersonAdd } from 'react-icons/md';
 
 const CreateInquiry = ({ onSuccess }) => {

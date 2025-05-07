@@ -7,20 +7,21 @@ import { BsInfoCircle, BsTable, BsGrid3X3Gap, BsDownload, BsChevronLeft, BsChevr
 import { MdOutlineAddBox, MdOutlineDelete, MdDashboard } from 'react-icons/md';
 import { FaUserFriends, FaClipboardList, FaChartBar, FaCog, FaSignOutAlt, FaBars, FaBuilding, FaIdCard } from 'react-icons/fa';
 // Fix import paths for the inquiry components that were moved
-import InquiryTable from '../../../pages/inquiry/Inquiry/inquirytable';
-import InquiryCard from '../../../pages/inquiry/Inquiry/inquirycard';
+import InquiryTable from '../../../pages/inquiry/inquirytable';
+import InquiryCard from '../../../pages/inquiry/inquirycard';
 import UserTable from '../../../pages/user/usertable';
 import ClientTable from '../../../pages/client/clienttable';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import AuthContext from '../../../context/AuthContext';
 import loginImg from '../../../assets/loginImg.png';
-import CreateInquiry from '../../../pages/inquiry/Inquiry/CreateInquiry';
-import DashboardResponseInquiry from '../../../pages/inquiry/Inquiry/DashboardResponseInquiry';
+import CreateInquiry from '../../../pages/inquiry/CreateInquiry';
 import CreateUser from '../../../pages/user/createuser';
 import CreateClient from '../../../pages/client/createclient';
 import UserDetail from '../../../pages/user/UserDetail';
 import UserProfile from '../../../pages/user/UserProfile';
+// Fix import by replacing DashboardResponseInquiry with ResponseInquiry
+import ResponseInquiry from '../../../pages/inquiry/responseinquiry';
 
 const Master = () => {
   const { user, logout, isAdmin, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications } = useContext(AuthContext);
@@ -813,8 +814,9 @@ const Master = () => {
         )}
         
         {activeMenu === 'responseInquiry' && (
-          <DashboardResponseInquiry 
+          <ResponseInquiry 
             inquiryId={currentInquiryId} 
+            dashboardMode={true} 
             onBack={() => setActiveMenu('inquiries')}
           />
         )}
