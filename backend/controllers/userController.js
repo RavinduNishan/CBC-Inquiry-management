@@ -150,8 +150,7 @@ export const login = async (req, res) => {
       name: userFound.name,
       email: userFound.email,
       phone: userFound.phone,
-      accessLevel: userFound.accessLevel,
-      permissions: userFound.permissions || [],
+      department: userFound.department,
       status: userFound.status,
       profileVersion: userFound.profileVersion || 1,
       token: token
@@ -276,8 +275,7 @@ export const createUser = async (req, res) => {
         !req.body.name ||
         !req.body.email ||
         !req.body.phone ||
-        !req.body.accessLevel ||
-        !req.body.permissions ||
+        !req.body.department ||
         !req.body.password
     ) {
         return res.status(400).send({ message: "All required fields must be provided." });
@@ -292,8 +290,7 @@ export const createUser = async (req, res) => {
         name: req.body.name,
         email: req.body.email,
         phone: req.body.phone,
-        accessLevel: req.body.accessLevel || "",
-        permissions: req.body.permissions || [],
+        department: req.body.department,
         status: req.body.status || "active",
         password: hashedPassword
     });
@@ -352,10 +349,8 @@ export const updateUser = async (req, res) => {
     const criticalFieldsChanged = {
       email: req.body.email && req.body.email !== existingUser.email,
       name: req.body.name && req.body.name !== existingUser.name,
-      accessLevel: req.body.accessLevel && req.body.accessLevel !== existingUser.accessLevel,
-      status: req.body.status && req.body.status !== existingUser.status,
-      // Check if permissions have changed
-      permissions: req.body.permissions && JSON.stringify(req.body.permissions) !== JSON.stringify(existingUser.permissions)
+      department: req.body.department && req.body.department !== existingUser.department,
+      status: req.body.status && req.body.status !== existingUser.status
     };
     
     // If any critical fields changed, increment profileVersion

@@ -11,6 +11,7 @@ class EventSourceWithAuth {
     this.reconnectInterval = options.reconnectInterval || 3000;
     this.listeners = new Map();
     this.readyState = 0; // 0 = CONNECTING, 1 = OPEN, 2 = CLOSED
+    this.intentionalClose = false; // Flag to track intentional closes
     
     // Create initial connection
     this.connect();
@@ -18,6 +19,7 @@ class EventSourceWithAuth {
   
   connect() {
     this.readyState = 0; // CONNECTING
+    this.intentionalClose = false; // Reset the intentional close flag
     
     // Set up headers with auth token
     const token = localStorage.getItem('token');
@@ -54,13 +56,17 @@ class EventSourceWithAuth {
         });
         
         const reader = response.body.getReader();
+        this._reader = reader; // Store reader reference for cleanup
         let buffer = '';
         
         // Process the stream
         const processStream = ({ done, value }) => {
-          if (done) {
-            console.log('EventSource stream closed by server');
-            this._attemptReconnect();
+          // If we're done or the connection was closed intentionally, exit gracefully
+          if (done || this.intentionalClose) {
+            console.log('EventSource stream closed ' + (this.intentionalClose ? 'intentionally' : 'by server'));
+            if (!this.intentionalClose) {
+              this._attemptReconnect();
+            }
             return;
           }
           
@@ -101,14 +107,26 @@ class EventSourceWithAuth {
           });
           
           // Continue reading
-          reader.read().then(processStream).catch(err => {
-            console.error('Error reading SSE stream:', err);
-            this._attemptReconnect();
-          });
+          if (!this.intentionalClose) {
+            reader.read().then(processStream).catch(err => {
+              // Ignore abort errors if closing was intentional
+              if (err.name === 'AbortError' && this.intentionalClose) {
+                console.log('Stream reading aborted intentionally');
+                return;
+              }
+              console.error('Error reading SSE stream:', err);
+              this._attemptReconnect();
+            });
+          }
         };
         
         // Start reading
         reader.read().then(processStream).catch(err => {
+          // Ignore abort errors if closing was intentional
+          if (err.name === 'AbortError' && this.intentionalClose) {
+            console.log('Initial stream reading aborted intentionally');
+            return;
+          }
           console.error('Initial SSE stream read error:', err);
           this._attemptReconnect();
         });
@@ -117,20 +135,38 @@ class EventSourceWithAuth {
         this.reconnectAttempts = 0;
       })
       .catch(error => {
+        // Ignore abort errors as they are expected when closing
+        if (error.name === 'AbortError' && this.intentionalClose) {
+          console.log('EventSource connection aborted intentionally');
+          return;
+        }
+        
         console.error('EventSource fetch error:', error);
         this._dispatchEvent({
           type: 'error',
           error
         });
-        this._attemptReconnect();
+        
+        if (!this.intentionalClose) {
+          this._attemptReconnect();
+        }
       });
     } catch (error) {
+      // Ignore abort errors here as well
+      if (error.name === 'AbortError' && this.intentionalClose) {
+        console.log('EventSource connection aborted intentionally');
+        return;
+      }
+      
       console.error('EventSource connection error:', error);
       this._dispatchEvent({
         type: 'error',
         error
       });
-      this._attemptReconnect();
+      
+      if (!this.intentionalClose) {
+        this._attemptReconnect();
+      }
     }
   }
   
@@ -159,8 +195,8 @@ class EventSourceWithAuth {
   }
   
   _attemptReconnect() {
-    if (this.readyState === 2) {
-      // Don't reconnect if we're explicitly closed
+    if (this.readyState === 2 || this.intentionalClose) {
+      // Don't reconnect if we're explicitly closed or closing intentionally
       return;
     }
     
@@ -196,11 +232,34 @@ class EventSourceWithAuth {
   }
   
   close() {
+    // Set flags first to prevent reconnection attempts
     this.readyState = 2; // CLOSED
-    if (this._controller) {
-      this._controller.abort();
-      this._controller = null;
+    this.intentionalClose = true;
+    
+    // Clean up reader if it exists
+    if (this._reader) {
+      try {
+        // Release the reader - this is important to avoid memory leaks
+        this._reader.cancel("Connection closed by client").catch(err => {
+          console.log("Error canceling reader:", err);
+        });
+        this._reader = null;
+      } catch (e) {
+        console.log('Error when canceling reader:', e);
+      }
     }
+    
+    // Abort the fetch controller
+    if (this._controller) {
+      try {
+        this._controller.abort();
+      } catch (e) {
+        console.log('Error when aborting connection:', e);
+      } finally {
+        this._controller = null;
+      }
+    }
+    
     console.log('EventSource connection closed by client');
   }
 }
