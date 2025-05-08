@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { MdArrowBack, MdPerson, MdAccessTime, MdLock, MdEmail, MdPhone, MdBusiness } from 'react-icons/md';
+import { MdArrowBack, MdPerson, MdAccessTime, MdLock, MdEmail, MdPhone, MdBusiness, MdSecurity } from 'react-icons/md';
 import AuthContext from '../../context/AuthContext';
 
 const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
@@ -189,6 +189,16 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
     }
   }, [user]);
 
+  // Function to get access level display name
+  const getAccessLevelName = (level) => {
+    switch (level) {
+      case 'admin': return 'Administrator';
+      case 'manager': return 'Department Manager';
+      case 'staff': return 'Staff Member';
+      default: return 'Staff Member';
+    }
+  };
+
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6 m-0">
       <div className='flex justify-between items-center mb-6'>
@@ -234,6 +244,10 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
             }`}>
               {user.status === 'active' ? '● Active' : '● Inactive'}
             </span>
+            {/* Add access level badge */}
+            <span className="px-3 py-1 rounded-full text-sm font-medium shadow-sm bg-blue-100 text-blue-800 border border-blue-200">
+              {getAccessLevelName(user.accessLevel)}
+            </span>
           </div>
         </div>
       </div>
@@ -262,6 +276,10 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
             <div className="border-l-2 border-sky-200 pl-3">
               <p className="text-xs text-gray-500">Department</p>
               <p className="text-sm font-medium">{user.department || 'Not assigned'}</p>
+            </div>
+            <div className="border-l-2 border-sky-200 pl-3">
+              <p className="text-xs text-gray-500">Access Level</p>
+              <p className="text-sm font-medium">{getAccessLevelName(user.accessLevel)}</p>
             </div>
           </div>
         </div>

@@ -8,6 +8,11 @@ const userschema = mongoose.Schema(
         department: { type: String, required: true },
         status: {type: String},
         password: { type:String },
+        accessLevel: { 
+            type: String, 
+            enum: ['admin', 'manager', 'staff'],
+            default: 'staff'
+        },
         profileVersion: { type: Number, default: 1 },
         lastSecurityUpdate: { type: Date }
     },

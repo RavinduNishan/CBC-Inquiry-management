@@ -1,8 +1,9 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { MdArrowBack, MdPerson, MdEmail, MdPhone, MdSecurity, MdVerifiedUser, MdSave, MdBusiness } from 'react-icons/md';
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
 import AuthContext from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const EditUserForm = ({ user, onBack, onUserUpdated }) => {
   const [loading, setLoading] = useState(false);
@@ -12,10 +13,26 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
     phone: user.phone,
     department: user.department || '',
     status: user.status || 'active',
+    accessLevel: user.accessLevel || 'staff', // Add accessLevel to state
   });
   const [error, setError] = useState('');
   const { enqueueSnackbar } = useSnackbar();
-  const { user: currentUser, logout } = useContext(AuthContext);
+  const { user: currentUser, logout, isAdmin } = useContext(AuthContext);
+  const navigate = useNavigate(); // Add this
+  
+  // Add security check to redirect non-admins
+  useEffect(() => {
+    if (!isAdmin) {
+      console.log('Non-admin attempted to access user edit form');
+      enqueueSnackbar('You do not have permission to edit users', { 
+        variant: 'error' 
+      });
+      // Go back to user list
+      if (onBack) onBack();
+      // As backup, navigate to dashboard
+      navigate('/dashboard');
+    }
+  }, [isAdmin, navigate, enqueueSnackbar, onBack]);
   
   // Check if the user being edited is the current logged-in user
   const isEditingSelf = currentUser && user._id === currentUser._id;
@@ -25,6 +42,13 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
     'CBC',
     'CBI',
     'M~Line'
+  ];
+  
+  // Access level options
+  const accessLevels = [
+    { value: 'admin', label: 'Admin', description: 'Full system access and management' },
+    { value: 'manager', label: 'Department Manager', description: 'Manage department and staff' },
+    { value: 'staff', label: 'Staff Member', description: 'Regular staff access' }
   ];
 
   const handleInputChange = (e) => {
@@ -72,7 +96,8 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
         email: normalizedEmail, // Use the normalized email
         phone: editUserData.phone,
         department: editUserData.department,
-        status: editUserData.status
+        status: editUserData.status,
+        accessLevel: editUserData.accessLevel // Include access level in update
       });
       
       setLoading(false);
@@ -235,7 +260,7 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
             </h3>
 
             {/* Status toggle switch with improved styling */}
-            <div className="mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
               <div className="flex items-center">
                 <label htmlFor="status-toggle" className="flex items-center text-sm font-medium text-gray-700 mr-4">
                   <MdVerifiedUser className="text-gray-500 mr-1.5" />
@@ -272,11 +297,30 @@ const EditUserForm = ({ user, onBack, onUserUpdated }) => {
                   {editUserData.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-gray-500 ml-6">
-                {editUserData.status === 'active'
-                  ? 'User can currently login and access the system'
-                  : 'User is prevented from logging in to the system'}
-              </p>
+              
+              {/* Access Level Selection - NEW */}
+              <div>
+                <label htmlFor="accessLevel" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <MdSecurity className="text-gray-500 mr-1.5" />
+                  Access Level
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="accessLevel"
+                    name="accessLevel"
+                    value={editUserData.accessLevel}
+                    onChange={handleInputChange}
+                    className="shadow-sm focus:ring-sky-500 focus:border-sky-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2 px-3 border"
+                  >
+                    {accessLevels.map(level => (
+                      <option key={level.value} value={level.value}>{level.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {accessLevels.find(level => level.value === editUserData.accessLevel)?.description}
+                </p>
+              </div>
             </div>
           </div>
 

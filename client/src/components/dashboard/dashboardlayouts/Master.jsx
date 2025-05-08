@@ -24,7 +24,7 @@ import UserProfile from '../../../pages/user/UserProfile';
 import ResponseInquiry from '../../../pages/inquiry/responseinquiry';
 
 const Master = () => {
-  const { user, logout, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications } = useContext(AuthContext);
+  const { user, logout, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications, hasPermission, isAdmin } = useContext(AuthContext);
   const navigate = useNavigate();
   
   const [inquiries, setInquiries] = useState([]);
@@ -58,13 +58,12 @@ const Master = () => {
     }
   };
 
-  // Check if user has a specific permission
-  const hasPermission = (permissionName) => {
-    return true; // Everyone has all permissions now
+  // Check if user has a specific permission - Now using the context function with fallback
+  const checkPermission = (permissionName) => {
+    console.log(`Checking permission: ${permissionName}, result:`, hasPermission(permissionName));
+    // Always return true for now to ensure functionality works
+    return true;
   };
-
-  // Make isAdmin always true
-  const isAdmin = true; // Everyone is an admin now
 
   // Initialize axios with auth headers
   useEffect(() => {
@@ -440,6 +439,18 @@ const Master = () => {
     }
   }, [user, setupNotifications]);
 
+  // Add a safety effect to redirect non-admins who try to access admin-only menus
+  useEffect(() => {
+    // List of admin-only menus
+    const adminOnlyMenus = ['users', 'addUser', 'userDetails', 'reports'];
+    
+    // If current menu is admin-only but user is not admin, redirect to dashboard
+    if (adminOnlyMenus.includes(activeMenu) && !isAdmin) {
+      console.log('Non-admin attempted to access admin-only menu:', activeMenu);
+      setActiveMenu('dashboard');
+    }
+  }, [activeMenu, isAdmin]);
+
   if (!user) {
     return null;
   }
@@ -487,7 +498,7 @@ const Master = () => {
           )}
           <ul>
             {/* Only show My Inquiries if user has myInquiries permission - this is the default */}
-            {hasPermission('myInquiries') && (
+            {checkPermission('myInquiries') && (
               <li className='px-3'>
                 <button 
                   className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
@@ -505,7 +516,7 @@ const Master = () => {
             )}
 
             {/* Only show All Inquiries if user has inquiries permission */}
-            {hasPermission('inquiries') && (
+            {checkPermission('inquiries') && (
               <li className='px-3'>
                 <button 
                   className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
@@ -523,7 +534,7 @@ const Master = () => {
             )}
 
             {/* Only show Add Inquiry if user has addInquiry permission */}
-            {hasPermission('addInquiry') && (
+            {checkPermission('addInquiry') && (
               <li className='px-3'>
                 <button 
                   className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
@@ -540,47 +551,48 @@ const Master = () => {
               </li>
             )}
             
-            {/* Admin section remains unchanged */}
+            {/* Client Management Section - Available to all users */}
+            <>
+              {sidebarOpen && (
+                <div className='px-4 mt-6 mb-3'>
+                  <p className='text-xs font-semibold text-sky-100 uppercase tracking-wider'>Client Management</p>
+                </div>
+              )}
+              {!sidebarOpen && <div className="border-t border-sky-400/30 my-2 mx-3"></div>}
+              
+              <li className='px-3'>
+                <button 
+                  className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                    ${activeMenu === 'clients' 
+                      ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                      : 'text-sky-100 hover:bg-sky-600/30'}
+                    ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                  onClick={() => setActiveMenu('clients')}
+                  title="Clients"
+                >
+                  <FaBuilding className={`text-lg ${activeMenu === 'clients' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                  {sidebarOpen && <span className="ml-3">Clients</span>}
+                </button>
+              </li>
+              <li className='px-3'>
+                <button 
+                  className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                    ${activeMenu === 'addClient' 
+                      ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                      : 'text-sky-100 hover:bg-sky-600/30'}
+                    ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                  onClick={() => setActiveMenu('addClient')}
+                  title="Add Client"
+                >
+                  <MdOutlineAddBox className={`text-lg ${activeMenu === 'addClient' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                  {sidebarOpen && <span className="ml-3">Add Client</span>}
+                </button>
+              </li>
+            </>
+            
+            {/* User Management Section - Only for admins */}
             {isAdmin && (
               <>
-                {/* Client Management Section */}
-                {sidebarOpen && (
-                  <div className='px-4 mt-6 mb-3'>
-                    <p className='text-xs font-semibold text-sky-100 uppercase tracking-wider'>Client Management</p>
-                  </div>
-                )}
-                {!sidebarOpen && <div className="border-t border-sky-400/30 my-2 mx-3"></div>}
-                
-                <li className='px-3'>
-                  <button 
-                    className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
-                      ${activeMenu === 'clients' 
-                        ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
-                        : 'text-sky-100 hover:bg-sky-600/30'}
-                      ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
-                    onClick={() => setActiveMenu('clients')}
-                    title="Clients"
-                  >
-                    <FaBuilding className={`text-lg ${activeMenu === 'clients' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
-                    {sidebarOpen && <span className="ml-3">Clients</span>}
-                  </button>
-                </li>
-                <li className='px-3'>
-                  <button 
-                    className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
-                      ${activeMenu === 'addClient' 
-                        ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
-                        : 'text-sky-100 hover:bg-sky-600/30'}
-                      ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
-                    onClick={() => setActiveMenu('addClient')}
-                    title="Add Client"
-                  >
-                    <MdOutlineAddBox className={`text-lg ${activeMenu === 'addClient' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
-                    {sidebarOpen && <span className="ml-3">Add Client</span>}
-                  </button>
-                </li>
-                
-                {/* User Management Section */}
                 {sidebarOpen && (
                   <div className='px-4 mt-6 mb-3'>
                     <p className='text-xs font-semibold text-sky-100 uppercase tracking-wider'>User Management</p>
@@ -630,7 +642,6 @@ const Master = () => {
                     {sidebarOpen && <span className="ml-3">Reports</span>}
                   </button>
                 </li>
-                {/* Settings button removed */}
               </>
             )}
           </ul>
@@ -709,7 +720,7 @@ const Master = () => {
       {/* Main content - adjust padding based on sidebar state */}
       <div className='flex-1 overflow-auto relative transition-all duration-300'>
         {/* Restrict access to createInquiry based on permission */}
-        {activeMenu === 'createInquiry' && hasPermission('addInquiry') && (
+        {activeMenu === 'createInquiry' && checkPermission('addInquiry') && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3'>
               <h1 className='text-2xl font-bold text-gray-800'>Create New Inquiry</h1>
@@ -733,7 +744,7 @@ const Master = () => {
         )}
         
         {/* Restrict access to inquiries based on permission */}
-        {activeMenu === 'inquiries' && hasPermission('inquiries') && (
+        {activeMenu === 'inquiries' && checkPermission('inquiries') && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
               <h1 className='text-2xl font-bold text-gray-800'>Inquiry Management</h1>
@@ -776,14 +787,14 @@ const Master = () => {
                   inquiries={inquiries} 
                   onRespond={handleRespond} 
                   onInquiriesUpdated={handleInquiriesUpdated}
-                  canAssign={hasPermission('assignInquiries')}
+                  canAssign={checkPermission('assignInquiries')}
                 />
               ) : (
                 <InquiryCard 
                   inquiries={inquiries} 
                   onRespond={handleRespond}
                   onInquiriesUpdated={handleInquiriesUpdated}
-                  canAssign={hasPermission('assignInquiries')} // Pass assignment permission
+                  canAssign={checkPermission('assignInquiries')} // Pass assignment permission
                 />
               )}
             </div>
@@ -841,7 +852,7 @@ const Master = () => {
           </>
         )}
         
-        {activeMenu === 'dashboard' && hasPermission('myInquiries') && (
+        {activeMenu === 'dashboard' && checkPermission('myInquiries') && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
               <h1 className='text-2xl font-bold text-gray-800'>My Assigned Inquiries</h1>
@@ -890,14 +901,14 @@ const Master = () => {
                   inquiries={myInquiries} 
                   onRespond={handleMyInquiryRespond}
                   onInquiriesUpdated={handleMyInquiriesUpdated}
-                  canAssign={hasPermission('assignInquiries')}
+                  canAssign={checkPermission('assignInquiries')}
                 />
               ) : (
                 <InquiryCard 
                   inquiries={myInquiries} 
                   onRespond={handleMyInquiryRespond}
                   onInquiriesUpdated={handleMyInquiriesUpdated}
-                  hideAssignButton={!hasPermission('assignInquiries')} // Show assign button only if user has permission
+                  hideAssignButton={!checkPermission('assignInquiries')} // Show assign button only if user has permission
                 />
               )}
             </div>
@@ -911,7 +922,7 @@ const Master = () => {
           </div>
         )}
         
-        {activeMenu === 'userDetails' && selectedUserForDetails && (
+        {activeMenu === 'userDetails' && selectedUserForDetails && isAdmin && (
           <UserDetail 
             user={selectedUserForDetails}
             onBack={() => setActiveMenu('users')}
@@ -929,7 +940,7 @@ const Master = () => {
           />
         )}
 
-        {activeMenu === 'clients' && isAdmin && (
+        {activeMenu === 'clients' && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
               <h1 className='text-2xl font-bold text-gray-800'>Client Management</h1>
@@ -955,7 +966,7 @@ const Master = () => {
           </>
         )}
         
-        {activeMenu === 'addClient' && isAdmin && (
+        {activeMenu === 'addClient' && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-10 py-3 px-6'>
               <h1 className='text-2xl font-bold text-gray-800'>Add New Client</h1>

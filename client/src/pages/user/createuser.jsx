@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import Spinner from './Spinner';
 import { useSnackbar } from 'notistack';
-import { MdPersonAdd, MdPerson, MdEmail, MdPhone, MdVerifiedUser, MdLock, MdBusiness } from 'react-icons/md';
+import { MdPersonAdd, MdPerson, MdEmail, MdPhone, MdVerifiedUser, MdLock, MdBusiness, MdSecurity } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
+import AuthContext from '../../context/AuthContext';
 
 // Custom CSS for toggle
 const toggleStyles = `
@@ -19,6 +21,22 @@ const toggleStyles = `
 `;
 
 function CreateUser({ onUserAdded }) {
+  const navigate = useNavigate(); // Add this
+  const { isAdmin } = useContext(AuthContext); // Add this
+  const { enqueueSnackbar } = useSnackbar();
+
+  // Add security check to redirect non-admins
+  useEffect(() => {
+    if (!isAdmin) {
+      console.log('Non-admin attempted to access user creation');
+      enqueueSnackbar('You do not have permission to create users', { 
+        variant: 'error' 
+      });
+      // As backup, navigate to dashboard
+      navigate('/dashboard');
+    }
+  }, [isAdmin, navigate, enqueueSnackbar]);
+
   // Add style tag with toggle CSS
   useEffect(() => {
     const styleElement = document.createElement('style');
@@ -30,7 +48,6 @@ function CreateUser({ onUserAdded }) {
     };
   }, []);
 
-  const { enqueueSnackbar } = useSnackbar();
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState({
     name: '',
@@ -40,6 +57,7 @@ function CreateUser({ onUserAdded }) {
     password: '',
     confirmPassword: '',
     status: 'active', // Default status is active
+    accessLevel: 'staff', // Default access level is staff
   });
   const [error, setError] = useState('');
 
@@ -48,6 +66,13 @@ function CreateUser({ onUserAdded }) {
     'CBC',
     'CBI',
     'M~Line'
+  ];
+  
+  // Access Level options
+  const accessLevels = [
+    { value: 'admin', label: 'Admin', description: 'Full system access and management' },
+    { value: 'manager', label: 'Department Manager', description: 'Manage department and staff' },
+    { value: 'staff', label: 'Staff Member', description: 'Regular staff access' }
   ];
 
   const handleInputChange = (e) => {
@@ -115,7 +140,8 @@ function CreateUser({ onUserAdded }) {
         phone: userData.phone,
         department: userData.department,
         password: userData.password,
-        status: userData.status
+        status: userData.status,
+        accessLevel: userData.accessLevel
       });
       
       const response = await axios.post('http://localhost:5555/user', {
@@ -124,7 +150,8 @@ function CreateUser({ onUserAdded }) {
         phone: userData.phone,
         department: userData.department,
         password: userData.password,
-        status: userData.status // Send status to backend
+        status: userData.status,
+        accessLevel: userData.accessLevel // Send access level to backend
       });
       
       setLoading(false);
@@ -139,6 +166,7 @@ function CreateUser({ onUserAdded }) {
         password: '',
         confirmPassword: '',
         status: 'active', // Reset status to active
+        accessLevel: 'staff', // Reset access level to staff
       });
       
       // Notify parent component if callback provided
@@ -171,7 +199,7 @@ function CreateUser({ onUserAdded }) {
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-md">
           <div className="flex items-start">
             <svg className="h-5 w-5 text-red-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 001.414 1.414L10 11.414l1.293 1.293a1 1 001.414-1.414L11.414 10l1.293-1.293a1 1 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
             <div className="ml-3">
               <p className="text-sm text-red-700 font-medium">{error}</p>
@@ -323,6 +351,31 @@ function CreateUser({ onUserAdded }) {
                   {userData.status === 'active'
                     ? 'User will be able to login immediately after creation'
                     : 'User will be created but unable to login until activated'}
+                </p>
+              </div>
+              
+              {/* Access Level Selection - NEW */}
+              <div className="sm:col-span-3">
+                <label htmlFor="accessLevel" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <MdSecurity className="text-gray-500 mr-1.5" />
+                  Access Level
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="accessLevel"
+                    name="accessLevel"
+                    value={userData.accessLevel}
+                    onChange={handleInputChange}
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                    required
+                  >
+                    {accessLevels.map(level => (
+                      <option key={level.value} value={level.value}>{level.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {accessLevels.find(level => level.value === userData.accessLevel)?.description}
                 </p>
               </div>
             </div>

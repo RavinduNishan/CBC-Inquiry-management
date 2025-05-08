@@ -152,6 +152,7 @@ export const login = async (req, res) => {
       phone: userFound.phone,
       department: userFound.department,
       status: userFound.status,
+      accessLevel: userFound.accessLevel || 'staff', // Include access level in response
       profileVersion: userFound.profileVersion || 1,
       token: token
     });
@@ -225,6 +226,9 @@ export const adminSetPassword = async (req, res) => {
     const { newPassword } = req.body;
     const userId = req.params.id;
     
+    // No need to check for admin here since we've added the adminOnly middleware
+    // This check is now handled in the route definition
+    
     // Validate input
     if (!newPassword) {
       return res.status(400).json({ message: 'New password is required' });
@@ -285,13 +289,14 @@ export const createUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(req.body.password, salt);
 
-    // Create new user
+    // Create new user with access level
     const newUser = await users.create({
         name: req.body.name,
         email: req.body.email,
         phone: req.body.phone,
         department: req.body.department,
         status: req.body.status || "active",
+        accessLevel: req.body.accessLevel || "staff", // Set access level or default to 'staff'
         password: hashedPassword
     });
 
@@ -350,7 +355,8 @@ export const updateUser = async (req, res) => {
       email: req.body.email && req.body.email !== existingUser.email,
       name: req.body.name && req.body.name !== existingUser.name,
       department: req.body.department && req.body.department !== existingUser.department,
-      status: req.body.status && req.body.status !== existingUser.status
+      status: req.body.status && req.body.status !== existingUser.status,
+      accessLevel: req.body.accessLevel && req.body.accessLevel !== existingUser.accessLevel // Add access level to critical fields
     };
     
     // If any critical fields changed, increment profileVersion

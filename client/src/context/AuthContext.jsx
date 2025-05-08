@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import EventSourceWithAuth from '../utils/EventSourceWithAuth';
 
@@ -332,13 +332,18 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, logout]);
   
-  // Modify the hasPermission function to always return true
+  // Modify the hasPermission function to temporarily allow all permissions
   const hasPermission = useCallback((permissionName) => {
-    return true; // Everyone has all permissions
-  }, []);
+    console.log(`Permission check for: ${permissionName}, user:`, user);
+    // Temporarily return true for all permissions to ensure dashboard works
+    return true;
+  }, [user]);
   
-  // Set isAdmin to true for all users
-  const isAdmin = true;
+  // Define isAdmin based on the user's actual access level
+  const isAdmin = useMemo(() => {
+    if (!user) return false;
+    return user.accessLevel === 'admin';
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{
@@ -347,7 +352,7 @@ export const AuthProvider = ({ children }) => {
       loading,
       error,
       isAuthenticated,
-      isAdmin, // Now always true
+      isAdmin,
       isFirstLogin,
       setIsFirstLogin,
       login,
@@ -355,7 +360,7 @@ export const AuthProvider = ({ children }) => {
       checkSecurityChanges,
       startSSEConnection,
       setupNotifications,
-      hasPermission // Now always returns true
+      hasPermission
     }}>
       {children}
     </AuthContext.Provider>
