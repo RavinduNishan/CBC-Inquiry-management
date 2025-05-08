@@ -1,5 +1,5 @@
 import express from "express";
-import { protect, admin } from "../middleware/authMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 import {
   getUserNotifications,
   login,
@@ -31,8 +31,8 @@ router.get("/profile", protect, getProfile);
 // Reset password endpoint
 router.put("/reset-password", protect, resetPassword);
 
-// Admin set password endpoint
-router.post("/:id/set-password", protect, admin, adminSetPassword);
+// Admin set password endpoint - removed admin middleware
+router.post("/:id/set-password", protect, adminSetPassword);
 
 // Create a new user
 router.post("/", createUser);
@@ -46,7 +46,7 @@ router.get("/:id", protect, getUserById);
 // Update an existing user
 router.put("/:id", protect, updateUser);
 
-// Delete a user
-router.delete("/:id", protect, admin, deleteUser);
+// Delete a user - removed admin middleware
+router.delete("/:id", protect, deleteUser);
 
 export default router;

@@ -56,7 +56,10 @@ const priorityBadge = (priority) => {
   }
 };
 
-const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButton = false, canAssign = false }) => {
+const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = true }) => {
+  // Set canAssign to always be true
+  canAssign = true; // Override any passed parameter, everyone can assign
+  
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
   const [currentAssignee, setCurrentAssignee] = useState(null);
@@ -381,8 +384,8 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
   };
 
   const handleAssignClick = (inquiry) => {
-    // Don't process if the inquiry is closed or user doesn't have assignment permission
-    if (inquiry.status.toLowerCase() === 'closed' || !canAssign) return;
+    // Don't process if the inquiry is closed
+    if (inquiry.status.toLowerCase() === 'closed') return;
     
     setCurrentInquiryId(inquiry._id);
     setCurrentAssignee(inquiry.assigned?.userId || null);
@@ -737,21 +740,18 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButt
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
                         <div className="flex justify-end space-x-1">
-                          {/* Only show assign button if user has permission to assign */}
-                          {canAssign && (
-                            <button
-                              onClick={() => handleAssignClick(inquiry)}
-                              className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
-                                inquiry.status.toLowerCase() === 'closed'
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                                : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500'
-                              }`}
-                              disabled={inquiry.status.toLowerCase() === 'closed'}
-                            >
-                              <FiUserPlus className="mr-1" />
-                              Assign
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleAssignClick(inquiry)}
+                            className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
+                              inquiry.status.toLowerCase() === 'closed'
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                              : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500'
+                            }`}
+                            disabled={inquiry.status.toLowerCase() === 'closed'}
+                          >
+                            <FiUserPlus className="mr-1" />
+                            Assign
+                          </button>
                           {onRespond ? (
                             <button
                               onClick={() => onRespond(inquiry._id)}

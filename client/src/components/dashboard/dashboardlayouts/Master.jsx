@@ -24,7 +24,7 @@ import UserProfile from '../../../pages/user/UserProfile';
 import ResponseInquiry from '../../../pages/inquiry/responseinquiry';
 
 const Master = () => {
-  const { user, logout, isAdmin, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications } = useContext(AuthContext);
+  const { user, logout, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications } = useContext(AuthContext);
   const navigate = useNavigate();
   
   const [inquiries, setInquiries] = useState([]);
@@ -60,17 +60,11 @@ const Master = () => {
 
   // Check if user has a specific permission
   const hasPermission = (permissionName) => {
-    console.log("Checking permission:", permissionName, "for user:", user);
-    console.log("User permissions:", user?.permissions);
-    
-    return (
-      user &&
-      (isAdmin || // Admins have all permissions
-       (user.permissions && 
-        Array.isArray(user.permissions) && 
-        user.permissions.includes(permissionName)))
-    );
+    return true; // Everyone has all permissions now
   };
+
+  // Make isAdmin always true
+  const isAdmin = true; // Everyone is an admin now
 
   // Initialize axios with auth headers
   useEffect(() => {
@@ -384,32 +378,15 @@ const Master = () => {
   // Set default view based on user permissions
   useEffect(() => {
     if (user && activeMenu === '') {
-      console.log('Setting default view based on user permissions');
+      console.log('Setting default view for user');
+      setActiveMenu('dashboard');
       
-      // Default to 'dashboard' (My Inquiries) for regular staff
-      if (hasPermission('myInquiries')) {
-        console.log('Setting default view to My Inquiries (dashboard)');
-        setActiveMenu('dashboard');
-        
-        // Preload my inquiries data
-        if (user._id) {
-          fetchMyInquiries();
-        }
-      } 
-      // For users without myInquiries permission but with inquiries permission
-      else if (hasPermission('inquiries')) {
-        console.log('Setting default view to All Inquiries (inquiries)');
-        setActiveMenu('inquiries');
-        fetchInquiries();
-      }
-      // For admins without specific defaults set
-      else if (isAdmin) {
-        console.log('Setting default view for admin to users');
-        setActiveMenu('users');
-        fetchUsers();
+      // Preload data for all users
+      if (user._id) {
+        fetchMyInquiries();
       }
     }
-  }, [user]);
+  }, [user, activeMenu]);
 
   // When isFirstLogin changes, load appropriate data
   useEffect(() => {

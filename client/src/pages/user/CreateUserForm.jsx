@@ -10,8 +10,6 @@ const CreateUserForm = ({ onUserCreated, onCancel }) => {
     email: '',
     phone: '',
     department: '',
-    accessLevel: 'user', // Default access level
-    permissions: [],
     status: 'active', // Default status
     password: ''
   });
@@ -59,7 +57,6 @@ const CreateUserForm = ({ onUserCreated, onCancel }) => {
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
     if (!formData.department) newErrors.department = 'Department is required';
-    if (!formData.accessLevel) newErrors.accessLevel = 'Access level is required';
     if (!formData.password) newErrors.password = 'Password is required';
     
     // Email validation
@@ -202,30 +199,13 @@ const CreateUserForm = ({ onUserCreated, onCancel }) => {
             </div>
           </div>
           
-          {/* Access & Security Section */}
+          {/* Security Section */}
           <div className="bg-gray-50 p-4 rounded-lg">
             <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center">
-              <MdSecurity className="mr-1 text-sky-500" /> Access & Security
+              <MdSecurity className="mr-1 text-sky-500" /> Account Settings
             </h3>
             
             <div className="space-y-4">
-              {/* Access Level */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Access Level</label>
-                <select
-                  name="accessLevel"
-                  value={formData.accessLevel}
-                  onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:text-sm ${errors.accessLevel ? 'border-red-500' : ''}`}
-                >
-                  <option value="">Select Access Level</option>
-                  <option value="administrator">Administrator</option>
-                  <option value="manager">Manager</option>
-                  <option value="user">User</option>
-                </select>
-                {errors.accessLevel && <p className="text-red-500 text-xs mt-1">{errors.accessLevel}</p>}
-              </div>
-              
               {/* Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>

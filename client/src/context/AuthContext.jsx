@@ -305,9 +305,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
   
-  // Check if user is admin
-  const isAdmin = user && user.accessLevel === 'Administrator';
-  
   // Enhanced security check function that uses the updated logout
   const checkSecurityChanges = useCallback(async () => {
     if (!user || !user._id) return;
@@ -335,27 +332,14 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, logout]);
   
-  // Check if user has a specific permission - with better error handling
+  // Modify the hasPermission function to always return true
   const hasPermission = useCallback((permissionName) => {
-    // Basic checks
-    if (!user) return false;
-    if (user.accessLevel === 'Administrator') return true; // Admins have all permissions
-    
-    // Handle missing permissions gracefully
-    if (!user.permissions) {
-      console.warn('User has no permissions array:', user);
-      return false;
-    }
-    
-    // Validate permissions is an array
-    if (!Array.isArray(user.permissions)) {
-      console.error('User permissions is not an array:', user.permissions);
-      return false;
-    }
-    
-    return user.permissions.includes(permissionName);
-  }, [user]);
+    return true; // Everyone has all permissions
+  }, []);
   
+  // Set isAdmin to true for all users
+  const isAdmin = true;
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -363,7 +347,7 @@ export const AuthProvider = ({ children }) => {
       loading,
       error,
       isAuthenticated,
-      isAdmin,
+      isAdmin, // Now always true
       isFirstLogin,
       setIsFirstLogin,
       login,
@@ -371,7 +355,7 @@ export const AuthProvider = ({ children }) => {
       checkSecurityChanges,
       startSSEConnection,
       setupNotifications,
-      hasPermission // Add the hasPermission utility function to the context
+      hasPermission // Now always returns true
     }}>
       {children}
     </AuthContext.Provider>
