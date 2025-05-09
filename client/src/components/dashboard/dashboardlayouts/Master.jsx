@@ -100,6 +100,7 @@ const Master = () => {
     }
   }, [activeMenu]);
 
+  // Update the fetchInquiries function to filter by department
   const fetchInquiries = () => {
     setLoading(true);
     // Get the token directly to ensure it's included
@@ -112,7 +113,23 @@ const Master = () => {
         }
       })
       .then((response) => {
-        setInquiries(response.data.data);
+        let inquiriesData = response.data.data;
+        
+        // Filter inquiries by department if user is not admin
+        console.log('User in fetchInquiries:', user);
+        console.log('Admin status check:', user?.isAdmin, 'Access level:', user?.accessLevel);
+        
+        // Check both isAdmin and accessLevel to ensure admin privileges
+        const hasAdminAccess = user?.isAdmin === true || user?.accessLevel === 'admin';
+        
+        if (user && !hasAdminAccess) {
+          inquiriesData = inquiriesData.filter(inquiry => {
+            // Check if inquiry.client exists and has department property
+            return inquiry.client && inquiry.client.department === user.department;
+          });
+        }
+        
+        setInquiries(inquiriesData);
         setLoading(false);
       })
       .catch((error) => {
@@ -184,6 +201,7 @@ const Master = () => {
       });
   };
 
+  // Update the fetchClients function to filter by department
   const fetchClients = () => {
     setLoading(true);
     // Get the token directly to ensure it's included
@@ -196,7 +214,20 @@ const Master = () => {
         }
       })
       .then((response) => {
-        setClients(response.data.data);
+        let clientsData = response.data.data;
+        
+        // Filter clients by department if user is not admin
+        console.log('User in fetchClients:', user);
+        console.log('Admin status check:', user?.isAdmin, 'Access level:', user?.accessLevel);
+        
+        // Check both isAdmin and accessLevel to ensure admin privileges
+        const hasAdminAccess = user?.isAdmin === true || user?.accessLevel === 'admin';
+        
+        if (user && !hasAdminAccess) {
+          clientsData = clientsData.filter(client => client.department === user.department);
+        }
+        
+        setClients(clientsData);
         setLoading(false);
       })
       .catch((error) => {

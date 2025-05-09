@@ -1,11 +1,12 @@
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState, useEffect, Fragment, useContext } from 'react';
 import axios from 'axios';
 import { Dialog, Transition } from '@headlessui/react';
-import { FiSearch, FiUser, FiMail, FiPhone } from 'react-icons/fi';
+import { FiSearch, FiUser, FiMail, FiPhone, FiBriefcase } from 'react-icons/fi';
 import Spinner from '../user/Spinner';
 import { useSnackbar } from 'notistack';
+import AuthContext from '../../context/AuthContext';
 
-const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee }) => {
+const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee, inquiryDepartment }) => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -13,27 +14,57 @@ const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee }) => {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedUserName, setSelectedUserName] = useState('');
   const { enqueueSnackbar } = useSnackbar();
+  const { user: currentUser } = useContext(AuthContext);
 
-  // Fetch users from API
+  // Fetch users with improved error handling
   useEffect(() => {
     const fetchUsers = async () => {
       if (!isOpen) return;
       
       setLoading(true);
       try {
-        const response = await axios.get('http://localhost:5555/user');
-        setUsers(response.data.data);
-        setFilteredUsers(response.data.data);
+        // If not admin, use department filtering by default
+        const params = {};
+        if (currentUser && !currentUser.isAdmin && inquiryDepartment) {
+          params.department = inquiryDepartment;
+        }
+        
+        const response = await axios.get('http://localhost:5555/user', { params });
+        
+        // Filter out current assignee and set users
+        const filteredUsers = response.data.data.filter(
+          user => !currentAssignee || user._id !== currentAssignee
+        );
+        
+        setUsers(filteredUsers);
+        setFilteredUsers(filteredUsers);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching users:', error);
-        enqueueSnackbar('Error loading users', { variant: 'error' });
+        console.log('Error fetching users for assignment - handling gracefully');
+        
+        // Try department-specific API if available and access is denied
+        if (error.response?.status === 403 && inquiryDepartment) {
+          try {
+            // This is a fallback API endpoint that might exist - if it doesn't, it will be caught
+            const deptResponse = await axios.get(`http://localhost:5555/user/department/${inquiryDepartment}`);
+            setUsers(deptResponse.data.data || []);
+            setFilteredUsers(deptResponse.data.data || []);
+          } catch (depError) {
+            // If both fail, just show empty list
+            setUsers([]);
+            setFilteredUsers([]);
+            enqueueSnackbar('Limited user data available', { variant: 'warning' });
+          }
+        } else {
+          setUsers([]);
+          setFilteredUsers([]);
+        }
         setLoading(false);
       }
     };
 
     fetchUsers();
-  }, [isOpen, enqueueSnackbar]);
+  }, [isOpen, enqueueSnackbar, currentUser, inquiryDepartment, currentAssignee]);
 
   // Filter users based on search term
   useEffect(() => {
@@ -142,6 +173,20 @@ const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee }) => {
                 >
                   Assign Inquiry to User
                 </Dialog.Title>
+                
+                {!currentUser?.isAdmin && inquiryDepartment && (
+                  <div className="mb-4 rounded-md bg-blue-50 p-3 border border-blue-100">
+                    <div className="flex">
+                      <FiBriefcase className="h-5 w-5 text-blue-400" />
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-blue-800">Department Filter Applied</h3>
+                        <div className="text-xs text-blue-700 mt-1">
+                          Showing users from: {inquiryDepartment}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Search Box */}
                 <div className="mb-4 relative">

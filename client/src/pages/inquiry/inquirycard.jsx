@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AiOutlineEdit } from 'react-icons/ai';
 import { FiUser, FiMail, FiPhone, FiBriefcase, FiTag, FiMessageSquare, FiFile, FiClock, FiRefreshCw, FiSend, FiUserPlus, FiHash } from 'react-icons/fi';
@@ -7,6 +7,7 @@ import AssignUserModal from './AssignUserModal';
 import axios from 'axios';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import AuthContext from '../../context/AuthContext';
 
 const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -39,10 +40,15 @@ const priorityStyles = {
 };
 
 const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButton = false }) => {
+    const { user } = useContext(AuthContext);
     const [assignModalOpen, setAssignModalOpen] = useState(false);
     const [currentInquiryId, setCurrentInquiryId] = useState(null);
     const [currentAssignee, setCurrentAssignee] = useState(null);
+    const [currentInquiryDepartment, setCurrentInquiryDepartment] = useState(null);
     const [users, setUsers] = useState([]);
+
+    // Simple check - only admins can fetch all users
+    const isAdmin = user?.isAdmin === true; // Strict check for true
 
     // Filter input states
     const [inputSearchTerm, setInputSearchTerm] = useState('');
@@ -71,19 +77,24 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
 
     // Fetch users for assignment filter
     useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                const response = await axios.get('http://localhost:5555/user', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                setUsers(response.data.data);
-            } catch (error) {
-                console.error('Error fetching users for filter:', error);
-            }
-        };
-        fetchUsers();
-    }, []);
+        // Only attempt to fetch users if user is admin
+        if (isAdmin) {
+            const fetchUsers = async () => {
+                try {
+                    const response = await axios.get('http://localhost:5555/user');
+                    setUsers(response.data.data);
+                } catch (error) {
+                    console.log('Error fetching users for filter - handled gracefully');
+                    setUsers([]);
+                }
+            };
+            fetchUsers();
+        } else {
+            // For non-admins, don't even try to fetch
+            console.log('Non-admin user, skipping user fetch request in InquiryCard');
+            setUsers([]);
+        }
+    }, [isAdmin]);
 
     // Initialize filtered inquiries with all inquiries on component mount
     useEffect(() => {
@@ -366,8 +377,11 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
         if (inquiry.status.toLowerCase() === 'closed') return;
         
         setCurrentInquiryId(inquiry._id);
-        // Set current assignee from the updated structure
         setCurrentAssignee(inquiry.assigned?.userId || null);
+        
+        // Set the department of the selected inquiry for filtering users
+        setCurrentInquiryDepartment(inquiry.client?.department || user?.department);
+        
         setAssignModalOpen(true);
     };
 
@@ -424,19 +438,32 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                                 <option value="closed">Closed</option>
                             </select>
                             
-                            <select
-                                value={inputAssignedFilter}
-                                onChange={(e) => setInputAssignedFilter(e.target.value)}
-                                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                            >
-                                <option value="">Assigned</option>
-                                <option value="unassigned">Unassigned</option>
-                                {users.map(user => (
-                                    <option key={user._id} value={user._id}>
-                                        {user.name.split(' ')[0]}
-                                    </option>
-                                ))}
-                            </select>
+                            {isAdmin ? (
+                                <select
+                                    value={inputAssignedFilter}
+                                    onChange={(e) => setInputAssignedFilter(e.target.value)}
+                                    className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                >
+                                    <option value="">Assigned To</option>
+                                    {users.map(user => (
+                                        <option key={user._id} value={user._id}>{user.name}</option>
+                                    ))}
+                                    <option value="unassigned">Unassigned</option>
+                                </select>
+                            ) : (
+                                <select
+                                    value={inputAssignedFilter}
+                                    onChange={(e) => setInputAssignedFilter(e.target.value)}
+                                    className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                >
+                                    <option value="">Assigned To</option>
+                                    <option value="assigned">Any Assigned</option>
+                                    <option value="unassigned">Unassigned</option>
+                                    {user && (
+                                        <option value={user._id}>Assigned to me</option>
+                                    )}
+                                </select>
+                            )}
                         </div>
                         
                         {/* Action Buttons */}
@@ -718,6 +745,7 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                 onClose={handleAssignModalClose}
                 inquiryId={currentInquiryId}
                 currentAssignee={currentAssignee}
+                inquiryDepartment={currentInquiryDepartment}
             />
         </>
     );

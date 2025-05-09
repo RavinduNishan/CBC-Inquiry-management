@@ -1,16 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { MdEdit, MdDelete, MdBusiness } from 'react-icons/md';
 import { useSnackbar } from 'notistack';
 import axios from 'axios';
 import EditClient from './editclient';
+import AuthContext from '../../context/AuthContext';
 
 function ClientTable({ clients, fetchClients }) {
   const { enqueueSnackbar } = useSnackbar();
+  const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
+  const [filteredClients, setFilteredClients] = useState([]);
+  
+  // Filter clients based on user department when component mounts or clients/user changes
+  useEffect(() => {
+    if (user && clients) {
+      if (user.isAdmin) {
+        // Admins see all clients
+        setFilteredClients(clients);
+      } else {
+        // Department managers see only their department's clients
+        const departmentClients = clients.filter(client => client.department === user.department);
+        setFilteredClients(departmentClients);
+      }
+    } else {
+      setFilteredClients(clients || []);
+    }
+  }, [clients, user]);
   
   // Function to handle deleting a client
   const handleDeleteClient = async (clientId, clientName) => {
+    // Check if user has permission to delete this client
+    const clientToDelete = clients.find(c => c._id === clientId);
+    if (!user.isAdmin && clientToDelete && clientToDelete.department !== user.department) {
+      enqueueSnackbar('Permission denied: Cannot delete clients from other departments', { variant: 'error' });
+      return;
+    }
+    
     if (window.confirm(`Are you sure you want to delete client: ${clientName}?`)) {
       try {
         setLoading(true);
@@ -32,6 +58,12 @@ function ClientTable({ clients, fetchClients }) {
 
   // Function to handle edit client action
   const handleEditClient = (client) => {
+    // Check if user has permission to edit this client
+    if (!user.isAdmin && client.department !== user.department) {
+      enqueueSnackbar('Permission denied: Cannot edit clients from other departments', { variant: 'error' });
+      return;
+    }
+    
     setEditingClient(client);
   };
 
@@ -90,8 +122,8 @@ function ClientTable({ clients, fetchClients }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {clients && clients.length > 0 ? (
-              clients.map((client) => (
+            {filteredClients && filteredClients.length > 0 ? (
+              filteredClients.map((client) => (
                 <tr key={client._id} className="border-b hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="font-medium text-gray-800">{client.name}</div>

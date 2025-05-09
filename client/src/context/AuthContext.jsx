@@ -339,10 +339,21 @@ export const AuthProvider = ({ children }) => {
     return true;
   }, [user]);
   
-  // Define isAdmin based on the user's actual access level
+  // Define isAdmin based on the user's actual access level - add more debugging
   const isAdmin = useMemo(() => {
+    console.log('Checking admin status for user:', user);
     if (!user) return false;
-    return user.accessLevel === 'admin';
+    
+    // Log the accessLevel to debug
+    console.log('User accessLevel:', user.accessLevel);
+    const adminStatus = user.accessLevel === 'admin';
+    
+    // Add explicit property to user object to ensure it's accessible
+    if (user && !user.hasOwnProperty('isAdmin')) {
+      user.isAdmin = adminStatus;
+    }
+    
+    return adminStatus;
   }, [user]);
 
   return (

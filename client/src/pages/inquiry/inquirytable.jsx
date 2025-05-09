@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { BsInfoCircle, BsSearch, BsDownload } from 'react-icons/bs';
 import { MdOutlineDelete } from 'react-icons/md';
 import { FiSend, FiUserPlus, FiCalendar, FiFilter, FiChevronDown } from 'react-icons/fi';
 import AssignUserModal from './AssignUserModal';
 import axios from 'axios';
+import AuthContext from '../../context/AuthContext';
 
 const formatDate = (dateString) => {
   const date = new Date(dateString);
@@ -60,11 +61,22 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
   // Set canAssign to always be true
   canAssign = true; // Override any passed parameter, everyone can assign
   
+  const { user } = useContext(AuthContext);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
   const [currentAssignee, setCurrentAssignee] = useState(null);
+  const [currentInquiryDepartment, setCurrentInquiryDepartment] = useState(null);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  
+  // Add the missing userDropdownRef
+  const userDropdownRef = useRef(null);
+  
+  // Updated to avoid using checkPermission which is not available
   const [users, setUsers] = useState([]);
-
+  const [loading, setLoading] = useState(false);
+  const isAdmin = user?.isAdmin === true; // Strict check for true
+  
   // Filter input states
   const [inputSearchTerm, setInputSearchTerm] = useState('');
   const [inputPriorityFilter, setInputPriorityFilter] = useState('');
@@ -90,26 +102,36 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
   // Filtered inquiries
   const [filteredInquiries, setFilteredInquiries] = useState([]);
 
-  // Add new state variables for user search dropdown
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [userSearchTerm, setUserSearchTerm] = useState("");
-  const userDropdownRef = useRef(null);
+  // Fetch users for the filter dropdown, with error handling
+  const fetchUsers = async () => {
+    // Skip the request entirely if user isn't admin
+    if (!isAdmin) {
+      console.log('Non-admin user, skipping user fetch request');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:5555/user');
+      setUsers(response.data.data);
+      setLoading(false);
+    } catch (error) {
+      // More graceful error handling
+      console.log('Error fetching users for filter - handling gracefully');
+      setUsers([]);
+      setLoading(false);
+    }
+  };
 
-  // Fetch users for assignment filter
+  // Modified useEffect to only fetch for admin users
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:5555/user', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        setUsers(response.data.data);
-      } catch (error) {
-        console.error('Error fetching users for filter:', error);
-      }
-    };
-    fetchUsers();
-  }, []);
+    if (isAdmin) {
+      fetchUsers();
+    } else {
+      // Clear users array for non-admins
+      setUsers([]);
+    }
+  }, [isAdmin]); // Only depend on isAdmin
 
   // Initialize filtered inquiries with all inquiries on component mount
   useEffect(() => {
@@ -389,6 +411,10 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     
     setCurrentInquiryId(inquiry._id);
     setCurrentAssignee(inquiry.assigned?.userId || null);
+    
+    // Set the department of the selected inquiry for filtering users
+    setCurrentInquiryDepartment(inquiry.client?.department || user?.department);
+    
     setAssignModalOpen(true);
   };
 
@@ -446,74 +472,90 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
               </select>
               
               {/* Custom Assigned Users Dropdown with Search */}
-              <div className="relative" ref={userDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowUserDropdown(!showUserDropdown)}
-                  className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 bg-white flex items-center justify-between min-w-[100px]"
-                >
-                  <span>{inputAssignedFilter === 'unassigned' ? 'Unassigned' : 
-                         inputAssignedFilter ? 
-                         (users.find(u => u._id === inputAssignedFilter)?.name || 'Assigned') : 
-                         'Assigned'}</span>
-                  <FiChevronDown className="ml-1" />
-                </button>
-                
-                {showUserDropdown && (
-                  <div className="absolute mt-1 w-60 bg-white shadow-lg border border-gray-200 rounded-md z-50">
-                    <div className="p-2 border-b">
-                      <input
-                        type="text"
-                        placeholder="Search users..."
-                        value={userSearchTerm}
-                        onChange={(e) => setUserSearchTerm(e.target.value)}
-                        className="w-full px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                    <div className="max-h-56 overflow-y-auto">
-                      <div 
-                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => {
-                          setInputAssignedFilter("");
-                          setShowUserDropdown(false);
-                        }}
-                      >
-                        All
+              {isAdmin ? (
+                <div className="relative inline-block text-left">
+                  <button
+                    onClick={() => setShowUserDropdown(!showUserDropdown)}
+                    className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 inline-flex items-center"
+                  >
+                    <span>{inputAssignedFilter ? 
+                      (users.find(u => u._id === inputAssignedFilter)?.name || 'Assigned To') : 
+                      'Assigned To'}</span>
+                    <FiChevronDown className="ml-2" />
+                  </button>
+                  
+                  {showUserDropdown && (
+                    <div 
+                      ref={userDropdownRef}
+                      className="absolute mt-1 w-60 bg-white shadow-lg border border-gray-200 rounded-md z-50"
+                    >
+                      <div className="p-2 border-b">
+                        <input
+                          type="text"
+                          placeholder="Search users..."
+                          value={userSearchTerm}
+                          onChange={(e) => setUserSearchTerm(e.target.value)}
+                          className="w-full px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </div>
-                      <div 
-                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => {
-                          setInputAssignedFilter("unassigned");
-                          setShowUserDropdown(false);
-                        }}
-                      >
-                        Unassigned
-                      </div>
-                      {filteredUsers.map(user => (
+                      <div className="max-h-56 overflow-y-auto">
                         <div 
-                          key={user._id} 
-                          className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
+                          className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                           onClick={() => {
-                            setInputAssignedFilter(user._id);
+                            setInputAssignedFilter("");
                             setShowUserDropdown(false);
                           }}
                         >
-                          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-                            <span className="text-blue-600 text-xs font-medium">{user.name.charAt(0).toUpperCase()}</span>
+                          All
+                        </div>
+                        <div 
+                          className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => {
+                            setInputAssignedFilter("unassigned");
+                            setShowUserDropdown(false);
+                          }}
+                        >
+                          Unassigned
+                        </div>
+                        {filteredUsers.map(user => (
+                          <div 
+                            key={user._id} 
+                            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center"
+                            onClick={() => {
+                              setInputAssignedFilter(user._id);
+                              setShowUserDropdown(false);
+                            }}
+                          >
+                            <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-2">
+                              <span className="text-blue-600 text-xs font-medium">{user.name.charAt(0).toUpperCase()}</span>
+                            </div>
+                            {user.name}
                           </div>
-                          {user.name}
-                        </div>
-                      ))}
-                      {filteredUsers.length === 0 && userSearchTerm && (
-                        <div className="px-4 py-2 text-sm text-gray-500 italic">
-                          No users found
-                        </div>
-                      )}
+                        ))}
+                        {filteredUsers.length === 0 && userSearchTerm && (
+                          <div className="px-4 py-2 text-sm text-gray-500 italic">
+                            No users found
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              ) : (
+                <select
+                  value={inputAssignedFilter}
+                  onChange={(e) => setInputAssignedFilter(e.target.value)}
+                  className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                >
+                  <option value="">Assigned To</option>
+                  <option value="assigned">Any Assigned</option>
+                  <option value="unassigned">Unassigned</option>
+                  {user && (
+                    <option value={user._id}>Assigned to me</option>
+                  )}
+                </select>
+              )}
             </div>
             
             {/* Action Buttons */}
@@ -785,6 +827,7 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
         onClose={handleAssignModalClose}
         inquiryId={currentInquiryId}
         currentAssignee={currentAssignee}
+        inquiryDepartment={currentInquiryDepartment}
       />
     </div>
   );
