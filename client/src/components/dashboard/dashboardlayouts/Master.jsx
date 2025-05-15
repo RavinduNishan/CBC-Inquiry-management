@@ -735,7 +735,6 @@ const Master = () => {
                   </div>
                 )}
                 {!sidebarOpen && <div className="border-t border-sky-400/30 my-2 mx-3"></div>}
-                
                 <li className='px-3'>
                   <button 
                     className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
