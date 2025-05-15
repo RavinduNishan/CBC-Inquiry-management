@@ -62,11 +62,25 @@ const Master = () => {
     }
   };
 
-  // Check if user has a specific permission - Fixed implementation
+  // Check if user has a specific permission - Improved implementation with staff restrictions
   const checkPermission = (permissionName) => {
-    // Log the permission check without calling a non-existent function
-    console.log(`Checking permission: ${permissionName}, result: true`);
-    // Always return true for now to ensure functionality works
+    // Staff members have very limited permissions
+    if (user?.accessLevel === 'staff') {
+      // Staff can only access these permissions
+      if (permissionName === 'addInquiry' || permissionName === 'createdByMe') {
+        return true;
+      }
+      // Staff cannot access these permissions
+      if (permissionName === 'myInquiries' || permissionName === 'inquiries' || 
+          permissionName === 'assignInquiries' || permissionName === 'clients' || 
+          permissionName === 'manageClients') {
+        console.log(`Permission denied for staff: ${permissionName}`);
+        return false;
+      }
+    }
+    
+    // For non-staff users (admin/manager) or other permissions
+    console.log(`Checking permission: ${permissionName}, granted`);
     return true;
   };
 
@@ -446,14 +460,18 @@ const Master = () => {
     }
   }, []);
 
-  // Set default view based on user permissions
+  // Set default view based on user permissions and role
   useEffect(() => {
     if (user && activeMenu === '') {
-      console.log('Setting default view for user');
-      setActiveMenu('dashboard');
+      console.log('Setting default view based on user role:', user.accessLevel);
       
-      // Preload data for all users
-      if (user._id) {
+      // Staff members default to "Created by Me" view
+      if (user.accessLevel === 'staff') {
+        setActiveMenu('createdByMe');
+        fetchMyCreatedInquiries();
+      } else {
+        // Others default to "My Assigned Inquiries"
+        setActiveMenu('dashboard');
         fetchMyInquiries();
       }
     }
@@ -516,12 +534,21 @@ const Master = () => {
     // List of admin-only menus
     const adminOnlyMenus = ['users', 'addUser', 'userDetails', 'reports'];
     
-    // If current menu is admin-only but user is not admin, redirect to dashboard
+    // List of menus not accessible by staff
+    const nonStaffMenus = ['inquiries', 'dashboard', 'clients', 'addClient', 'responseInquiry'];
+    
+    // If current menu is admin-only but user is not admin, redirect
     if (adminOnlyMenus.includes(activeMenu) && !isAdmin) {
       console.log('Non-admin attempted to access admin-only menu:', activeMenu);
-      setActiveMenu('dashboard');
+      setActiveMenu(user?.accessLevel === 'staff' ? 'createdByMe' : 'dashboard');
     }
-  }, [activeMenu, isAdmin]);
+    
+    // If current menu is not allowed for staff and user is staff, redirect
+    if (user?.accessLevel === 'staff' && nonStaffMenus.includes(activeMenu)) {
+      console.log('Staff attempted to access restricted menu:', activeMenu);
+      setActiveMenu('createdByMe');
+    }
+  }, [activeMenu, isAdmin, user]);
 
   // Modify the notifications setup in Master.jsx to avoid duplicate connections
   useEffect(() => {
@@ -631,7 +658,7 @@ const Master = () => {
             </div>
           )}
           <ul>
-            {/* Only show My Inquiries if user has myInquiries permission - this is the default */}
+            {/* Only show My Inquiries if user has myInquiries permission - hide for staff */}
             {checkPermission('myInquiries') && (
               <li className='px-3'>
                 <button 
@@ -649,7 +676,7 @@ const Master = () => {
               </li>
             )}
 
-            {/* New section: Created By Me */}
+            {/* Created By Me - Always show for all users */}
             <li className='px-3'>
               <button 
                 className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
@@ -665,7 +692,7 @@ const Master = () => {
               </button>
             </li>
 
-            {/* Only show All Inquiries if user has inquiries permission */}
+            {/* Only show All Inquiries if user has inquiries permission - hide for staff */}
             {checkPermission('inquiries') && (
               <li className='px-3'>
                 <button 
@@ -683,62 +710,62 @@ const Master = () => {
               </li>
             )}
 
-            {/* Only show Add Inquiry if user has addInquiry permission */}
-            {checkPermission('addInquiry') && (
-              <li className='px-3'>
-                <button 
-                  className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
-                    ${activeMenu === 'createInquiry' 
-                      ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
-                      : 'text-sky-100 hover:bg-sky-600/30'}
-                    ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
-                  onClick={() => setActiveMenu('createInquiry')}
-                  title="Add Inquiry"
-                >
-                  <MdOutlineAddBox className={`text-lg ${activeMenu === 'createInquiry' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
-                  {sidebarOpen && <span className="ml-3">Add Inquiry</span>}
-                </button>
-              </li>
-            )}
+            {/* Always show Add Inquiry for all users including staff */}
+            <li className='px-3'>
+              <button 
+                className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                  ${activeMenu === 'createInquiry' 
+                    ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                    : 'text-sky-100 hover:bg-sky-600/30'}
+                  ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                onClick={() => setActiveMenu('createInquiry')}
+                title="Add Inquiry"
+              >
+                <MdOutlineAddBox className={`text-lg ${activeMenu === 'createInquiry' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                {sidebarOpen && <span className="ml-3">Add Inquiry</span>}
+              </button>
+            </li>
             
-            {/* Client Management Section - Available to all users */}
-            <>
-              {sidebarOpen && (
-                <div className='px-4 mt-6 mb-3'>
-                  <p className='text-xs font-semibold text-sky-100 uppercase tracking-wider'>Client Management</p>
-                </div>
-              )}
-              {!sidebarOpen && <div className="border-t border-sky-400/30 my-2 mx-3"></div>}
-              
-              <li className='px-3'>
-                <button 
-                  className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
-                    ${activeMenu === 'clients' 
-                      ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
-                      : 'text-sky-100 hover:bg-sky-600/30'}
-                    ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
-                  onClick={() => setActiveMenu('clients')}
-                  title="Clients"
-                >
-                  <FaBuilding className={`text-lg ${activeMenu === 'clients' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
-                  {sidebarOpen && <span className="ml-3">Clients</span>}
-                </button>
-              </li>
-              <li className='px-3'>
-                <button 
-                  className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
-                    ${activeMenu === 'addClient' 
-                      ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
-                      : 'text-sky-100 hover:bg-sky-600/30'}
-                    ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
-                  onClick={() => setActiveMenu('addClient')}
-                  title="Add Client"
-                >
-                  <MdOutlineAddBox className={`text-lg ${activeMenu === 'addClient' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
-                  {sidebarOpen && <span className="ml-3">Add Client</span>}
-                </button>
-              </li>
-            </>
+            {/* Client Management Section - Hide from staff users */}
+            {user?.accessLevel !== 'staff' && (
+              <>
+                {sidebarOpen && (
+                  <div className='px-4 mt-6 mb-3'>
+                    <p className='text-xs font-semibold text-sky-100 uppercase tracking-wider'>Client Management</p>
+                  </div>
+                )}
+                {!sidebarOpen && <div className="border-t border-sky-400/30 my-2 mx-3"></div>}
+                
+                <li className='px-3'>
+                  <button 
+                    className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                      ${activeMenu === 'clients' 
+                        ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                        : 'text-sky-100 hover:bg-sky-600/30'}
+                      ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                    onClick={() => setActiveMenu('clients')}
+                    title="Clients"
+                  >
+                    <FaBuilding className={`text-lg ${activeMenu === 'clients' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                    {sidebarOpen && <span className="ml-3">Clients</span>}
+                  </button>
+                </li>
+                <li className='px-3'>
+                  <button 
+                    className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                      ${activeMenu === 'addClient' 
+                        ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                        : 'text-sky-100 hover:bg-sky-600/30'}
+                      ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                    onClick={() => setActiveMenu('addClient')}
+                    title="Add Client"
+                  >
+                    <MdOutlineAddBox className={`text-lg ${activeMenu === 'addClient' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                    {sidebarOpen && <span className="ml-3">Add Client</span>}
+                  </button>
+                </li>
+              </>
+            )}
             
             {/* User Management Section - Only for admins */}
             {isAdmin && (

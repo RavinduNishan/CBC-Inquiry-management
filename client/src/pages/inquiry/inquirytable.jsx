@@ -425,6 +425,9 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     }
   };
 
+  // Check if user is staff to hide actions column
+  const isStaffUser = user?.accessLevel === 'staff';
+
   return (
     <div className="flex flex-col h-full relative">
       {/* Sticky Search and Filter Controls */}
@@ -684,7 +687,10 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Message</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Comments</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Last Update</th>
-                  <th style={{position: 'sticky', top: 0, right: 0, zIndex: 40}} className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200 shadow-lg">Actions</th>
+                  {/* Only show Actions column if user is not staff */}
+                  {!isStaffUser && (
+                    <th style={{position: 'sticky', top: 0, right: 0, zIndex: 40}} className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200 shadow-lg">Actions</th>
+                  )}
                 </tr>
               </thead>
               
@@ -780,39 +786,42 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
                       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                         {formatDate(inquiry.updatedAt)}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
-                        <div className="flex justify-end space-x-1">
-                          <button
-                            onClick={() => handleAssignClick(inquiry)}
-                            className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
-                              inquiry.status.toLowerCase() === 'closed' || !canUserAssign
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                              : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500'
-                            }`}
-                            disabled={inquiry.status.toLowerCase() === 'closed' || !canUserAssign}
-                          >
-                            <FiUserPlus className="mr-1" />
-                            Assign
-                          </button>
-                          {onRespond ? (
+                      {/* Only show Actions column if user is not staff */}
+                      {!isStaffUser && (
+                        <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
+                          <div className="flex justify-end space-x-1">
                             <button
-                              onClick={() => onRespond(inquiry._id)}
-                              className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-sky-500"
+                              onClick={() => handleAssignClick(inquiry)}
+                              className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
+                                inquiry.status.toLowerCase() === 'closed' || !canUserAssign
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                                : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500'
+                              }`}
+                              disabled={inquiry.status.toLowerCase() === 'closed' || !canUserAssign}
                             >
-                              <FiSend className="mr-1" />
-                              Respond
+                              <FiUserPlus className="mr-1" />
+                              Assign
                             </button>
-                          ) : (
-                            <Link
-                              to={`/inquiry/response/${inquiry._id}`}
-                              className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-sky-500"
-                            >
-                              <FiSend className="mr-1" />
-                              Respond
-                            </Link>
-                          )}
-                        </div>
-                      </td>
+                            {onRespond ? (
+                              <button
+                                onClick={() => onRespond(inquiry._id)}
+                                className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-sky-500"
+                              >
+                                <FiSend className="mr-1" />
+                                Respond
+                              </button>
+                            ) : (
+                              <Link
+                                to={`/inquiry/response/${inquiry._id}`}
+                                className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-sky-500"
+                              >
+                                <FiSend className="mr-1" />
+                                Respond
+                              </Link>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -822,13 +831,16 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
         )}
       </div>
 
-      <AssignUserModal
-        isOpen={assignModalOpen}
-        onClose={handleAssignModalClose}
-        inquiryId={currentInquiryId}
-        currentAssignee={currentAssignee}
-        inquiryDepartment={currentInquiryDepartment}
-      />
+      {/* Only render the modal if user is not staff */}
+      {!isStaffUser && (
+        <AssignUserModal
+          isOpen={assignModalOpen}
+          onClose={handleAssignModalClose}
+          inquiryId={currentInquiryId}
+          currentAssignee={currentAssignee}
+          inquiryDepartment={currentInquiryDepartment}
+        />
+      )}
     </div>
   );
 };
