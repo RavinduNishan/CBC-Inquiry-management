@@ -24,7 +24,7 @@ import UserProfile from '../../../pages/user/UserProfile';
 import ResponseInquiry from '../../../pages/inquiry/responseinquiry';
 
 const Master = () => {
-  const { user, logout, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications, hasPermission, isAdmin } = useContext(AuthContext);
+  const { user, logout, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications, isAdmin } = useContext(AuthContext);
   const navigate = useNavigate();
   
   const [inquiries, setInquiries] = useState([]);
@@ -482,9 +482,9 @@ const Master = () => {
     if (isFirstLogin && user) {
       console.log('First login detected - loading default view data');
       
-      // If dashboard is already the active menu or being set as active
+      // Fix this line: Use checkPermission instead of hasPermission
       if (activeMenu === 'dashboard' || 
-          (activeMenu === '' && hasPermission('myInquiries'))) {
+          (activeMenu === '' && checkPermission('myInquiries'))) {
         console.log('Fetching my inquiries for first login');
         fetchMyInquiries();
       }

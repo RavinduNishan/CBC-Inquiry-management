@@ -13,53 +13,37 @@ function ClientTable({ clients, fetchClients }) {
   const [editingClient, setEditingClient] = useState(null);
   const [filteredClients, setFilteredClients] = useState([]);
   
-  // Filter clients based on user department when component mounts or clients/user changes
-  useEffect(() => {
-    if (user && clients) {
-      if (user.isAdmin) {
-        // Admins see all clients
-        setFilteredClients(clients);
-      } else {
-        // Department managers see only their department's clients
-        const departmentClients = clients.filter(client => client.department === user.department);
-        setFilteredClients(departmentClients);
-      }
-    } else {
-      setFilteredClients(clients || []);
-    }
-  }, [clients, user]);
-  
   // Add state for search and filters
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
-  const [filteredClients, setFilteredClients] = useState([]);
-
-  // Initialize filtered clients with all clients on component mount
-  useEffect(() => {
-    setFilteredClients(clients);
-  }, [clients]);
-
+  
   // Apply filters whenever filter criteria change
   useEffect(() => {
-    applyFilters();
-  }, [searchTerm, departmentFilter, clients]);
-
-  const applyFilters = () => {
     if (!clients) return;
     
-    const filtered = clients.filter(client => {
-      const matchesSearch = !searchTerm || 
+    let filtered = [...clients];
+    
+    // Filter by user department if not admin
+    if (user && !user.isAdmin) {
+      filtered = filtered.filter(client => client.department === user.department);
+    }
+    
+    // Apply search term filter
+    if (searchTerm) {
+      filtered = filtered.filter(client => 
         client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.phone?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesDepartment = !departmentFilter || client.department === departmentFilter;
-      
-      return matchesSearch && matchesDepartment;
-    });
+        client.phone?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Apply department filter
+    if (departmentFilter) {
+      filtered = filtered.filter(client => client.department === departmentFilter);
+    }
     
     setFilteredClients(filtered);
-  };
+  }, [clients, user, searchTerm, departmentFilter]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -144,6 +128,40 @@ function ClientTable({ clients, fetchClients }) {
 
     <div className="overflow-x-auto h-full">
       <div className="relative overflow-x-auto rounded-lg">
+        {/* Add search controls here */}
+        <div className="mb-4 flex items-center space-x-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search clients..."
+              className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={searchTerm}
+              onChange={handleSearch}
+            />
+            <BsSearch className="absolute left-3 top-3 text-gray-400" />
+          </div>
+          {user?.isAdmin && (
+            <select
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Departments</option>
+              <option value="CBC">CBC</option>
+              <option value="CBI">CBI</option>
+              <option value="M~Line">M~Line</option>
+            </select>
+          )}
+          {(searchTerm || departmentFilter) && (
+            <button
+              onClick={clearFilters}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        
         <table className="w-full text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
             <tr className="border-b border-gray-200">
@@ -208,22 +226,24 @@ function ClientTable({ clients, fetchClients }) {
                     </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div className="text-center py-8 bg-white h-full flex items-center justify-center">
-            <div>
-              <p className="text-gray-500 text-lg">No clients found matching your search criteria</p>
-              <button
-                onClick={clearFilters}
-                className="mt-2 text-sky-600 hover:text-sky-800 underline"
-              >
-                Clear filters
-              </button>
-            </div>
-          </div>
-        )}
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5">
+                  <div className="text-center py-8 bg-white">
+                    <p className="text-gray-500 text-lg">No clients found matching your search criteria</p>
+                    <button
+                      onClick={clearFilters}
+                      className="mt-2 text-sky-600 hover:text-sky-800 underline"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
