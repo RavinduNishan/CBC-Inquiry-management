@@ -4,7 +4,7 @@ import axios from 'axios';
 import Spinner from '../../../pages/user/Spinner';
 import { Link } from 'react-router-dom';
 import { BsInfoCircle, BsTable, BsGrid3X3Gap, BsDownload, BsChevronLeft, BsChevronRight } from 'react-icons/bs';
-import { MdOutlineAddBox, MdOutlineDelete, MdDashboard } from 'react-icons/md';
+import { MdOutlineAddBox, MdOutlineDelete, MdDashboard, MdPerson } from 'react-icons/md';
 import { FaUserFriends, FaClipboardList, FaChartBar, FaCog, FaSignOutAlt, FaBars, FaBuilding, FaIdCard } from 'react-icons/fa';
 // Fix import paths for the inquiry components that were moved
 import InquiryTable from '../../../pages/inquiry/inquirytable';
@@ -29,11 +29,15 @@ const Master = () => {
   
   const [inquiries, setInquiries] = useState([]);
   const [myInquiries, setMyInquiries] = useState([]);
+  // New state for inquiries created by the current user
+  const [myCreatedInquiries, setMyCreatedInquiries] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showType, setShowType] = useState('table');
   const [myInquiriesShowType, setMyInquiriesShowType] = useState('table');
+  // New state for showing type of created inquiries
+  const [myCreatedInquiriesShowType, setMyCreatedInquiriesShowType] = useState('table');
   const [activeMenu, setActiveMenu] = useState('');  // Start with empty string to determine default view
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
   const [selectedUserForDetails, setSelectedUserForDetails] = useState(null);
@@ -94,6 +98,8 @@ const Master = () => {
       fetchInquiries();
     } else if (activeMenu === 'dashboard') {
       fetchMyInquiries();
+    } else if (activeMenu === 'createdByMe') {
+      fetchMyCreatedInquiries(); // New effect to fetch inquiries created by the user
     } else if (activeMenu === 'users') {
       fetchUsers();
     } else if (activeMenu === 'clients') {
@@ -229,6 +235,40 @@ const Master = () => {
         }
         
         setClients(clientsData);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.log(error);
+        // If unauthorized, redirect to login
+        if (error.response && error.response.status === 401) {
+          logout();
+          navigate('/login');
+        }
+        setLoading(false);
+      });
+  };
+
+  // New function to fetch inquiries created by the current user
+  const fetchMyCreatedInquiries = () => {
+    if (!user || !user.name) return;
+    
+    setLoading(true);
+    // Get the token directly to ensure it's included
+    const token = localStorage.getItem('token');
+    
+    axios
+      .get('http://localhost:5555/inquiry', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then((response) => {
+        // Filter inquiries created by the current user (case-insensitive)
+        const createdInquiries = response.data.data.filter(
+          inquiry => inquiry.createdBy && 
+          inquiry.createdBy.toLowerCase() === user.name.toLowerCase()
+        );
+        setMyCreatedInquiries(createdInquiries);
         setLoading(false);
       })
       .catch((error) => {
@@ -501,6 +541,50 @@ const Master = () => {
     // Don't call startSSEConnection() here to avoid duplicate connections
   }, [user, logout, navigate]);
 
+  // Handle response for created by me inquiries
+  const handleMyCreatedInquiryRespond = (inquiryId) => {
+    setCurrentInquiryId(inquiryId);
+    setActiveMenu('responseInquiry');
+  };
+
+  // Refresh my created inquiries after update
+  const handleMyCreatedInquiriesUpdated = () => {
+    console.log("Refreshing my created inquiries...");
+    setLoading(true);
+    
+    // Clear existing inquiries first to ensure UI updates
+    setMyCreatedInquiries([]);
+    
+    // Add a small delay to ensure the database has time to update
+    setTimeout(() => {
+      // Ensure token is included in this request
+      updateAxiosConfig();
+      // Then fetch fresh data
+      axios
+        .get('http://localhost:5555/inquiry', {
+          // Add cache-busting parameter to prevent stale data
+          params: { _t: new Date().getTime() }
+        })
+        .then((response) => {
+          // Filter inquiries created by the current user
+          const createdInquiries = response.data.data.filter(
+            inquiry => inquiry.createdBy && 
+            inquiry.createdBy.toLowerCase() === user.name.toLowerCase()
+          );
+          setMyCreatedInquiries(createdInquiries);
+          setLoading(false);
+        })
+        .catch((error) => {
+          console.error("Error refreshing my created inquiries:", error);
+          if (error.response && error.response.status === 401) {
+            logout();
+            navigate('/login');
+          }
+          setLoading(false);
+        });
+    }, 500); // 500ms delay
+  };
+
   if (!user) {
     return null;
   }
@@ -564,6 +648,22 @@ const Master = () => {
                 </button>
               </li>
             )}
+
+            {/* New section: Created By Me */}
+            <li className='px-3'>
+              <button 
+                className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                  ${activeMenu === 'createdByMe' 
+                    ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                    : 'text-sky-100 hover:bg-sky-600/30'}
+                  ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                onClick={() => setActiveMenu('createdByMe')}
+                title="Created By Me"
+              >
+                <MdPerson className={`text-lg ${activeMenu === 'createdByMe' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                {sidebarOpen && <span className="ml-3">Created By Me</span>}
+              </button>
+            </li>
 
             {/* Only show All Inquiries if user has inquiries permission */}
             {checkPermission('inquiries') && (
@@ -1035,6 +1135,70 @@ const Master = () => {
                   setActiveMenu('clients');
                 }}
               />
+            </div>
+          </>
+        )}
+
+        {/* New section to display inquiries created by the current user */}
+        {activeMenu === 'createdByMe' && (
+          <>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
+              <h1 className='text-2xl font-bold text-gray-800'>Inquiries Created By Me</h1>
+              <div className='flex items-center gap-4'>
+                <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-1 flex'>
+                  <button
+                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                      myCreatedInquiriesShowType === 'table'
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'bg-white text-gray-500 hover:bg-sky-50 hover:text-sky-600'
+                    }`}
+                    onClick={() => setMyCreatedInquiriesShowType('table')}
+                    title="Show as table"
+                  >
+                    <BsTable className={`mr-2 ${myCreatedInquiriesShowType === 'table' ? 'text-white' : 'text-gray-400'}`} />
+                    Table
+                  </button>
+                  <button
+                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                      myCreatedInquiriesShowType === 'card'
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'bg-white text-gray-500 hover:bg-sky-50 hover:text-sky-600'
+                    }`}
+                    onClick={() => setMyCreatedInquiriesShowType('card')}
+                    title="Show as cards"
+                  >
+                    <BsGrid3X3Gap className={`mr-2 ${myCreatedInquiriesShowType === 'card' ? 'text-white' : 'text-gray-400'}`} />
+                    Cards
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-0 mb-0 flex-1 h-[calc(100vh-110px)]'>
+              {loading ? (
+                <Spinner />
+              ) : myCreatedInquiries.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <div className="text-gray-500">
+                    <p className="text-xl font-medium mb-2">You haven't created any inquiries yet</p>
+                    <p className="text-sm">When you create inquiries, they will appear here.</p>
+                  </div>
+                </div>
+              ) : myCreatedInquiriesShowType === 'table' ? (
+                <InquiryTable 
+                  inquiries={myCreatedInquiries} 
+                  onRespond={handleMyCreatedInquiryRespond}
+                  onInquiriesUpdated={handleMyCreatedInquiriesUpdated}
+                  canAssign={checkPermission('assignInquiries')}
+                />
+              ) : (
+                <InquiryCard 
+                  inquiries={myCreatedInquiries} 
+                  onRespond={handleMyCreatedInquiryRespond}
+                  onInquiriesUpdated={handleMyCreatedInquiriesUpdated}
+                  hideAssignButton={!checkPermission('assignInquiries')}
+                />
+              )}
             </div>
           </>
         )}
