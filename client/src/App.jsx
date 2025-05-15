@@ -5,6 +5,8 @@ import AuthContext from './context/AuthContext';
 import { LoginBlade } from './components/dashboard/LoginBlade';
 import Master from './components/dashboard/dashboardlayouts/Master';
 import { SnackbarProvider } from 'notistack';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Create a component that uses the auth context
 const AuthedApp = () => {
@@ -21,7 +23,12 @@ const AuthedApp = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginBlade />} />
-      <Route path="/dashboard/*" element={<Master />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/dashboard/*" element={
+        <ProtectedRoute>
+          <Master />
+        </ProtectedRoute>
+      } />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

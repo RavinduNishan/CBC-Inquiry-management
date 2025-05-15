@@ -344,6 +344,134 @@ export const sendInquiryClosure = async (inquiry) => {
   }
 };
 
+/**
+ * Send an email with one-time password for password reset
+ * @param {Object} data - Email recipient data with OTP
+ * @returns {Promise} - Promise resolving to the sent mail info
+ */
+export const sendOtpEmail = async (data) => {
+  try {
+    // Check if transporter is available
+    if (!transporter) {
+      console.error('Email transporter not initialized');
+      return { success: false, message: 'Email service not configured' };
+    }
+    
+    const { email, name, otp, expiryMinutes = 15 } = data;
+    
+    if (!email || !otp) {
+      console.error('Cannot send OTP email: Missing email or OTP', data);
+      throw new Error('Missing required data for OTP email');
+    }
+    
+    console.log(`Preparing to send OTP email to: ${email}`);
+    
+    // Enhanced email headers to improve deliverability
+    const fromAddress = EMAIL_FROM || `"CBC Inquiry System" <${EMAIL_USER}>`;
+    
+    // Define email content with modern design
+    const mailOptions = {
+      from: fromAddress,
+      to: email,
+      subject: "Password Reset OTP - CBC Inquiry System",
+      // Set priority headers
+      priority: 'high',
+      importance: 'high',
+      // Add headers to reduce spam filtering
+      headers: {
+        'X-Priority': '1',
+        'X-MSMail-Priority': 'High',
+        'Importance': 'High',
+        'X-Mailer': 'CBC Inquiry Management System'
+      },
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 5px;">
+          <div style="background-color: #3b82f6; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+            <h2 style="color: white; margin: 0;">Password Reset</h2>
+          </div>
+          
+          <div style="padding: 20px; background-color: #f9fafb; border-radius: 0 0 5px 5px;">
+            <p>Dear ${name},</p>
+            
+            <p>We received a request to reset your password for the CBC Inquiry Management System. Please use the following One-Time Password (OTP) to verify your identity:</p>
+            
+            <div style="background-color: #ffffff; padding: 15px; border: 1px solid #e5e7eb; border-radius: 5px; margin: 20px 0; text-align: center;">
+              <h2 style="font-size: 24px; letter-spacing: 5px; margin: 10px 0; color: #1f2937;">${otp}</h2>
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">This OTP is valid for ${expiryMinutes} minutes only</p>
+            </div>
+            
+            <p><strong>Important:</strong> If you did not request this password reset, please ignore this email or contact your system administrator.</p>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+              <p>This is an automated message from the CBC Inquiry Management System. Please do not reply to this email.</p>
+            </div>
+          </div>
+        </div>
+      `,
+      // Add plain text alternative for better deliverability
+      text: `
+Password Reset OTP
+
+Dear ${name},
+
+We received a request to reset your password for the CBC Inquiry Management System. Please use the following One-Time Password (OTP) to verify your identity:
+
+Your OTP: ${otp}
+
+This OTP is valid for ${expiryMinutes} minutes only.
+
+Important: If you did not request this password reset, please ignore this email or contact your system administrator.
+
+This is an automated message from the CBC Inquiry Management System. Please do not reply to this email.
+      `
+    };
+
+    console.log('Sending OTP email with configuration:', {
+      host: EMAIL_HOST,
+      port: EMAIL_PORT,
+      user: EMAIL_USER ? EMAIL_USER.substring(0, 3) + '...' : 'not set',
+      from: fromAddress
+    });
+    
+    // Send the email with detailed error handling
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✅ OTP email sent successfully:', {
+        messageId: info.messageId,
+        response: info.response,
+        accepted: info.accepted,
+        rejected: info.rejected
+      });
+      
+      // Check if the email was actually accepted by the server
+      if (info.rejected && info.rejected.length > 0) {
+        console.error('❌ OTP Email was rejected for some recipients:', info.rejected);
+        return { 
+          success: false, 
+          error: 'Email rejected by server', 
+          details: info 
+        };
+      }
+      
+      return { 
+        success: true, 
+        messageId: info.messageId,
+        details: info 
+      };
+    } catch (smtpError) {
+      console.error('❌ SMTP error sending OTP email:', smtpError);
+      return { 
+        success: false, 
+        error: 'SMTP error: ' + smtpError.message,
+        details: smtpError
+      };
+    }
+  } catch (error) {
+    console.error('Error sending OTP email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // ===== EMAIL TESTING & DIAGNOSTICS =====
 
 // Add a test function to verify email configuration

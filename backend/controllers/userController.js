@@ -3,9 +3,24 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config.js";
 import { format } from 'date-fns';
+// Import email service to send OTP emails
+import { sendOtpEmail } from "../utils/emailService.js";
 
 // Map to store SSE clients for each user ID
 const userConnections = new Map();
+
+// Map to store OTP information for password reset
+const otpStore = new Map();
+
+// Generate OTP function
+const generateOTP = (length = 6) => {
+  const digits = '0123456789';
+  let OTP = '';
+  for (let i = 0; i < length; i++) {
+    OTP += digits[Math.floor(Math.random() * 10)];
+  }
+  return OTP;
+};
 
 // Generate JWT
 const generateToken = (id) => {
@@ -475,5 +490,193 @@ export const checkApiStatus = async (req, res) => {
       databaseConnection: "Failed",
       message: error.message 
     });
+  }
+};
+
+// Controller for initiating forgot password process
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Validate email
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+    
+    // Normalize email (trim and lowercase)
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    // Find user by email (case-insensitive)
+    const userFound = await users.findOne({ 
+      email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') }
+    });
+    
+    // If no user found with this email, don't reveal this information
+    // Instead, pretend we sent an email for security reasons
+    if (!userFound) {
+      console.log(`Forgot password requested for non-existent email: ${normalizedEmail}`);
+      return res.status(200).json({ 
+        message: "If your email is registered, you will receive a password reset OTP" 
+      });
+    }
+    
+    // Check if user is active
+    if (userFound.status === 'inactive') {
+      return res.status(400).json({ 
+        message: "This account is inactive. Please contact an administrator." 
+      });
+    }
+    
+    // Generate OTP
+    const otp = generateOTP(6);
+    const otpExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
+    
+    // Store OTP with user information
+    otpStore.set(normalizedEmail, {
+      otp,
+      expiry: otpExpiry,
+      userId: userFound._id,
+      attempts: 0
+    });
+    
+    console.log(`Generated OTP for ${normalizedEmail}: ${otp}`);
+    
+    // Send OTP via email
+    await sendOtpEmail({
+      email: normalizedEmail,
+      name: userFound.name,
+      otp,
+      expiryMinutes: 15
+    });
+    
+    return res.status(200).json({
+      message: "Password reset OTP has been sent to your email",
+      expiresIn: "15 minutes"
+    });
+  } catch (error) {
+    console.log("Forgot password error:", error.message, error.stack);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+// Controller to verify OTP
+export const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    
+    // Validate inputs
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+    
+    // Normalize email
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    // Check if OTP exists for this email
+    if (!otpStore.has(normalizedEmail)) {
+      return res.status(400).json({ message: "No OTP found. Please request a new one." });
+    }
+    
+    // Get OTP data
+    const otpData = otpStore.get(normalizedEmail);
+    
+    // Check if OTP has expired
+    if (new Date() > otpData.expiry) {
+      otpStore.delete(normalizedEmail);
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+    }
+    
+    // Increment attempts
+    otpData.attempts += 1;
+    
+    // Check if max attempts exceeded (5 attempts)
+    if (otpData.attempts > 5) {
+      otpStore.delete(normalizedEmail);
+      return res.status(400).json({ message: "Too many failed attempts. Please request a new OTP." });
+    }
+    
+    // Check if OTP matches
+    if (otpData.otp !== otp) {
+      return res.status(400).json({ 
+        message: "Invalid OTP",
+        attemptsLeft: 5 - otpData.attempts
+      });
+    }
+    
+    // OTP is valid! Generate a temporary token for password reset
+    const resetToken = jwt.sign(
+      { id: otpData.userId, purpose: 'reset' },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+    
+    // Clear OTP data since it's been verified
+    otpStore.delete(normalizedEmail);
+    
+    return res.status(200).json({
+      message: "OTP verified successfully",
+      resetToken
+    });
+  } catch (error) {
+    console.log("Verify OTP error:", error.message, error.stack);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+// Controller to reset password using reset token
+export const resetPasswordWithToken = async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+    
+    // Validate inputs
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ message: "Reset token and new password are required" });
+    }
+    
+    // Verify the reset token
+    const decoded = jwt.verify(resetToken, JWT_SECRET);
+    
+    // Check if token is for password reset purpose
+    if (decoded.purpose !== 'reset') {
+      return res.status(400).json({ message: "Invalid reset token" });
+    }
+    
+    // Find the user
+    const userFound = await users.findById(decoded.id);
+    
+    if (!userFound) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    
+    // Update the password and increment profileVersion
+    userFound.password = hashedPassword;
+    userFound.profileVersion = (userFound.profileVersion || 0) + 1;
+    userFound.lastSecurityUpdate = new Date();
+    
+    await userFound.save();
+    
+    // Notify user of password change if they're logged in
+    notifyUserOfAccountChange(
+      decoded.id,
+      'forceLogout',
+      'Your password has been reset. Please log in with your new password.'
+    );
+    
+    return res.status(200).json({ 
+      message: "Password reset successful",
+      profileVersion: userFound.profileVersion
+    });
+  } catch (error) {
+    // Handle JWT verification errors specifically
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(400).json({ message: "Invalid or expired reset token" });
+    }
+    
+    console.log("Reset password error:", error.message, error.stack);
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };

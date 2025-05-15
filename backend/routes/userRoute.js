@@ -13,7 +13,10 @@ import {
   getUserById,
   updateUser,
   deleteUser,
-  checkApiStatus
+  checkApiStatus,
+  forgotPassword,
+  verifyOTP,
+  resetPasswordWithToken
 } from "../controllers/userController.js";
 
 const router = express.Router();  
@@ -26,6 +29,11 @@ router.get("/notifications", protect, getUserNotifications);
 
 // Login user
 router.post("/login", login);
+
+// Add forgot password routes (public routes)
+router.post("/forgot-password", forgotPassword);
+router.post("/verify-otp", verifyOTP);
+router.post("/reset-password-token", resetPasswordWithToken);
 
 // Get current user profile
 router.get("/profile", protect, getProfile);

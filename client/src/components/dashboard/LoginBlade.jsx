@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import loginImg from '../../assets/loginImg.png';
 import AuthContext from '../../context/AuthContext';
 import axios from 'axios';
@@ -319,10 +319,10 @@ export const LoginBlade = () => {
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-500">
           <p>
-            forgot your password?{' '}
-            <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
-              Reset 
-            </a>
+            Forgot your password?{' '}
+            <Link to="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
+              Reset Password
+            </Link>
           </p>
         </div>
       </div>
