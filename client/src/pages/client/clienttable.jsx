@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { MdEdit, MdDelete, MdBusiness } from 'react-icons/md';
-import { BsSearch } from 'react-icons/bs';
+import { BsSearch, BsDownload } from 'react-icons/bs';
 import { useSnackbar } from 'notistack';
 import axios from 'axios';
 import EditClient from './editclient';
@@ -112,6 +112,89 @@ function ClientTable({ clients, fetchClients }) {
     }
   };
 
+  // New function to get row highlight color based on department
+  const getRowHighlightColor = (department) => {
+    switch (department) {
+      case 'CBC':
+        return 'bg-blue-50 hover:bg-blue-100';
+      case 'CBI':
+        return 'bg-green-50 hover:bg-green-100';
+      case 'M~Line':
+        return 'bg-purple-50 hover:bg-purple-100';
+      default:
+        return 'hover:bg-gray-50';
+    }
+  };
+
+  // Calculate department stats
+  const getDepartmentStats = () => {
+    if (!filteredClients || filteredClients.length === 0) return {};
+    
+    const stats = {
+      total: filteredClients.length,
+      departments: {}
+    };
+    
+    filteredClients.forEach(client => {
+      const dept = client.department || 'Unknown';
+      stats.departments[dept] = (stats.departments[dept] || 0) + 1;
+    });
+    
+    return stats;
+  };
+  
+  const departmentStats = getDepartmentStats();
+
+  // Generate CSV data from filtered clients
+  const generateCSV = () => {
+    // Define the headers
+    const headers = [
+      'Client Name', 'Email', 'Phone', 'Department', 'Created At', 'Updated At'
+    ];
+    
+    // Create the CSV content
+    let csvContent = headers.join(',') + '\n';
+    
+    // Add data for each client
+    filteredClients.forEach(client => {
+      // Format dates for better readability
+      const createdDate = client.createdAt ? new Date(client.createdAt).toLocaleString() : 'N/A';
+      const updatedDate = client.updatedAt ? new Date(client.updatedAt).toLocaleString() : 'N/A';
+      
+      // Create CSV row and escape values that might contain commas
+      const row = [
+        `"${client.name || ''}"`,
+        `"${client.email || ''}"`,
+        `"${client.phone || ''}"`,
+        `"${client.department || ''}"`,
+        `"${createdDate}"`,
+        `"${updatedDate}"`
+      ].join(',');
+      
+      csvContent += row + '\n';
+    });
+    
+    return csvContent;
+  };
+  
+  // Download CSV file
+  const downloadCSV = () => {
+    const csvData = generateCSV();
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a link and trigger the download
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Clients-Export-${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // If we're editing a client, show the edit form
   if (editingClient) {
     return (
@@ -125,125 +208,176 @@ function ClientTable({ clients, fetchClients }) {
 
   // Otherwise show the client table
   return (
-
-    <div className="overflow-x-auto h-full">
-      <div className="relative overflow-x-auto rounded-lg">
-        {/* Add search controls here */}
-        <div className="mb-4 flex items-center space-x-2">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search clients..."
-              className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchTerm}
-              onChange={handleSearch}
-            />
-            <BsSearch className="absolute left-3 top-3 text-gray-400" />
-          </div>
-          {user?.isAdmin && (
-            <select
-              value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Departments</option>
-              <option value="CBC">CBC</option>
-              <option value="CBI">CBI</option>
-              <option value="M~Line">M~Line</option>
-            </select>
-          )}
-          {(searchTerm || departmentFilter) && (
-            <button
-              onClick={clearFilters}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-        
-        <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
-            <tr className="border-b border-gray-200">
-              <th scope="col" className="px-6 py-3 font-medium tracking-wider">
-                Client Name
-              </th>
-              <th scope="col" className="px-6 py-3 font-medium tracking-wider">
-                Email
-              </th>
-              <th scope="col" className="px-6 py-3 font-medium tracking-wider">
-                Phone
-              </th>
-              <th scope="col" className="px-6 py-3 font-medium tracking-wider">
-                Department
-              </th>
-              <th scope="col" className="px-6 py-3 font-medium tracking-wider text-right">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredClients && filteredClients.length > 0 ? (
-              filteredClients.map((client) => (
-
-                <tr key={client._id} className="border-b hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-800">{client.name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
-                      {client.email}
-                    </a>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
-                      {client.phone}
-                    </a>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getDepartmentBadgeColor(client.department)}`}>
-                      <MdBusiness className="mr-1" />
-                      {client.department}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => handleEditClient(client)}
-                        className="text-gray-500 hover:text-blue-600 transition duration-150 hover:bg-blue-50 p-1.5 rounded-md"
-                        title="Edit Client"
-                      >
-                        <MdEdit className="text-lg" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClient(client._id, client.name)}
-                        className="text-gray-500 hover:text-red-600 transition duration-150 hover:bg-red-50 p-1.5 rounded-md"
-                        title="Delete Client"
-                        disabled={loading}
-                      >
-                        <MdDelete className="text-lg" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5">
-                  <div className="text-center py-8 bg-white">
-                    <p className="text-gray-500 text-lg">No clients found matching your search criteria</p>
-                    <button
-                      onClick={clearFilters}
-                      className="mt-2 text-sky-600 hover:text-sky-800 underline"
+    <div className="flex flex-col h-full relative">
+      {/* Sticky Search and Filter Controls */}
+      <div className="sticky top-0 z-30 bg-white backdrop-blur-sm shadow-md">
+        <div className="bg-white rounded-t-lg border border-gray-200 p-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 items-end">
+            {/* Search Input */}
+            <div className="relative col-span-1">
+              <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                <BsSearch className="text-gray-400 text-sm" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search clients..."
+                value={searchTerm}
+                onChange={handleSearch}
+                className="pl-8 w-full py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+              />
+            </div>
+            
+            {/* Department Filter */}
+            <div className="flex space-x-1 flex-wrap">
+              {user?.isAdmin && (
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                >
+                  <option value="">All Departments</option>
+                  <option value="CBC">CBC</option>
+                  <option value="CBI">CBI</option>
+                  <option value="M~Line">M~Line</option>
+                </select>
+              )}
+              
+              {/* Department Stats - NEW */}
+              {filteredClients.length > 0 && (
+                <div className="flex items-center text-xs ml-2">
+                  {Object.entries(departmentStats.departments).map(([dept, count]) => (
+                    <div 
+                      key={dept} 
+                      className={`ml-2 px-2 py-1 rounded-md flex items-center ${
+                        dept === 'CBC' ? 'bg-blue-100 text-blue-800' : 
+                        dept === 'CBI' ? 'bg-green-100 text-green-800' : 
+                        dept === 'M~Line' ? 'bg-purple-100 text-purple-800' : 
+                        'bg-gray-100 text-gray-800'
+                      }`}
                     >
-                      Clear filters
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                      <MdBusiness className="mr-1" />
+                      <span>{dept}: {count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Action Buttons - Fixed layout */}
+            <div className="flex items-center justify-end space-x-3">
+              <div className="text-xs text-gray-500 flex items-center">
+                <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full text-xs font-medium mr-1">
+                  {filteredClients.length}
+                </span> 
+                clients found
+              </div>
+              
+              <button
+                onClick={clearFilters}
+                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none text-sm font-medium"
+              >
+                Clear Filters
+              </button>
+              
+              <button
+                onClick={downloadCSV}
+                className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none text-sm font-medium flex items-center"
+              >
+                <BsDownload className="mr-1" /> CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Single scrollable container for the entire table - increased height */}
+      <div className="flex-1 overflow-auto border border-gray-200 rounded-b-lg" style={{ height: 'calc(100% - 90px)' }}>
+        {filteredClients.length === 0 ? (
+          <div className="text-center py-8 bg-white h-full flex items-center justify-center">
+            <div>
+              <p className="text-gray-500 text-lg">No clients found matching your search criteria</p>
+              <button
+                onClick={clearFilters}
+                className="mt-2 text-sky-600 hover:text-sky-800 underline"
+              >
+                Clear filters
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="relative min-w-full">
+            <table className="min-w-full border-collapse">
+              {/* Table header - sticky relative to the scrollable container */}
+              <thead className="sticky top-0 z-20">
+                <tr>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
+                    Client Name
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
+                    Email
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
+                    Phone
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
+                    Department
+                  </th>
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200 sticky top-0 right-0 z-30 shadow-lg">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredClients.map((client) => (
+                  <tr 
+                    key={client._id} 
+                    className={`border-b transition-colors ${getRowHighlightColor(client.department)}`}
+                  >
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <div className="font-medium text-gray-800">{client.name}</div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
+                        {client.email}
+                      </a>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
+                        {client.phone}
+                      </a>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getDepartmentBadgeColor(client.department)}`}>
+                        <MdBusiness className="mr-1" />
+                        {client.department}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white shadow-lg z-10 border-l border-gray-100">
+                      <div className="flex justify-end space-x-1">
+                        <button
+                          onClick={() => handleEditClient(client)}
+                          className="text-gray-500 hover:text-blue-600 transition duration-150 hover:bg-blue-50 p-1 rounded-md"
+                          title="Edit Client"
+                        >
+                          <MdEdit className="text-lg" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClient(client._id, client.name)}
+                          className="text-gray-500 hover:text-red-600 transition duration-150 hover:bg-red-50 p-1 rounded-md"
+                          title="Delete Client"
+                          disabled={loading}
+                        >
+                          <MdDelete className="text-lg" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

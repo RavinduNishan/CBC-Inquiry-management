@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { BsSearch, BsCheckCircle, BsXCircle, BsShieldLock } from 'react-icons/bs';
+import { BsSearch, BsCheckCircle, BsXCircle, BsShieldLock, BsDownload } from 'react-icons/bs';
 import { FiEdit, FiTrash2, FiUser, FiMail, FiCalendar } from 'react-icons/fi';
 import { MdBusiness, MdSecurity } from 'react-icons/md'; // Added for department and security icons
 import axios from 'axios';
+import AuthContext from '../../context/AuthContext';
+import { useSnackbar } from 'notistack';
 
 // Department badge component
 const departmentBadge = (department) => {
@@ -109,6 +111,58 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
     }
   };
 
+  // Generate CSV data from filtered users
+  const generateCSV = () => {
+    // Define the headers
+    const headers = [
+      'Name', 'Email', 'Phone', 'Department', 'Status', 'Access Level', 'Created At', 'Updated At'
+    ];
+    
+    // Create the CSV content
+    let csvContent = headers.join(',') + '\n';
+    
+    // Add data for each user
+    filteredUsers.forEach(user => {
+      // Format dates for better readability
+      const createdDate = user.createdAt ? new Date(user.createdAt).toLocaleString() : 'N/A';
+      const updatedDate = user.updatedAt ? new Date(user.updatedAt).toLocaleString() : 'N/A';
+      
+      // Create CSV row and escape values that might contain commas
+      const row = [
+        `"${user.name || ''}"`,
+        `"${user.email || ''}"`,
+        `"${user.phone || ''}"`,
+        `"${user.department || ''}"`,
+        `"${user.status || 'active'}"`,
+        `"${user.accessLevel || 'staff'}"`,
+        `"${createdDate}"`,
+        `"${updatedDate}"`
+      ].join(',');
+      
+      csvContent += row + '\n';
+    });
+    
+    return csvContent;
+  };
+  
+  // Download CSV file
+  const downloadCSV = () => {
+    const csvData = generateCSV();
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a link and trigger the download
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Users-Export-${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="flex flex-col h-full relative">
       {/* Sticky Search and Filter Controls */}
@@ -174,11 +228,20 @@ const UserTable = ({ users, fetchUsers, onViewDetails }) => {
                 users found
               </div>
               
+              {(searchTerm || statusFilter || departmentFilter || accessLevelFilter) && (
+                <button
+                  onClick={clearFilters}
+                  className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none text-sm font-medium"
+                >
+                  Clear Filters
+                </button>
+              )}
+              
               <button
-                onClick={clearFilters}
-                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none text-sm font-medium"
+                onClick={downloadCSV}
+                className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none text-sm font-medium flex items-center"
               >
-                Clear Filters
+                <BsDownload className="mr-1" /> CSV
               </button>
             </div>
           </div>
