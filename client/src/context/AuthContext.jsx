@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import EventSourceWithAuth from '../utils/EventSourceWithAuth';
 
@@ -18,8 +18,13 @@ export const AuthProvider = ({ children }) => {
     
     // Clean up SSE connection
     if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+      try {
+        eventSourceRef.current.close();
+      } catch (err) {
+        console.warn('Error closing SSE connection:', err);
+      } finally {
+        eventSourceRef.current = null;
+      }
     }
     
     // Clear auth data
@@ -50,18 +55,34 @@ export const AuthProvider = ({ children }) => {
   const setupNotifications = useCallback(() => {
     if (!isAuthenticated || !user || !user._id) return;
     
+    // Skip if we already have an active connection
+    if (eventSourceRef.current && eventSourceRef.current.isConnected) {
+      console.log('SSE connection already exists, skipping setup');
+      return;
+    }
+    
     // Clean up any existing connection
     if (eventSourceRef.current) {
       console.log('Closing existing SSE connection before creating new one');
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+      try {
+        eventSourceRef.current.close();
+      } catch (err) {
+        console.warn('Error closing existing SSE connection:', err);
+      } finally {
+        eventSourceRef.current = null;
+      }
     }
     
     try {
       console.log('Setting up SSE notifications for user:', user._id);
       
-      // Create new EventSourceWithAuth instance
-      const es = new EventSourceWithAuth('http://localhost:5555/user/notifications');
+      // Create new EventSourceWithAuth instance with improved options
+      const es = new EventSourceWithAuth('http://localhost:5555/user/notifications', {
+        debug: true,
+        timeoutDuration: 30000, // Increase timeout to 30 seconds
+        maxReconnectAttempts: 5,  // Increase reconnect attempts
+        reconnectInterval: 5000   // Longer interval between reconnects
+      });
       
       // Set up message handler
       es.onmessage = (event) => {
@@ -135,17 +156,24 @@ export const AuthProvider = ({ children }) => {
   
   // Set up notifications whenever auth state changes
   useEffect(() => {
-    setupNotifications();
+    if (isAuthenticated && user && user._id) {
+      setupNotifications();
+    }
     
     // Cleanup on unmount
     return () => {
       if (eventSourceRef.current) {
         console.log('Closing SSE connection on unmount');
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+        try {
+          eventSourceRef.current.close();
+        } catch (err) {
+          console.warn('Error closing SSE connection on unmount:', err);
+        } finally {
+          eventSourceRef.current = null;
+        }
       }
     };
-  }, [setupNotifications]);
+  }, [setupNotifications, isAuthenticated, user]);
   
   // Setup a helper function to manually check for profile changes
   const startSSEConnection = useCallback(() => {
@@ -249,8 +277,14 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Invalid response from server - missing token');
       }
       
+      // Ensure permissions are properly formatted
+      const userData = {
+        ...res.data,
+        permissions: res.data.permissions || [] // Ensure permissions is an array
+      };
+      
       // Store user data and token in localStorage
-      localStorage.setItem('user', JSON.stringify(res.data));
+      localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', res.data.token);
       localStorage.removeItem('loggedOut');
       
@@ -264,11 +298,11 @@ export const AuthProvider = ({ children }) => {
       // Set first login flag to trigger initial data load
       setIsFirstLogin(true);
       
-      // Set user context
-      setUser(res.data);
+      // Set user context with ensured permissions
+      setUser(userData);
       setIsAuthenticated(true);
       
-      console.log('User logged in, permissions:', res.data.permissions);
+      console.log('User logged in, permissions:', userData.permissions);
       
       setLoading(false);
       return { success: true };
@@ -281,9 +315,6 @@ export const AuthProvider = ({ children }) => {
       return { success: false, message };
     }
   };
-  
-  // Check if user is admin
-  const isAdmin = user && user.accessLevel === 'Administrator';
   
   // Enhanced security check function that uses the updated logout
   const checkSecurityChanges = useCallback(async () => {
@@ -312,6 +343,42 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, logout]);
   
+  // Replace the permission check function with a more efficient version
+  const checkPermission = useCallback((permission) => {
+    if (!user) return false;
+    
+    // Only log in development environment and with a DEBUG flag
+    const shouldLog = process.env.NODE_ENV === 'development' && localStorage.getItem('DEBUG_PERMISSIONS') === 'true';
+    
+    // Check if the user has the required permission
+    const hasPermission = user.role?.permissions?.includes(permission) || 
+                          user.role?.name === 'admin' || 
+                          false;
+    
+    if (shouldLog) {
+      console.log('Permission check for:', permission, 'user:', user);
+    }
+    
+    return hasPermission;
+  }, [user]);
+  
+  // Define isAdmin based on the user's actual access level - add more debugging
+  const isAdmin = useMemo(() => {
+    console.log('Checking admin status for user:', user);
+    if (!user) return false;
+    
+    // Log the accessLevel to debug
+    console.log('User accessLevel:', user.accessLevel);
+    const adminStatus = user.accessLevel === 'admin';
+    
+    // Add explicit property to user object to ensure it's accessible
+    if (user && !user.hasOwnProperty('isAdmin')) {
+      user.isAdmin = adminStatus;
+    }
+    
+    return adminStatus;
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -326,7 +393,8 @@ export const AuthProvider = ({ children }) => {
       logout,
       checkSecurityChanges,
       startSSEConnection,
-      setupNotifications
+      setupNotifications,
+      checkPermission
     }}>
       {children}
     </AuthContext.Provider>

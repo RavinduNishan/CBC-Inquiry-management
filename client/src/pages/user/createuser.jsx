@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import Spinner from './Spinner';
 import { useSnackbar } from 'notistack';
-import { MdPersonAdd, MdPerson, MdEmail, MdPhone, MdSecurity, MdBadge, MdCheckCircle, MdVerifiedUser, MdLock, MdShield } from 'react-icons/md';
+import { MdPersonAdd, MdPerson, MdEmail, MdPhone, MdVerifiedUser, MdLock, MdBusiness, MdSecurity } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
+import AuthContext from '../../context/AuthContext';
 
 // Custom CSS for toggle
 const toggleStyles = `
@@ -19,6 +21,22 @@ const toggleStyles = `
 `;
 
 function CreateUser({ onUserAdded }) {
+  const navigate = useNavigate(); // Add this
+  const { isAdmin } = useContext(AuthContext); // Add this
+  const { enqueueSnackbar } = useSnackbar();
+
+  // Add security check to redirect non-admins
+  useEffect(() => {
+    if (!isAdmin) {
+      console.log('Non-admin attempted to access user creation');
+      enqueueSnackbar('You do not have permission to create users', { 
+        variant: 'error' 
+      });
+      // As backup, navigate to dashboard
+      navigate('/dashboard');
+    }
+  }, [isAdmin, navigate, enqueueSnackbar]);
+
   // Add style tag with toggle CSS
   useEffect(() => {
     const styleElement = document.createElement('style');
@@ -30,51 +48,39 @@ function CreateUser({ onUserAdded }) {
     };
   }, []);
 
-  const { enqueueSnackbar } = useSnackbar();
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState({
     name: '',
     email: '',
     phone: '',
-    accessLevel: 'Staff Member',
-    permissions: ['myInquiries'], // Initialize with required myInquiries
+    department: '',
     password: '',
     confirmPassword: '',
     status: 'active', // Default status is active
+    accessLevel: 'staff', // Default access level is staff
   });
   const [error, setError] = useState('');
 
-  // Available permissions for staff members - standardize with EditUserForm
-  const availablePermissions = [
-    { id: 'myInquiries', label: 'My Inquiries', description: 'Access to inquiries assigned to you', required: true },
-    { id: 'inquiries', label: 'All Inquiries', description: 'Can view and manage all inquiries in the system' },
-    { id: 'assignInquiries', label: 'Assign Users', description: 'Can assign inquiries to other users (requires "All Inquiries" permission)' },
-    { id: 'addInquiry', label: 'Add Inquiries', description: 'Can create new inquiries in the system' },
+  // Department options
+  const departments = [
+    'CBC',
+    'CBI',
+    'M~Line'
   ];
-
-  // Default permissions for staff members
-  useEffect(() => {
-    if (userData.accessLevel === 'Staff Member' && !userData.permissions.includes('myInquiries')) {
-      // Ensure myInquiries is always included
-      setUserData(prev => ({
-        ...prev,
-        permissions: [...prev.permissions, 'myInquiries']
-      }));
-    } else if (userData.accessLevel === 'Administrator') {
-      // Administrators get all permissions
-      setUserData({
-        ...userData,
-        permissions: availablePermissions.map(p => p.id)
-      });
-    }
-  }, [userData.accessLevel, userData.permissions]);
+  
+  // Access Level options
+  const accessLevels = [
+    { value: 'admin', label: 'Admin', description: 'Full system access and management' },
+    { value: 'manager', label: 'Department Manager', description: 'Manage department and staff' },
+    { value: 'staff', label: 'Staff Member', description: 'Regular staff access' }
+  ];
 
   const handleInputChange = (e) => {
     // For email field, trim spaces as the user types
     if (e.target.name === 'email') {
       setUserData({
         ...userData,
-        [e.target.name]: e.target.value.trim()
+        [e.target.name]: e.target.value.trim().toLowerCase()
       });
     } else {
       setUserData({
@@ -92,60 +98,9 @@ function CreateUser({ onUserAdded }) {
     });
   };
 
-  const handlePermissionChange = (permissionId) => {
-    // Don't allow unchecking the "myInquiries" permission
-    if (permissionId === 'myInquiries') return;
-    
-    const currentPermissions = [...userData.permissions];
-    
-    // Special handling for permission dependencies
-    if (permissionId === 'inquiries') {
-      // If unchecking "All Inquiries", also remove "Assign Users"
-      if (currentPermissions.includes(permissionId)) {
-        setUserData({
-          ...userData,
-          permissions: currentPermissions.filter(id => id !== permissionId && id !== 'assignInquiries')
-        });
-      } else {
-        setUserData({
-          ...userData,
-          permissions: [...currentPermissions, permissionId]
-        });
-      }
-    } 
-    // Only allow adding "Assign Users" if "All Inquiries" is checked
-    else if (permissionId === 'assignInquiries') {
-      // Only add if "inquiries" permission exists
-      if (currentPermissions.includes('inquiries')) {
-        if (currentPermissions.includes(permissionId)) {
-          setUserData({
-            ...userData,
-            permissions: currentPermissions.filter(id => id !== permissionId)
-          });
-        } else {
-          setUserData({
-            ...userData,
-            permissions: [...currentPermissions, permissionId]
-          });
-        }
-      }
-    }
-    // Normal handling for other permissions
-    else {
-      if (currentPermissions.includes(permissionId)) {
-        // Remove permission if already exists
-        setUserData({
-          ...userData,
-          permissions: currentPermissions.filter(id => id !== permissionId)
-        });
-      } else {
-        // Add permission if it doesn't exist
-        setUserData({
-          ...userData,
-          permissions: [...currentPermissions, permissionId]
-        });
-      }
-    }
+  const validateEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
   };
 
   const handleSubmit = async (e) => {
@@ -160,36 +115,43 @@ function CreateUser({ onUserAdded }) {
     }
 
     // Validate form data
-    if (!userData.name || !userData.email || !userData.phone || !userData.password) {
+    if (!userData.name || !userData.email || !userData.phone || !userData.password || !userData.department) {
       setError('Please fill in all required fields');
       enqueueSnackbar('Please fill in all required fields', { variant: 'error' });
+      return;
+    }
+    
+    // Validate email format
+    if (!validateEmail(userData.email)) {
+      setError('Please enter a valid email address');
+      enqueueSnackbar('Please enter a valid email address', { variant: 'error' });
       return;
     }
 
     // Normalize email address (trim spaces and convert to lowercase)
     const normalizedEmail = userData.email.trim().toLowerCase();
 
-    // For staff members, ensure myInquiries permission is included
-    if (userData.accessLevel === 'Staff Member') {
-      const updatedPermissions = [...userData.permissions];
-      if (!updatedPermissions.includes('myInquiries')) {
-        updatedPermissions.push('myInquiries');
-      }
-      
-      userData.permissions = updatedPermissions;
-    }
-
     try {
       setLoading(true);
+      
+      console.log('Sending user data:', {
+        name: userData.name,
+        email: normalizedEmail,
+        phone: userData.phone,
+        department: userData.department,
+        password: userData.password,
+        status: userData.status,
+        accessLevel: userData.accessLevel
+      });
       
       const response = await axios.post('http://localhost:5555/user', {
         name: userData.name,
         email: normalizedEmail, // Use the normalized email
         phone: userData.phone,
-        accessLevel: userData.accessLevel,
-        permissions: userData.permissions,
+        department: userData.department,
         password: userData.password,
-        status: userData.status // Send status to backend
+        status: userData.status,
+        accessLevel: userData.accessLevel // Send access level to backend
       });
       
       setLoading(false);
@@ -200,11 +162,11 @@ function CreateUser({ onUserAdded }) {
         name: '',
         email: '',
         phone: '',
-        accessLevel: 'Staff Member',
-        permissions: ['myInquiries'],
+        department: '',
         password: '',
         confirmPassword: '',
         status: 'active', // Reset status to active
+        accessLevel: 'staff', // Reset access level to staff
       });
       
       // Notify parent component if callback provided
@@ -214,6 +176,7 @@ function CreateUser({ onUserAdded }) {
       
     } catch (error) {
       setLoading(false);
+      console.error('Error creating user:', error.response || error);
       const errorMessage = error.response?.data?.message || 'Error creating user';
       setError(errorMessage);
       enqueueSnackbar(errorMessage, { variant: 'error' });
@@ -228,7 +191,7 @@ function CreateUser({ onUserAdded }) {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-800 border-b-2 border-indigo-500 pb-1">Create New User</h1>
-          <p className="text-gray-600 mt-1">Add a new user to the system with appropriate access level and permissions</p>
+          <p className="text-gray-600 mt-1">Add a new user to the system</p>
         </div>
       </div>
 
@@ -236,7 +199,7 @@ function CreateUser({ onUserAdded }) {
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-md">
           <div className="flex items-start">
             <svg className="h-5 w-5 text-red-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 001.414 1.414L10 11.414l1.293 1.293a1 1 001.414-1.414L11.414 10l1.293-1.293a1 1 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
             <div className="ml-3">
               <p className="text-sm text-red-700 font-medium">{error}</p>
@@ -298,7 +261,7 @@ function CreateUser({ onUserAdded }) {
                 </div>
               </div>
 
-              <div className="sm:col-span-6">
+              <div className="sm:col-span-3">
                 <label htmlFor="phone" className="flex items-center text-sm font-medium text-gray-700 mb-1">
                   <MdPhone className="text-gray-500 mr-1.5" />
                   Phone Number
@@ -316,42 +279,40 @@ function CreateUser({ onUserAdded }) {
                   />
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Access & Security Section */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center">
-              <MdSecurity className="text-indigo-500 mr-2" />
-              Access & Security
-            </h3>
-
-            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6 mb-6">
+              
+              {/* Department dropdown */}
               <div className="sm:col-span-3">
-                <label htmlFor="accessLevel" className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                  <MdBadge className="text-gray-500 mr-1.5" />
-                  Access Level
+                <label htmlFor="department" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <MdBusiness className="text-gray-500 mr-1.5" />
+                  Department
                 </label>
                 <div className="mt-1">
                   <select
-                    id="accessLevel"
-                    name="accessLevel"
-                    value={userData.accessLevel}
+                    id="department"
+                    name="department"
+                    value={userData.department}
                     onChange={handleInputChange}
                     className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
                   >
-                    <option value="Administrator">Administrator</option>
-                    <option value="Staff Member">Staff Member</option>
+                    <option value="">Select Department</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {userData.accessLevel === 'Administrator' 
-                      ? 'Administrators have full access to all system features and data' 
-                      : 'Staff members have limited access based on assigned permissions'}
-                  </p>
                 </div>
               </div>
+            </div>
+          </div>
 
+          {/* Account & Security Section */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center">
+              <MdLock className="text-indigo-500 mr-2" />
+              Account & Security
+            </h3>
+
+            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6 mb-6">
               {/* Status toggle switch with improved styling */}
               <div className="sm:col-span-3">
                 <div className="flex items-center h-full">
@@ -392,64 +353,32 @@ function CreateUser({ onUserAdded }) {
                     : 'User will be created but unable to login until activated'}
                 </p>
               </div>
-            </div>
-
-            {/* Permissions section with enhanced styling */}
-            {userData.accessLevel === 'Staff Member' && (
-              <div className="rounded-lg bg-gray-50 p-4 border border-gray-200 mb-6">
-                <fieldset>
-                  <legend className="flex items-center text-sm font-medium text-gray-700 mb-3">
-                    <MdCheckCircle className="text-indigo-500 mr-1.5" />
-                    User Permissions
-                  </legend>
-                  
-                  <div className="bg-white rounded-lg p-3 border border-gray-100">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {availablePermissions.map((permission) => {
-                        // Check if permission should be disabled
-                        const isDisabled = permission.required || 
-                          (permission.id === 'assignInquiries' && !userData.permissions.includes('inquiries'));
-                        
-                        return (
-                          <div 
-                            key={permission.id} 
-                            className={`flex items-start p-2 rounded-md hover:bg-gray-50 ${
-                              isDisabled ? 'opacity-75' : ''
-                            }`}
-                          >
-                            <div className="flex items-center h-5">
-                              <input
-                                id={`permission-${permission.id}`}
-                                name={`permission-${permission.id}`}
-                                type="checkbox"
-                                checked={userData.permissions.includes(permission.id) || permission.required}
-                                onChange={() => handlePermissionChange(permission.id)}
-                                className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                disabled={isDisabled}
-                              />
-                            </div>
-                            <div className="ml-3 text-sm">
-                              <label htmlFor={`permission-${permission.id}`} className="font-medium text-gray-700">
-                                {permission.label}
-                                {permission.required && <span className="text-xs text-indigo-600 ml-1">(Required)</span>}
-                                {permission.id === 'assignInquiries' && !userData.permissions.includes('inquiries') && 
-                                  <span className="text-xs text-orange-600 ml-1">(Requires "All Inquiries")</span>
-                                }
-                              </label>
-                              <p className="text-gray-500 text-xs mt-0.5">{permission.description}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  
-                  <p className="mt-3 text-xs text-gray-500 italic">
-                    Note: "My Inquiries" permission is required and cannot be disabled. "Assign Users" requires "All Inquiries" permission.
-                  </p>
-                </fieldset>
+              
+              {/* Access Level Selection - NEW */}
+              <div className="sm:col-span-3">
+                <label htmlFor="accessLevel" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <MdSecurity className="text-gray-500 mr-1.5" />
+                  Access Level
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="accessLevel"
+                    name="accessLevel"
+                    value={userData.accessLevel}
+                    onChange={handleInputChange}
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                    required
+                  >
+                    {accessLevels.map(level => (
+                      <option key={level.value} value={level.value}>{level.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {accessLevels.find(level => level.value === userData.accessLevel)?.description}
+                </p>
               </div>
-            )}
+            </div>
 
             {/* Password section with enhanced styling */}
             <div className="rounded-lg bg-gray-50 p-4 border border-gray-200">

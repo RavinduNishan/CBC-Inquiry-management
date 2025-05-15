@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
 import { MdSave, MdPerson, MdEmail, MdPhone, MdBusiness, MdClose } from 'react-icons/md';
 import Spinner from '../user/Spinner';
+import AuthContext from '../../context/AuthContext';
 
 function EditClient({ client, onClose, onClientUpdated }) {
   const { enqueueSnackbar } = useSnackbar();
+  const { user: currentUser } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [clientData, setClientData] = useState({
     name: '',
@@ -15,8 +17,9 @@ function EditClient({ client, onClose, onClientUpdated }) {
   });
   const [error, setError] = useState('');
 
-  // Department options
-  const departments = ['CBC', 'CBI', 'M~Line'];
+  // Department options - filter based on user role with fixed admin check
+  const hasAdminAccess = currentUser?.isAdmin === true || currentUser?.accessLevel === 'admin';
+  const departments = hasAdminAccess ? ['CBC', 'CBI', 'M~Line'] : [currentUser?.department || 'CBC'];
 
   // Load client data when component mounts or client prop changes
   useEffect(() => {
@@ -31,16 +34,27 @@ function EditClient({ client, onClose, onClientUpdated }) {
   }, [client]);
 
   const handleInputChange = (e) => {
-    // For email field, trim spaces as the user types
-    if (e.target.name === 'email') {
+    const { name, value } = e.target;
+    
+    // Special handling for different field types
+    if (name === 'email') {
+      // For email field, trim spaces as the user types
       setClientData({
         ...clientData,
-        [e.target.name]: e.target.value.trim()
+        [name]: value.trim()
+      });
+    } else if (name === 'phone') {
+      // For phone field, only allow numeric characters
+      const numericValue = value.replace(/\D/g, '');
+      setClientData({
+        ...clientData,
+        [name]: numericValue
       });
     } else {
+      // For all other fields, update normally
       setClientData({
         ...clientData,
-        [e.target.name]: e.target.value
+        [name]: value
       });
     }
   };
@@ -56,18 +70,28 @@ function EditClient({ client, onClose, onClientUpdated }) {
       return;
     }
 
+    // Check if user has permission to edit this client's department
+    if (!currentUser?.isAdmin && client.department !== currentUser?.department) {
+      setError('You do not have permission to edit clients from other departments');
+      enqueueSnackbar('Permission denied: Cannot edit clients from other departments', { variant: 'error' });
+      return;
+    }
+
     // Normalize email address (trim spaces and convert to lowercase)
     const normalizedEmail = clientData.email.trim().toLowerCase();
 
     try {
       setLoading(true);
       
-      await axios.put(`http://localhost:5555/client/${client._id}`, {
+      // Ensure department stays the same for non-admin users
+      const updatedClientData = {
         name: clientData.name,
         email: normalizedEmail,
         phone: clientData.phone,
-        department: clientData.department
-      });
+        department: currentUser.isAdmin ? clientData.department : currentUser.department
+      };
+      
+      await axios.put(`http://localhost:5555/client/${client._id}`, updatedClientData);
       
       setLoading(false);
       enqueueSnackbar('Client updated successfully', { variant: 'success' });
@@ -183,18 +207,29 @@ function EditClient({ client, onClose, onClientUpdated }) {
                   Department
                 </label>
                 <div className="mt-1">
-                  <select
-                    id="department"
-                    name="department"
-                    value={clientData.department}
-                    onChange={handleInputChange}
-                    className="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
-                    required
-                  >
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
+                  {hasAdminAccess ? (
+                    <select
+                      id="department"
+                      name="department"
+                      value={clientData.department}
+                      onChange={handleInputChange}
+                      className="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                      required
+                    >
+                      {departments.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="shadow-sm block w-full sm:text-sm border-gray-300 rounded-lg py-2 px-3 border bg-gray-50">
+                      {clientData.department}
+                      <input
+                        type="hidden"
+                        name="department"
+                        value={clientData.department}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

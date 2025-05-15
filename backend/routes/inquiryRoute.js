@@ -7,7 +7,7 @@ import {
   updateInquiry,
   deleteInquiry
 } from "../controllers/inquiryController.js";
-import { testEmailConfiguration } from "../utils/emailService.js";
+import { testEmailConfiguration, sendTestEmail, runDeliveryTest, runDiagnostic, handleDiagnosticRequest } from "../utils/emailService.js";
 
 const router = express.Router();  
 
@@ -41,6 +41,57 @@ router.get("/test/email-config", async (req, res) => {
       error: error.message
     });
   }
+});
+
+// Send test email
+router.post("/test/send-email", async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Email address is required'
+      });
+    }
+    
+    const result = await sendTestEmail(email);
+    res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to send test email',
+      error: error.message
+    });
+  }
+});
+
+// Run a comprehensive email delivery test
+router.post("/test/email-delivery", async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Email address is required for delivery test'
+      });
+    }
+    
+    const result = await runDeliveryTest(email);
+    res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to run email delivery test',
+      error: error.message
+    });
+  }
+});
+
+// Run comprehensive email diagnostics
+router.get("/test/email-diagnostics", async (req, res) => {
+  await handleDiagnosticRequest(req, res);
 });
 
 export default router;

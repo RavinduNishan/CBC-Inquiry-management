@@ -1,5 +1,7 @@
 import express from "express";
-import { protect, admin } from "../middleware/authMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
+import { adminOnly } from "../middleware/adminMiddleware.js";
+import { adminOrManagerOnly } from "../middleware/adminOrManagerMiddleware.js";
 import {
   getUserNotifications,
   login,
@@ -31,22 +33,22 @@ router.get("/profile", protect, getProfile);
 // Reset password endpoint
 router.put("/reset-password", protect, resetPassword);
 
-// Admin set password endpoint
-router.post("/:id/set-password", protect, admin, adminSetPassword);
+// Admin set password endpoint - add admin middleware
+router.post("/:id/set-password", protect, adminOnly, adminSetPassword);
 
-// Create a new user
-router.post("/", createUser);
+// Create a new user - admin only
+router.post("/", protect, adminOnly, createUser);
 
-// Get all users
-router.get("/", protect, getAllUsers);
+// Get all users - UPDATED: allow both admins and managers
+router.get("/", protect, adminOrManagerOnly, getAllUsers);
 
-// Get user by id
-router.get("/:id", protect, getUserById);
+// Get user by id - admin only
+router.get("/:id", protect, adminOnly, getUserById);
 
-// Update an existing user
-router.put("/:id", protect, updateUser);
+// Update an existing user - admin only
+router.put("/:id", protect, adminOnly, updateUser);
 
-// Delete a user
-router.delete("/:id", protect, admin, deleteUser);
+// Delete a user - admin only
+router.delete("/:id", protect, adminOnly, deleteUser);
 
 export default router;

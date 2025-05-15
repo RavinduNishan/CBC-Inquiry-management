@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { format } from 'date-fns';
-import { MdOutlineDelete, MdOutlineEdit, MdLockReset, MdArrowBack, MdPerson, MdSecurity, MdAccessTime } from 'react-icons/md';
+import { MdOutlineDelete, MdOutlineEdit, MdLockReset, MdArrowBack, MdPerson, MdSecurity, MdAccessTime, MdBusiness } from 'react-icons/md';
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
 import EditUserForm from './EditUserForm';
+import AuthContext from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const UserDetail = ({ user, onBack, onUserUpdated }) => {
   const [showEditForm, setShowEditForm] = useState(false);
@@ -13,6 +15,29 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetPasswordError, setResetPasswordError] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+  const { user: currentUser, isAdmin } = useContext(AuthContext);
+  const navigate = useNavigate(); // Add this
+  
+  // Add security check to redirect non-admins
+  useEffect(() => {
+    if (!isAdmin) {
+      console.log('Non-admin attempted to access user details');
+      enqueueSnackbar('You do not have permission to manage users', { 
+        variant: 'error' 
+      });
+      // Go back to dashboard
+      if (onBack) onBack();
+      // As backup, navigate to dashboard
+      navigate('/dashboard');
+    }
+  }, [isAdmin, navigate, enqueueSnackbar, onBack]);
+  
+  // Add debug log
+  useEffect(() => {
+    console.log('UserDetail rendered with isAdmin:', isAdmin);
+    console.log('Current user:', currentUser);
+    console.log('User being viewed:', user);
+  }, [isAdmin, currentUser, user]);
   
   // Format date for readability
   const formatDate = (dateString) => {
@@ -137,6 +162,20 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
     }
   };
 
+  // Function to get badge styling based on access level
+  const getAccessLevelBadge = (accessLevel) => {
+    switch (accessLevel) {
+      case 'admin':
+        return <span className="px-3 py-1 rounded-full text-sm font-medium shadow-sm bg-purple-100 text-purple-800 border border-purple-200">Admin</span>;
+      case 'manager':
+        return <span className="px-3 py-1 rounded-full text-sm font-medium shadow-sm bg-blue-100 text-blue-800 border border-blue-200">Department Manager</span>;
+      case 'staff':
+        return <span className="px-3 py-1 rounded-full text-sm font-medium shadow-sm bg-green-100 text-green-800 border border-green-200">Staff Member</span>;
+      default:
+        return <span className="px-3 py-1 rounded-full text-sm font-medium shadow-sm bg-gray-100 text-gray-800 border border-gray-200">Unknown</span>;
+    }
+  };
+
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 rounded-lg shadow-md border border-gray-200 p-6">
       {!showEditForm ? (
@@ -170,9 +209,6 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
                 )}
               </div>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                <span className="px-3 py-1 bg-sky-100 text-sky-800 text-sm rounded-full font-medium border border-sky-200 shadow-sm">
-                  {user.accessLevel}
-                </span>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium shadow-sm ${
                   user.status === 'active' 
                     ? 'bg-green-100 text-green-800 border border-green-200' 
@@ -180,12 +216,14 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
                 }`}>
                   {user.status === 'active' ? '● Active' : '● Inactive'}
                 </span>
+                {/* Add access level badge */}
+                {getAccessLevelBadge(user.accessLevel)}
               </div>
             </div>
           </div>
 
-          {/* Main content with enhanced 3-column grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Main content with enhanced 2-column grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* Column 1: User Details with icons */}
             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transform transition-transform hover:scale-[1.02] hover:shadow-md">
               <div className="flex items-center mb-4">
@@ -205,70 +243,18 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
                   <p className="text-xs text-gray-500">Phone Number</p>
                   <p className="text-sm font-medium">{user.phone || 'Not provided'}</p>
                 </div>
-              </div>
-            </div>
-            
-            {/* Column 2: Account Info with icons */}
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transform transition-transform hover:scale-[1.02] hover:shadow-md">
-              <div className="flex items-center mb-4">
-                <MdSecurity className="text-sky-500 text-xl mr-2" />
-                <h3 className="text-md font-semibold text-gray-700">Access & Permissions</h3>
-              </div>
-              <div className="space-y-4">
+                <div className="border-l-2 border-sky-200 pl-3">
+                  <p className="text-xs text-gray-500">Department</p>
+                  <p className="text-sm font-medium">{user.department || 'Not assigned'}</p>
+                </div>
                 <div className="border-l-2 border-sky-200 pl-3">
                   <p className="text-xs text-gray-500">Access Level</p>
-                  <p className="text-sm font-medium">{user.accessLevel}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {user.accessLevel === 'Administrator' 
-                      ? 'Has full system access' 
-                      : user.accessLevel === 'Manager' 
-                        ? 'Can manage most system functions' 
-                        : 'Has limited system access'}
-                  </p>
-                </div>
-                <div className="border-l-2 border-sky-200 pl-3">
-                  <p className="text-xs text-gray-500">Account Status</p>
-                  <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                    user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {user.status === 'active' ? 'Active' : 'Inactive'}
-                  </span>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {user.status === 'active' 
-                      ? 'User can currently login and use the system' 
-                      : 'User is prevented from logging in'}
-                  </p>
-                </div>
-                <div className="border-l-2 border-sky-200 pl-3">
-                  <p className="text-xs text-gray-500">Permissions</p>
-                  {user.accessLevel === 'Administrator' ? (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">All permissions</p>
-                      <p className="text-xs text-gray-400 mt-0.5">Administrator has full system access</p>
-                    </div>
-                  ) : (
-                    <div className="mt-1">
-                      {user.permissions && Array.isArray(user.permissions) && user.permissions.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {user.permissions.map((permission, index) => (
-                            <span 
-                              key={index} 
-                              className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-md border border-blue-200"
-                            >
-                              {permission}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-600 italic">No specific permissions assigned</p>
-                      )}
-                    </div>
-                  )}
+                  <p className="text-sm font-medium capitalize">{user.accessLevel || 'Staff Member'}</p>
                 </div>
               </div>
             </div>
             
-            {/* Column 3: Timeline with icons */}
+            {/* Column 2: Timeline with icons */}
             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transform transition-transform hover:scale-[1.02] hover:shadow-md">
               <div className="flex items-center mb-4">
                 <MdAccessTime className="text-sky-500 text-xl mr-2" />
@@ -320,110 +306,114 @@ const UserDetail = ({ user, onBack, onUserUpdated }) => {
               </button>
             </div>
             <p className="text-xs text-gray-500 mt-3">
-              Note: Editing a user allows you to change their details and permissions. Deleting a user cannot be undone.
+              Note: Editing a user allows you to change their details. Deleting a user cannot be undone.
             </p>
           </div>
 
-          {/* Password Reset Section - Enhanced design */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-sky-50 to-blue-50 p-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-gray-800 text-md">Password Management</h4>
-                  <p className="text-sm text-gray-600">Reset password for {user.name}</p>
-                </div>
-                <button 
-                  onClick={togglePasswordReset}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center ${
-                    showPasswordReset 
-                      ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
-                      : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white'
-                  }`}
-                >
-                  <MdLockReset className="mr-1.5 text-lg" />
-                  {showPasswordReset ? 'Cancel' : 'Reset Password'}
-                </button>
-              </div>
-            </div>
-
-            {/* Enhanced Password Reset Form */}
-            {showPasswordReset && (
-              <div className="p-5">
-                <div className="mb-4 bg-blue-50 text-blue-700 p-3 rounded-md text-sm border-l-4 border-blue-400">
-                  <strong>Note:</strong> This will reset the user's password without requiring their old password.
-                  Make sure to communicate the new password securely to the user.
-                </div>
-              
-                {resetPasswordError && (
-                  <div className="mb-4 bg-red-50 text-red-700 p-3 rounded-md text-sm border-l-4 border-red-400">
-                    <strong>Error:</strong> {resetPasswordError}
+          {/* Password Reset Section - Only show for admins */}
+          {isAdmin && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-sky-50 to-blue-50 p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-gray-800 text-md">Admin Password Management</h4>
+                    <p className="text-sm text-gray-600">Reset password for {user.name}</p>
                   </div>
-                )}
+                  <button 
+                    onClick={togglePasswordReset}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center ${
+                      showPasswordReset 
+                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                        : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white'
+                    }`}
+                  >
+                    <MdLockReset className="mr-1.5 text-lg" />
+                    {showPasswordReset ? 'Cancel' : 'Reset Password'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Enhanced Password Reset Form */}
+              {showPasswordReset && (
+                <div className="p-5">
+                  <div className="mb-4 bg-blue-50 text-blue-700 p-3 rounded-md text-sm border-l-4 border-blue-400">
+                    <strong>Admin Action:</strong> This will reset the user's password without requiring their old password.
+                    Make sure to communicate the new password securely to the user.
+                  </div>
                 
-                <form 
-                  id="passwordResetForm"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleResetPassword();
-                  }}
-                  className="space-y-4"
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                        New Password
-                      </label>
-                      <input
-                        type="password"
-                        id="newPassword"
-                        name="newPassword"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
-                        disabled={isResetting}
-                        placeholder="Enter new password"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">Minimum 6 characters required</p>
+                  {resetPasswordError && (
+                    <div className="mb-4 bg-red-50 text-red-700 p-3 rounded-md text-sm border-l-4 border-red-400">
+                      <strong>Error:</strong> {resetPasswordError}
+                    </div>
+                  )}
+                  
+                  <form 
+                    id="passwordResetForm"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleResetPassword();
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          id="newPassword"
+                          name="newPassword"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          required
+                          className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                          disabled={isResetting}
+                          placeholder="Enter new password"
+                          autoComplete="new-password"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">Minimum 6 characters required</p>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                          className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                          disabled={isResetting}
+                          placeholder="Confirm new password"
+                          autoComplete="new-password"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">Must match the password above</p>
+                      </div>
                     </div>
                     
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                        Confirm New Password
-                      </label>
-                      <input
-                        type="password"
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        className={`px-4 py-2 rounded-lg shadow-sm font-medium flex items-center ${
+                          isResetting 
+                            ? 'bg-gray-400 text-white cursor-not-allowed' 
+                            : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white'
+                        }`}
                         disabled={isResetting}
-                        placeholder="Confirm new password"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">Must match the password above</p>
+                      >
+                        <MdLockReset className="mr-1.5" />
+                        {isResetting ? 'Resetting Password...' : 'Set New Password'}
+                      </button>
                     </div>
-                  </div>
-                  
-                  <div className="flex justify-end pt-2">
-                    <button
-                      type="submit"
-                      className={`px-4 py-2 rounded-lg shadow-sm font-medium flex items-center ${
-                        isResetting 
-                          ? 'bg-gray-400 text-white cursor-not-allowed' 
-                          : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white'
-                      }`}
-                      disabled={isResetting}
-                    >
-                      <MdLockReset className="mr-1.5" />
-                      {isResetting ? 'Resetting Password...' : 'Set New Password'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-          </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
         </>
       ) : (
         // Edit User Form Component

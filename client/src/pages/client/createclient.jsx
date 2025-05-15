@@ -1,34 +1,52 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useContext } from 'react';
 import { useSnackbar } from 'notistack';
+import axios from 'axios';
 import { MdPersonAdd, MdPerson, MdEmail, MdPhone, MdBusiness } from 'react-icons/md';
 import Spinner from '../user/Spinner';
+import AuthContext from '../../context/AuthContext';
 
 function CreateClient({ onClientAdded }) {
   const { enqueueSnackbar } = useSnackbar();
+  const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [clientData, setClientData] = useState({
     name: '',
     email: '',
     phone: '',
-    department: 'CBC'
+    department: user?.department || 'CBC'
   });
   const [error, setError] = useState('');
 
-  // Department options
-  const departments = ['CBC', 'CBI', 'M~Line'];
-
+  // Fixed: Explicitly check both isAdmin and accessLevel for admin privileges
+  const hasAdminAccess = user?.isAdmin === true || user?.accessLevel === 'admin';
+  console.log('Create client - user:', user);
+  console.log('Create client - admin access:', hasAdminAccess);
+  
+  // Department options - all departments for admins, just user's department for others
+  const allDepartments = ['CBC', 'CBI', 'M~Line'];
+  
   const handleInputChange = (e) => {
-    // For email field, trim spaces as the user types
-    if (e.target.name === 'email') {
+    const { name, value } = e.target;
+    
+    // Special handling for different field types
+    if (name === 'email') {
+      // For email field, trim spaces as the user types
       setClientData({
         ...clientData,
-        [e.target.name]: e.target.value.trim()
+        [name]: value.trim()
+      });
+    } else if (name === 'phone') {
+      // For phone field, only allow numeric characters
+      const numericValue = value.replace(/\D/g, '');
+      setClientData({
+        ...clientData,
+        [name]: numericValue
       });
     } else {
+      // For all other fields, update normally
       setClientData({
         ...clientData,
-        [e.target.name]: e.target.value
+        [name]: value
       });
     }
   };
@@ -50,29 +68,30 @@ function CreateClient({ onClientAdded }) {
     try {
       setLoading(true);
       
-      const response = await axios.post('http://localhost:5555/client', {
+      // Ensure department stays the same for non-admin users
+      const dataToSubmit = {
         name: clientData.name,
         email: normalizedEmail,
         phone: clientData.phone,
-        department: clientData.department
-      });
+        department: user?.isAdmin ? clientData.department : user?.department
+      };
+      
+      const response = await axios.post('http://localhost:5555/client', dataToSubmit);
       
       setLoading(false);
       enqueueSnackbar('Client created successfully', { variant: 'success' });
       
-      // Reset form
-      setClientData({
-        name: '',
-        email: '',
-        phone: '',
-        department: 'CBC'
-      });
-      
-      // Notify parent component if callback provided
+      // Reset form or notify parent component
       if (onClientAdded) {
         onClientAdded();
+      } else {
+        setClientData({
+          name: '',
+          email: '',
+          phone: '',
+          department: user?.department || 'CBC'
+        });
       }
-      
     } catch (error) {
       setLoading(false);
       const errorMessage = error.response?.data?.message || 'Error creating client';
@@ -84,12 +103,12 @@ function CreateClient({ onClientAdded }) {
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6">
       <div className="flex items-center mb-6">
-        <div className="h-16 w-16 rounded-full bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center text-white text-2xl font-bold mr-4 shadow-lg">
+        <div className="h-16 w-16 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 flex items-center justify-center text-white text-2xl font-bold mr-4 shadow-lg">
           <MdPersonAdd className="text-2xl" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 border-b-2 border-blue-500 pb-1">Add New Client</h1>
-          <p className="text-gray-600 mt-1">Add a new client to the system</p>
+          <h1 className="text-2xl font-bold text-gray-800 border-b-2 border-amber-500 pb-1">Add New Client</h1>
+          <p className="text-gray-600 mt-1">Create a new client record</p>
         </div>
       </div>
 
@@ -116,7 +135,7 @@ function CreateClient({ onClientAdded }) {
           {/* Client Information Section */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center">
-              <MdPerson className="text-blue-500 mr-2" />
+              <MdPerson className="text-amber-500 mr-2" />
               Client Information
             </h3>
 
@@ -133,7 +152,7 @@ function CreateClient({ onClientAdded }) {
                     name="name"
                     value={clientData.name}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                    className="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
                     placeholder="Enter client's name"
                   />
@@ -143,7 +162,7 @@ function CreateClient({ onClientAdded }) {
               <div className="sm:col-span-1">
                 <label htmlFor="phone" className="flex items-center text-sm font-medium text-gray-700 mb-1">
                   <MdPhone className="text-gray-500 mr-1.5" />
-                  Phone Number
+                  Phone Number (digits only)
                 </label>
                 <div className="mt-1">
                   <input
@@ -152,9 +171,11 @@ function CreateClient({ onClientAdded }) {
                     name="phone"
                     value={clientData.phone}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
+                    className="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
-                    placeholder="Enter phone number"
+                    placeholder="Enter digits only"
                   />
                 </div>
               </div>
@@ -165,18 +186,29 @@ function CreateClient({ onClientAdded }) {
                   Department
                 </label>
                 <div className="mt-1">
-                  <select
-                    id="department"
-                    name="department"
-                    value={clientData.department}
-                    onChange={handleInputChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
-                    required
-                  >
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
+                  {hasAdminAccess ? (
+                    <select
+                      id="department"
+                      name="department"
+                      value={clientData.department}
+                      onChange={handleInputChange}
+                      className="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                      required
+                    >
+                      {allDepartments.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="shadow-sm block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border bg-gray-50">
+                      {user?.department || 'CBC'}
+                      <input
+                        type="hidden"
+                        name="department"
+                        value={user?.department || 'CBC'}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -192,7 +224,7 @@ function CreateClient({ onClientAdded }) {
                     name="email"
                     value={clientData.email}
                     onChange={handleInputChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
+                    className="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg py-2.5 px-3 border"
                     required
                     placeholder="Enter email address"
                   />
@@ -202,14 +234,14 @@ function CreateClient({ onClientAdded }) {
           </div>
 
           {/* Action buttons */}
-          <div className="flex justify-end">
+          <div className="flex justify-end space-x-3">
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white rounded-lg shadow-sm transition-all"
+              className="flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg shadow-sm transition-all"
             >
               <MdPersonAdd className="mr-2" />
-              {loading ? 'Creating...' : 'Add Client'}
+              {loading ? 'Creating...' : 'Create Client'}
             </button>
           </div>
         </form>

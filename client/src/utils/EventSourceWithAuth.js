@@ -1,207 +1,290 @@
-/**
- * Custom EventSource implementation with authorization header support
- */
 class EventSourceWithAuth {
   constructor(url, options = {}) {
     this.url = url;
     this.options = options;
     this.eventSource = null;
-    this.reconnectAttempts = 0;
+    this.listeners = {};
+    this.reconnectAttempt = 0;
     this.maxReconnectAttempts = options.maxReconnectAttempts || 5;
-    this.reconnectInterval = options.reconnectInterval || 3000;
-    this.listeners = new Map();
-    this.readyState = 0; // 0 = CONNECTING, 1 = OPEN, 2 = CLOSED
-    
-    // Create initial connection
-    this.connect();
+    this.reconnectInterval = options.reconnectInterval || 5000; // Increased from 3000
+    this.isConnected = false;
+    this.forceDisconnected = false;
+    this.timeoutId = null;
+    this.controller = null;
+    this.debug = options.debug || true;
+    this.timeoutDuration = options.timeoutDuration || 30000; // Increased from 15000
+    this.connectionLostRetries = 0;
+    this.maxConnectionLostRetries = 3;
+    this.init();
   }
-  
-  connect() {
-    this.readyState = 0; // CONNECTING
-    
-    // Set up headers with auth token
+
+  init() {
     const token = localStorage.getItem('token');
+    
     if (!token) {
-      console.error('No token available for EventSource connection');
-      this.readyState = 2; // CLOSED
+      console.error('No auth token available for SSE connection');
+      this.triggerError(new Error('Authentication required'));
       return;
     }
     
-    const fetchController = new AbortController();
-    this._controller = fetchController;
-    
     try {
-      // Create fetch request for SSE
-      fetch(this.url, {
+      // Clean up any existing resources
+      this._cleanup();
+      
+      // Create new EventSource with headers
+      const headers = new Headers({
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      });
+      
+      const fetchOptions = {
+        headers,
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'text/event-stream'
-        },
         credentials: 'include',
-        signal: fetchController.signal
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error, status = ${response.status}`);
-        }
-        
-        this.readyState = 1; // OPEN
-        
-        // Call onopen handlers
-        this._dispatchEvent({
-          type: 'open'
-        });
-        
-        const reader = response.body.getReader();
-        let buffer = '';
-        
-        // Process the stream
-        const processStream = ({ done, value }) => {
-          if (done) {
-            console.log('EventSource stream closed by server');
-            this._attemptReconnect();
-            return;
+        mode: 'cors',
+        cache: 'no-cache',
+      };
+      
+      // Don't use AbortController to avoid abort errors
+      let isFetchTimedOut = false;
+      
+      // Log the connection attempt with more details
+      if (this.debug) {
+        console.log(`Attempting SSE connection to ${this.url} with timeout: ${this.timeoutDuration}ms`);
+      }
+      
+      // Set timeout to track connection timeouts
+      this.timeoutId = setTimeout(() => {
+        console.log(`SSE connection timeout - connection is taking too long (${this.timeoutDuration}ms)`);
+        isFetchTimedOut = true;
+        this.reconnect();
+      }, this.timeoutDuration);
+      
+      // Use fetch to establish the SSE connection with proper credentials
+      fetch(this.url, fetchOptions)
+        .then(response => {
+          // Clear timeout since connection was successful
+          if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+            this.timeoutId = null;
           }
           
-          // Convert bytes to text
-          const chunk = new TextDecoder().decode(value);
-          buffer += chunk;
+          // Don't proceed if we already timed out
+          if (isFetchTimedOut) return;
           
-          // Process complete events in buffer
-          const events = buffer.split('\n\n');
-          buffer = events.pop() || ''; // Keep the last incomplete event in buffer
+          if (!response.ok) {
+            throw new Error(`SSE connection failed with status: ${response.status}`);
+          }
           
-          events.forEach(event => {
-            if (event.trim() === '') return;
+          if (this.debug) {
+            console.log('SSE connection established successfully');
+          }
+          
+          // Reset reconnection count on successful connection
+          this.reconnectAttempt = 0;
+          this.connectionLostRetries = 0;
+          this.isConnected = true;
+          
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          
+          const processStreamData = ({ value, done }) => {
+            if (done) {
+              console.log('SSE stream closed by server');
+              this.isConnected = false;
+              this.reconnect();
+              return;
+            }
             
-            const lines = event.split('\n');
-            let eventData = {};
-            let eventName = 'message';
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop() || '';
             
             lines.forEach(line => {
-              if (line.startsWith('event:')) {
-                eventName = line.substring(6).trim();
-              } else if (line.startsWith('data:')) {
-                const dataContent = line.substring(5).trim();
+              if (line.startsWith('data: ')) {
                 try {
-                  eventData = JSON.parse(dataContent);
+                  const data = JSON.parse(line.substring(6));
+                  this.isConnected = true;
+                  this.reconnectAttempt = 0;
+                  this.dispatchEvent('message', { data: JSON.stringify(data) });
+                  
+                  if (data.type) {
+                    this.dispatchEvent(data.type, { data: JSON.stringify(data) });
+                  }
                 } catch (e) {
-                  console.warn('Error parsing SSE data JSON:', e);
-                  eventData = dataContent;
+                  console.error('Error parsing SSE data:', e, line);
                 }
               }
             });
             
-            // Dispatch the event to listeners
-            this._dispatchEvent({
-              type: eventName,
-              data: eventData
+            reader.read().then(processStreamData).catch(error => {
+              console.log('Error reading SSE stream:', error);
+              this.isConnected = false;
+              this.reconnect();
             });
-          });
+          };
           
-          // Continue reading
-          reader.read().then(processStream).catch(err => {
-            console.error('Error reading SSE stream:', err);
-            this._attemptReconnect();
+          reader.read().then(processStreamData).catch(error => {
+            console.log('Error reading SSE stream:', error);
+            this.isConnected = false;
+            this.reconnect();
           });
-        };
-        
-        // Start reading
-        reader.read().then(processStream).catch(err => {
-          console.error('Initial SSE stream read error:', err);
-          this._attemptReconnect();
+        })
+        .catch(error => {
+          // Clear timeout if it's still active
+          if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+            this.timeoutId = null;
+          }
+          
+          // Don't proceed if we already timed out
+          if (isFetchTimedOut) return;
+          
+          console.error('SSE fetch error:', error);
+          this.isConnected = false;
+          
+          if (!this.forceDisconnected) {
+            this.reconnect();
+          }
         });
-        
-        // Reset reconnect attempts on successful connection
-        this.reconnectAttempts = 0;
-      })
-      .catch(error => {
-        console.error('EventSource fetch error:', error);
-        this._dispatchEvent({
-          type: 'error',
-          error
-        });
-        this._attemptReconnect();
-      });
     } catch (error) {
-      console.error('EventSource connection error:', error);
-      this._dispatchEvent({
-        type: 'error',
-        error
-      });
-      this._attemptReconnect();
-    }
-  }
-  
-  _dispatchEvent(event) {
-    // Handle standard event handlers (onmessage, onerror, etc.)
-    const handlerName = `on${event.type}`;
-    if (typeof this[handlerName] === 'function') {
-      try {
-        this[handlerName](event);
-      } catch (err) {
-        console.error(`Error in ${handlerName} handler:`, err);
+      // Clear timeout if it's still active
+      if (this.timeoutId) {
+        clearTimeout(this.timeoutId);
+        this.timeoutId = null;
+      }
+      
+      console.error('Error setting up SSE connection:', error);
+      if (!this.forceDisconnected) {
+        this.reconnect();
       }
     }
-    
-    // Handle custom event listeners
-    if (this.listeners.has(event.type)) {
-      const listeners = this.listeners.get(event.type);
-      listeners.forEach(listener => {
-        try {
-          listener(event);
-        } catch (err) {
-          console.error(`Error in "${event.type}" event listener:`, err);
-        }
-      });
-    }
   }
   
-  _attemptReconnect() {
-    if (this.readyState === 2) {
-      // Don't reconnect if we're explicitly closed
+  _cleanup() {
+    // Same safe cleanup approach
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+    
+    // Nullify controller without abort
+    this.controller = null;
+    
+    if (this.eventSource) {
+      try {
+        this.eventSource.close();
+      } catch (e) {
+        // Silent cleanup
+      } finally {
+        this.eventSource = null;
+      }
+    }
+  }
+
+  reconnect() {
+    if (this.forceDisconnected || this.reconnectAttempt >= this.maxReconnectAttempts) {
       return;
     }
     
-    this.reconnectAttempts++;
-    if (this.reconnectAttempts <= this.maxReconnectAttempts) {
-      console.log(`Reconnecting EventSource (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-      setTimeout(() => this.connect(), this.reconnectInterval);
-    } else {
-      console.error(`Max reconnection attempts (${this.maxReconnectAttempts}) reached for EventSource.`);
-      this.readyState = 2; // CLOSED
-      
-      this._dispatchEvent({
-        type: 'error',
-        data: { message: 'Max reconnection attempts reached' }
-      });
+    this.reconnectAttempt += 1;
+    console.log(`Reconnecting EventSource (attempt ${this.reconnectAttempt}/${this.maxReconnectAttempts})...`);
+    
+    setTimeout(() => {
+      if (!this.forceDisconnected) {
+        this.init();
+      }
+    }, this.reconnectInterval);
+  }
+
+  addEventListener(type, callback) {
+    if (!this.listeners[type]) {
+      this.listeners[type] = [];
     }
+    this.listeners[type].push(callback);
+    return this;
+  }
+
+  removeEventListener(type, callback) {
+    if (!this.listeners[type]) return this;
+    this.listeners[type] = this.listeners[type].filter(cb => cb !== callback);
+    return this;
+  }
+
+  dispatchEvent(type, event) {
+    if (!this.listeners[type]) return;
+    this.listeners[type].forEach(callback => {
+      try {
+        callback(event);
+      } catch (error) {
+        console.error(`Error in ${type} event handler:`, error);
+      }
+    });
   }
   
-  addEventListener(type, listener) {
-    if (!this.listeners.has(type)) {
-      this.listeners.set(type, new Set());
-    }
-    this.listeners.get(type).add(listener);
+  triggerError(error) {
+    this.dispatchEvent('error', { data: JSON.stringify({ type: 'error', message: error.message }) });
   }
-  
-  removeEventListener(type, listener) {
-    if (this.listeners.has(type)) {
-      this.listeners.get(type).delete(listener);
-      if (this.listeners.get(type).size === 0) {
-        this.listeners.delete(type);
+
+  close() {
+    // Clean up ping interval
+    this.stopKeepAlive();
+    
+    // Set flag first to prevent reconnection attempts
+    this.forceDisconnected = true;
+    
+    // Clear timeout
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+    
+    // Close event source if exists
+    if (this.eventSource) {
+      try {
+        this.eventSource.close();
+      } catch (e) {
+        // Silently ignore errors during close
+      } finally {
+        this.eventSource = null;
       }
     }
+    
+    // Clear controller without trying to abort it
+    this.controller = null;
+    
+    // Clear listeners
+    this.listeners = {};
   }
-  
-  close() {
-    this.readyState = 2; // CLOSED
-    if (this._controller) {
-      this._controller.abort();
-      this._controller = null;
+
+  // Add a ping method to help keep the connection alive
+  startKeepAlive() {
+    // Clear any existing ping interval
+    if (this.pingIntervalId) {
+      clearInterval(this.pingIntervalId);
     }
-    console.log('EventSource connection closed by client');
+    
+    // Create a new ping interval
+    this.pingIntervalId = setInterval(() => {
+      if (this.isConnected) {
+        if (this.debug) {
+          console.log('Sending keep-alive ping to SSE connection');
+        }
+        // Dispatch a custom ping event to keep the connection active
+        this.dispatchEvent('ping', { data: JSON.stringify({ type: 'ping', timestamp: new Date().toISOString() }) });
+      }
+    }, 45000); // Send a ping every 45 seconds
+  }
+
+  // Clean up ping interval
+  stopKeepAlive() {
+    if (this.pingIntervalId) {
+      clearInterval(this.pingIntervalId);
+      this.pingIntervalId = null;
+    }
   }
 }
 

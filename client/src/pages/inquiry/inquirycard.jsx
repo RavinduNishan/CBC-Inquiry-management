@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AiOutlineEdit } from 'react-icons/ai';
 import { FiUser, FiMail, FiPhone, FiBriefcase, FiTag, FiMessageSquare, FiFile, FiClock, FiRefreshCw, FiSend, FiUserPlus, FiHash } from 'react-icons/fi';
@@ -7,6 +7,7 @@ import AssignUserModal from './AssignUserModal';
 import axios from 'axios';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import AuthContext from '../../context/AuthContext';
 
 const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -39,10 +40,21 @@ const priorityStyles = {
 };
 
 const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButton = false }) => {
+    const { user } = useContext(AuthContext);
     const [assignModalOpen, setAssignModalOpen] = useState(false);
     const [currentInquiryId, setCurrentInquiryId] = useState(null);
     const [currentAssignee, setCurrentAssignee] = useState(null);
+    const [currentInquiryDepartment, setCurrentInquiryDepartment] = useState(null);
     const [users, setUsers] = useState([]);
+
+    // Simple check - only admins can fetch all users
+    const isAdmin = user?.isAdmin === true; // Strict check for true
+
+    // Add proper check for assignment permission
+    const canUserAssign = user?.accessLevel === 'admin' || user?.accessLevel === 'manager' || !hideAssignButton;
+
+    // Check if user is staff
+    const isStaffUser = user?.accessLevel === 'staff';
 
     // Filter input states
     const [inputSearchTerm, setInputSearchTerm] = useState('');
@@ -71,19 +83,24 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
 
     // Fetch users for assignment filter
     useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                const response = await axios.get('http://localhost:5555/user', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                setUsers(response.data.data);
-            } catch (error) {
-                console.error('Error fetching users for filter:', error);
-            }
-        };
-        fetchUsers();
-    }, []);
+        // Only attempt to fetch users if user is admin
+        if (isAdmin) {
+            const fetchUsers = async () => {
+                try {
+                    const response = await axios.get('http://localhost:5555/user');
+                    setUsers(response.data.data);
+                } catch (error) {
+                    console.log('Error fetching users for filter - handled gracefully');
+                    setUsers([]);
+                }
+            };
+            fetchUsers();
+        } else {
+            // For non-admins, don't even try to fetch
+            console.log('Non-admin user, skipping user fetch request in InquiryCard');
+            setUsers([]);
+        }
+    }, [isAdmin]);
 
     // Initialize filtered inquiries with all inquiries on component mount
     useEffect(() => {
@@ -362,12 +379,15 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
     };
 
     const handleAssignClick = (inquiry) => {
-        // Don't process if the inquiry is closed
-        if (inquiry.status.toLowerCase() === 'closed') return;
+        // Don't process if the inquiry is closed or user can't assign
+        if (inquiry.status.toLowerCase() === 'closed' || !canUserAssign) return;
         
         setCurrentInquiryId(inquiry._id);
-        // Set current assignee from the updated structure
         setCurrentAssignee(inquiry.assigned?.userId || null);
+        
+        // Set the department of the selected inquiry for filtering users
+        setCurrentInquiryDepartment(inquiry.client?.department || user?.department);
+        
         setAssignModalOpen(true);
     };
 
@@ -376,6 +396,165 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
         if (refreshNeeded && onInquiriesUpdated) {
             onInquiriesUpdated();
         }
+    };
+
+    const renderCard = (inquiry) => {
+        return (
+            <div key={inquiry._id} className={`bg-white rounded-lg border-2 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300`}>
+                {/* Card Header */}
+                <div className="bg-gradient-to-r from-sky-50 to-gray-50 px-3 py-2 border-b border-gray-200">
+                    <div className="flex justify-between items-start">
+                        <div className="w-3/4">
+                            {/* Client name more prominently displayed */}
+                            <h3 className="text-base font-bold text-sky-700 flex items-center mb-1">
+                                <FiBriefcase className="mr-1 text-sky-500 flex-shrink-0" />
+                                {inquiry.client?.name || 'Unknown'}
+                            </h3>
+                            {/* Inquiry ID and contact smaller */}
+                            <div className="text-xs font-medium text-gray-500 mb-1 flex items-center">
+                                <FiHash className="mr-1 text-gray-400" />
+                                {inquiry.inquiryID}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                                <FiUser className="inline mr-1" />
+                                {inquiry.client?.department || 'No department'}
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-end space-y-1">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusStyles[inquiry.status.toLowerCase()]}`}>
+                                {inquiry.status}
+                            </span>
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${priorityStyles[inquiry.priority.toLowerCase()]}`}>
+                                {inquiry.priority}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Card Body - more compact */}
+                <div className="p-3">
+                    {/* Subject line */}
+                    <div className="mb-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase">Subject</p>
+                        <p className="text-sm font-medium">{inquiry.subject}</p>
+                    </div>
+                    
+                    {/* Contact info row */}
+                    <div className="flex justify-between mb-2 text-xs">
+                        <div className="flex items-center">
+                            <FiMail className="mr-1 text-gray-400" />
+                            <span className="truncate max-w-[140px]">{inquiry.client?.email || 'No email'}</span>
+                        </div>
+                        <div className="flex items-center">
+                            <FiPhone className="mr-1 text-gray-400" />
+                            <span>{inquiry.client?.phone || 'No phone'}</span>
+                        </div>
+                    </div>
+                    
+                    {/* Category */}
+                    <div className="mb-2">
+                        <p className="text-xs text-gray-500">
+                            <FiTag className="inline mr-1 text-sky-500" />
+                            {inquiry.category}
+                        </p>
+                    </div>
+
+                    {/* Message content */}
+                    <div className="mb-2">
+                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Message</div>
+                        <p className="text-xs text-gray-700 line-clamp-2">
+                            {inquiry.message.length > 80 
+                                ? `${inquiry.message.substring(0, 80)}...` 
+                                : inquiry.message}
+                        </p>
+                    </div>
+
+                    {/* Dates row */}
+                    <div className="text-xs text-gray-500 mb-2 flex justify-between">
+                        <span>
+                            <FiClock className="inline mr-1" />
+                            {formatDate(inquiry.createdAt).split(',')[0]}
+                        </span>
+                        {inquiry.comments && (
+                            <span className="italic">
+                                {Array.isArray(inquiry.comments)
+                                    ? inquiry.comments.length > 0
+                                        ? inquiry.comments[0].text.length > 20 
+                                            ? `${inquiry.comments[0].text.substring(0, 20)}...` 
+                                            : inquiry.comments[0].text
+                                        : ""
+                                    : inquiry.comments.length > 20 
+                                        ? `${inquiry.comments.substring(0, 20)}...` 
+                                        : inquiry.comments}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Only show footer with action buttons if user is not staff */}
+                {!isStaffUser && (
+                    <div className="px-3 py-2 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+                        <div className="text-xs text-gray-500">
+                            {inquiry.assigned && inquiry.assigned.name ? (
+                                <span>Assigned: {inquiry.assigned.name.split(' ')[0]}</span>
+                            ) : (
+                                <span className="italic text-gray-400">Unassigned</span>
+                            )}
+                        </div>
+                        <div className="flex space-x-1">
+                            {!hideAssignButton && canUserAssign && (
+                                <button
+                                    onClick={() => handleAssignClick(inquiry)}
+                                    className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
+                                        inquiry.status.toLowerCase() === 'closed'
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                                        : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none'
+                                    }`}
+                                    disabled={inquiry.status.toLowerCase() === 'closed'}
+                                >
+                                    <FiUserPlus className="mr-1" />
+                                    Assign
+                                </button>
+                            )}
+                            
+                            {onRespond ? (
+                                <button
+                                    onClick={() => onRespond(inquiry._id)}
+                                    className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none"
+                                >
+                                    <FiSend className="mr-1" />
+                                    Respond
+                                </button>
+                            ) : (
+                                <Link to={`/inquiry/response/${inquiry._id}`} className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none">
+                                    <FiSend className="mr-1" />
+                                    Respond
+                                </Link>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Show a simplified footer for staff users with just details button */}
+                {isStaffUser && (
+                    <div className="border-t border-gray-100 bg-white px-4 py-3 flex justify-between items-center">
+                        <span className="text-xs text-gray-500">
+                            {formatDate(inquiry.updatedAt)}
+                        </span>
+                        <div className="flex space-x-2">
+                            {/* Only View details button */}
+                            <button
+                                onClick={() => handleViewDetails(inquiry)}
+                                className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500"
+                            >
+                                <FiEye className="mr-1.5" />
+                                Details
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -424,19 +603,32 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                                 <option value="closed">Closed</option>
                             </select>
                             
-                            <select
-                                value={inputAssignedFilter}
-                                onChange={(e) => setInputAssignedFilter(e.target.value)}
-                                className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                            >
-                                <option value="">Assigned</option>
-                                <option value="unassigned">Unassigned</option>
-                                {users.map(user => (
-                                    <option key={user._id} value={user._id}>
-                                        {user.name.split(' ')[0]}
-                                    </option>
-                                ))}
-                            </select>
+                            {isAdmin ? (
+                                <select
+                                    value={inputAssignedFilter}
+                                    onChange={(e) => setInputAssignedFilter(e.target.value)}
+                                    className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                >
+                                    <option value="">Assigned To</option>
+                                    {users.map(user => (
+                                        <option key={user._id} value={user._id}>{user.name}</option>
+                                    ))}
+                                    <option value="unassigned">Unassigned</option>
+                                </select>
+                            ) : (
+                                <select
+                                    value={inputAssignedFilter}
+                                    onChange={(e) => setInputAssignedFilter(e.target.value)}
+                                    className="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                >
+                                    <option value="">Assigned To</option>
+                                    <option value="assigned">Any Assigned</option>
+                                    <option value="unassigned">Unassigned</option>
+                                    {user && (
+                                        <option value={user._id}>Assigned to me</option>
+                                    )}
+                                </select>
+                            )}
                         </div>
                         
                         {/* Action Buttons */}
@@ -536,168 +728,7 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
 
             {/* Inquiry Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-2">
-                {filteredInquiries.map((inquiry) => {
-                    // Determine card style based on status and priority
-                    let cardBorderStyle = 'border-gray-200';
-                    if (inquiry.status.toLowerCase() === 'closed') {
-                        cardBorderStyle = 'border-gray-300';
-                    } else {
-                        switch (inquiry.priority.toLowerCase()) {
-                            case 'high':
-                            case 'urgent':
-                                cardBorderStyle = 'border-red-300';
-                                break;
-                            case 'medium':
-                                cardBorderStyle = 'border-yellow-300';
-                                break;
-                            case 'low':
-                                cardBorderStyle = 'border-blue-300';
-                                break;
-                        }
-                    }
-                    
-                    // Safely access client data with optional chaining
-                    const clientName = inquiry.client?.name || 'Unknown';
-                    const clientEmail = inquiry.client?.email || 'No email';
-                    const clientPhone = inquiry.client?.phone || 'No phone';
-                    const clientDepartment = inquiry.client?.department || 'No department';
-                    
-                    return (
-                        <div key={inquiry._id} className={`bg-white rounded-lg border-2 ${cardBorderStyle} overflow-hidden shadow-sm hover:shadow-md transition-all duration-300`}>
-                            {/* Card Header */}
-                            <div className="bg-gradient-to-r from-sky-50 to-gray-50 px-3 py-2 border-b border-gray-200">
-                                <div className="flex justify-between items-start">
-                                    <div className="w-3/4">
-                                        {/* Client name more prominently displayed */}
-                                        <h3 className="text-base font-bold text-sky-700 flex items-center mb-1">
-                                            <FiBriefcase className="mr-1 text-sky-500 flex-shrink-0" />
-                                            {clientName}
-                                        </h3>
-                                        {/* Inquiry ID and contact smaller */}
-                                        <div className="text-xs font-medium text-gray-500 mb-1 flex items-center">
-                                            <FiHash className="mr-1 text-gray-400" />
-                                            {inquiry.inquiryID}
-                                        </div>
-                                        <div className="text-xs text-gray-600">
-                                            <FiUser className="inline mr-1" />
-                                            {clientDepartment}
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-end space-y-1">
-                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusStyles[inquiry.status.toLowerCase()]}`}>
-                                            {inquiry.status}
-                                        </span>
-                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${priorityStyles[inquiry.priority.toLowerCase()]}`}>
-                                            {inquiry.priority}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Card Body - more compact */}
-                            <div className="p-3">
-                                {/* Subject line */}
-                                <div className="mb-2">
-                                    <p className="text-xs font-semibold text-gray-500 uppercase">Subject</p>
-                                    <p className="text-sm font-medium">{inquiry.subject}</p>
-                                </div>
-                                
-                                {/* Contact info row */}
-                                <div className="flex justify-between mb-2 text-xs">
-                                    <div className="flex items-center">
-                                        <FiMail className="mr-1 text-gray-400" />
-                                        <span className="truncate max-w-[140px]">{clientEmail}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <FiPhone className="mr-1 text-gray-400" />
-                                        <span>{clientPhone}</span>
-                                    </div>
-                                </div>
-                                
-                                {/* Category */}
-                                <div className="mb-2">
-                                    <p className="text-xs text-gray-500">
-                                        <FiTag className="inline mr-1 text-sky-500" />
-                                        {inquiry.category}
-                                    </p>
-                                </div>
-
-                                {/* Message content */}
-                                <div className="mb-2">
-                                    <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Message</div>
-                                    <p className="text-xs text-gray-700 line-clamp-2">
-                                        {inquiry.message.length > 80 
-                                            ? `${inquiry.message.substring(0, 80)}...` 
-                                            : inquiry.message}
-                                    </p>
-                                </div>
-
-                                {/* Dates row */}
-                                <div className="text-xs text-gray-500 mb-2 flex justify-between">
-                                    <span>
-                                        <FiClock className="inline mr-1" />
-                                        {formatDate(inquiry.createdAt).split(',')[0]}
-                                    </span>
-                                    {inquiry.comments && (
-                                        <span className="italic">
-                                            {Array.isArray(inquiry.comments)
-                                                ? inquiry.comments.length > 0
-                                                    ? inquiry.comments[0].text.length > 20 
-                                                        ? `${inquiry.comments[0].text.substring(0, 20)}...` 
-                                                        : inquiry.comments[0].text
-                                                    : ""
-                                                : inquiry.comments.length > 20 
-                                                    ? `${inquiry.comments.substring(0, 20)}...` 
-                                                    : inquiry.comments}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Card Footer */}
-                            <div className="px-3 py-2 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-                                <div className="text-xs text-gray-500">
-                                    {inquiry.assigned && inquiry.assigned.name ? (
-                                        <span>Assigned: {inquiry.assigned.name.split(' ')[0]}</span>
-                                    ) : (
-                                        <span className="italic text-gray-400">Unassigned</span>
-                                    )}
-                                </div>
-                                <div className="flex space-x-1">
-                                    {!hideAssignButton && (
-                                        <button
-                                            onClick={() => handleAssignClick(inquiry)}
-                                            className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
-                                                inquiry.status.toLowerCase() === 'closed'
-                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                                                : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none'
-                                            }`}
-                                            disabled={inquiry.status.toLowerCase() === 'closed'}
-                                        >
-                                            <FiUserPlus className="mr-1" />
-                                            Assign
-                                        </button>
-                                    )}
-                                    
-                                    {onRespond ? (
-                                        <button
-                                            onClick={() => onRespond(inquiry._id)}
-                                            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none"
-                                        >
-                                            <FiSend className="mr-1" />
-                                            Respond
-                                        </button>
-                                    ) : (
-                                        <Link to={`/inquiry/response/${inquiry._id}`} className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none">
-                                            <FiSend className="mr-1" />
-                                            Respond
-                                        </Link>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+                {filteredInquiries.map(renderCard)}
             </div>
 
             {/* Display "No inquiries found" message when filters return empty results */}
@@ -713,12 +744,16 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                 </div>
             )}
 
-            <AssignUserModal
-                isOpen={assignModalOpen}
-                onClose={handleAssignModalClose}
-                inquiryId={currentInquiryId}
-                currentAssignee={currentAssignee}
-            />
+            {/* Don't render the modal for staff users */}
+            {!isStaffUser && (
+                <AssignUserModal
+                    isOpen={assignModalOpen}
+                    onClose={handleAssignModalClose}
+                    inquiryId={currentInquiryId}
+                    currentAssignee={currentAssignee}
+                    inquiryDepartment={currentInquiryDepartment}
+                />
+            )}
         </>
     );
 };

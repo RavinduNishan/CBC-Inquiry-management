@@ -150,9 +150,9 @@ export const login = async (req, res) => {
       name: userFound.name,
       email: userFound.email,
       phone: userFound.phone,
-      accessLevel: userFound.accessLevel,
-      permissions: userFound.permissions || [],
+      department: userFound.department,
       status: userFound.status,
+      accessLevel: userFound.accessLevel || 'staff', // Include access level in response
       profileVersion: userFound.profileVersion || 1,
       token: token
     });
@@ -226,6 +226,9 @@ export const adminSetPassword = async (req, res) => {
     const { newPassword } = req.body;
     const userId = req.params.id;
     
+    // No need to check for admin here since we've added the adminOnly middleware
+    // This check is now handled in the route definition
+    
     // Validate input
     if (!newPassword) {
       return res.status(400).json({ message: 'New password is required' });
@@ -276,8 +279,7 @@ export const createUser = async (req, res) => {
         !req.body.name ||
         !req.body.email ||
         !req.body.phone ||
-        !req.body.accessLevel ||
-        !req.body.permissions ||
+        !req.body.department ||
         !req.body.password
     ) {
         return res.status(400).send({ message: "All required fields must be provided." });
@@ -287,14 +289,14 @@ export const createUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(req.body.password, salt);
 
-    // Create new user
+    // Create new user with access level
     const newUser = await users.create({
         name: req.body.name,
         email: req.body.email,
         phone: req.body.phone,
-        accessLevel: req.body.accessLevel || "",
-        permissions: req.body.permissions || [],
+        department: req.body.department,
         status: req.body.status || "active",
+        accessLevel: req.body.accessLevel || "staff", // Set access level or default to 'staff'
         password: hashedPassword
     });
 
@@ -307,10 +309,34 @@ export const createUser = async (req, res) => {
   }
 };
 
-// Controller for get all users
+// Controller for get all users - Updated to filter results for managers
 export const getAllUsers = async (req, res) => {
   try {
-    const allUsers = await users.find({});
+    // Check if requesting user is admin or manager
+    const isAdmin = req.user.accessLevel === 'admin';
+    const isManager = req.user.accessLevel === 'manager';
+    const userDepartment = req.user.department;
+    
+    let allUsers;
+    
+    if (isAdmin) {
+      // Admins can see all users
+      allUsers = await users.find({});
+    } else if (isManager && userDepartment) {
+      // Managers can only see:
+      // 1. All admins
+      // 2. Other managers and staff from their own department
+      allUsers = await users.find({
+        $or: [
+          { accessLevel: 'admin' },
+          { department: userDepartment }
+        ]
+      });
+    } else {
+      // Fallback - shouldn't normally happen due to middleware
+      return res.status(403).json({ message: "Insufficient permissions to view users" });
+    }
+    
     return res.status(200).json({
       success: true,
       count: allUsers.length,
@@ -352,10 +378,9 @@ export const updateUser = async (req, res) => {
     const criticalFieldsChanged = {
       email: req.body.email && req.body.email !== existingUser.email,
       name: req.body.name && req.body.name !== existingUser.name,
-      accessLevel: req.body.accessLevel && req.body.accessLevel !== existingUser.accessLevel,
+      department: req.body.department && req.body.department !== existingUser.department,
       status: req.body.status && req.body.status !== existingUser.status,
-      // Check if permissions have changed
-      permissions: req.body.permissions && JSON.stringify(req.body.permissions) !== JSON.stringify(existingUser.permissions)
+      accessLevel: req.body.accessLevel && req.body.accessLevel !== existingUser.accessLevel // Add access level to critical fields
     };
     
     // If any critical fields changed, increment profileVersion

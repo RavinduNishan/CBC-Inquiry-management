@@ -4,7 +4,7 @@ import axios from 'axios';
 import Spinner from '../../../pages/user/Spinner';
 import { Link } from 'react-router-dom';
 import { BsInfoCircle, BsTable, BsGrid3X3Gap, BsDownload, BsChevronLeft, BsChevronRight } from 'react-icons/bs';
-import { MdOutlineAddBox, MdOutlineDelete, MdDashboard } from 'react-icons/md';
+import { MdOutlineAddBox, MdOutlineDelete, MdDashboard, MdPerson } from 'react-icons/md';
 import { FaUserFriends, FaClipboardList, FaChartBar, FaCog, FaSignOutAlt, FaBars, FaBuilding, FaIdCard } from 'react-icons/fa';
 // Fix import paths for the inquiry components that were moved
 import InquiryTable from '../../../pages/inquiry/inquirytable';
@@ -24,16 +24,20 @@ import UserProfile from '../../../pages/user/UserProfile';
 import ResponseInquiry from '../../../pages/inquiry/responseinquiry';
 
 const Master = () => {
-  const { user, logout, isAdmin, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications } = useContext(AuthContext);
+  const { user, logout, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications, hasPermission, isAdmin } = useContext(AuthContext);
   const navigate = useNavigate();
   
   const [inquiries, setInquiries] = useState([]);
   const [myInquiries, setMyInquiries] = useState([]);
+  // New state for inquiries created by the current user
+  const [myCreatedInquiries, setMyCreatedInquiries] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showType, setShowType] = useState('table');
   const [myInquiriesShowType, setMyInquiriesShowType] = useState('table');
+  // New state for showing type of created inquiries
+  const [myCreatedInquiriesShowType, setMyCreatedInquiriesShowType] = useState('table');
   const [activeMenu, setActiveMenu] = useState('');  // Start with empty string to determine default view
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
   const [selectedUserForDetails, setSelectedUserForDetails] = useState(null);
@@ -58,18 +62,26 @@ const Master = () => {
     }
   };
 
-  // Check if user has a specific permission
-  const hasPermission = (permissionName) => {
-    console.log("Checking permission:", permissionName, "for user:", user);
-    console.log("User permissions:", user?.permissions);
+  // Check if user has a specific permission - Improved implementation with staff restrictions
+  const checkPermission = (permissionName) => {
+    // Staff members have very limited permissions
+    if (user?.accessLevel === 'staff') {
+      // Staff can only access these permissions
+      if (permissionName === 'addInquiry' || permissionName === 'createdByMe') {
+        return true;
+      }
+      // Staff cannot access these permissions
+      if (permissionName === 'myInquiries' || permissionName === 'inquiries' || 
+          permissionName === 'assignInquiries' || permissionName === 'clients' || 
+          permissionName === 'manageClients') {
+        console.log(`Permission denied for staff: ${permissionName}`);
+        return false;
+      }
+    }
     
-    return (
-      user &&
-      (isAdmin || // Admins have all permissions
-       (user.permissions && 
-        Array.isArray(user.permissions) && 
-        user.permissions.includes(permissionName)))
-    );
+    // For non-staff users (admin/manager) or other permissions
+    console.log(`Checking permission: ${permissionName}, granted`);
+    return true;
   };
 
   // Initialize axios with auth headers
@@ -100,6 +112,8 @@ const Master = () => {
       fetchInquiries();
     } else if (activeMenu === 'dashboard') {
       fetchMyInquiries();
+    } else if (activeMenu === 'createdByMe') {
+      fetchMyCreatedInquiries(); // New effect to fetch inquiries created by the user
     } else if (activeMenu === 'users') {
       fetchUsers();
     } else if (activeMenu === 'clients') {
@@ -107,6 +121,7 @@ const Master = () => {
     }
   }, [activeMenu]);
 
+  // Update the fetchInquiries function to filter by department
   const fetchInquiries = () => {
     setLoading(true);
     // Get the token directly to ensure it's included
@@ -119,7 +134,23 @@ const Master = () => {
         }
       })
       .then((response) => {
-        setInquiries(response.data.data);
+        let inquiriesData = response.data.data;
+        
+        // Filter inquiries by department if user is not admin
+        console.log('User in fetchInquiries:', user);
+        console.log('Admin status check:', user?.isAdmin, 'Access level:', user?.accessLevel);
+        
+        // Check both isAdmin and accessLevel to ensure admin privileges
+        const hasAdminAccess = user?.isAdmin === true || user?.accessLevel === 'admin';
+        
+        if (user && !hasAdminAccess) {
+          inquiriesData = inquiriesData.filter(inquiry => {
+            // Check if inquiry.client exists and has department property
+            return inquiry.client && inquiry.client.department === user.department;
+          });
+        }
+        
+        setInquiries(inquiriesData);
         setLoading(false);
       })
       .catch((error) => {
@@ -191,6 +222,7 @@ const Master = () => {
       });
   };
 
+  // Update the fetchClients function to filter by department
   const fetchClients = () => {
     setLoading(true);
     // Get the token directly to ensure it's included
@@ -203,7 +235,54 @@ const Master = () => {
         }
       })
       .then((response) => {
-        setClients(response.data.data);
+        let clientsData = response.data.data;
+        
+        // Filter clients by department if user is not admin
+        console.log('User in fetchClients:', user);
+        console.log('Admin status check:', user?.isAdmin, 'Access level:', user?.accessLevel);
+        
+        // Check both isAdmin and accessLevel to ensure admin privileges
+        const hasAdminAccess = user?.isAdmin === true || user?.accessLevel === 'admin';
+        
+        if (user && !hasAdminAccess) {
+          clientsData = clientsData.filter(client => client.department === user.department);
+        }
+        
+        setClients(clientsData);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.log(error);
+        // If unauthorized, redirect to login
+        if (error.response && error.response.status === 401) {
+          logout();
+          navigate('/login');
+        }
+        setLoading(false);
+      });
+  };
+
+  // New function to fetch inquiries created by the current user
+  const fetchMyCreatedInquiries = () => {
+    if (!user || !user.name) return;
+    
+    setLoading(true);
+    // Get the token directly to ensure it's included
+    const token = localStorage.getItem('token');
+    
+    axios
+      .get('http://localhost:5555/inquiry', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then((response) => {
+        // Filter inquiries created by the current user (case-insensitive)
+        const createdInquiries = response.data.data.filter(
+          inquiry => inquiry.createdBy && 
+          inquiry.createdBy.toLowerCase() === user.name.toLowerCase()
+        );
+        setMyCreatedInquiries(createdInquiries);
         setLoading(false);
       })
       .catch((error) => {
@@ -381,35 +460,22 @@ const Master = () => {
     }
   }, []);
 
-  // Set default view based on user permissions
+  // Set default view based on user permissions and role
   useEffect(() => {
     if (user && activeMenu === '') {
-      console.log('Setting default view based on user permissions');
+      console.log('Setting default view based on user role:', user.accessLevel);
       
-      // Default to 'dashboard' (My Inquiries) for regular staff
-      if (hasPermission('myInquiries')) {
-        console.log('Setting default view to My Inquiries (dashboard)');
+      // Staff members default to "Created by Me" view
+      if (user.accessLevel === 'staff') {
+        setActiveMenu('createdByMe');
+        fetchMyCreatedInquiries();
+      } else {
+        // Others default to "My Assigned Inquiries"
         setActiveMenu('dashboard');
-        
-        // Preload my inquiries data
-        if (user._id) {
-          fetchMyInquiries();
-        }
-      } 
-      // For users without myInquiries permission but with inquiries permission
-      else if (hasPermission('inquiries')) {
-        console.log('Setting default view to All Inquiries (inquiries)');
-        setActiveMenu('inquiries');
-        fetchInquiries();
-      }
-      // For admins without specific defaults set
-      else if (isAdmin) {
-        console.log('Setting default view for admin to users');
-        setActiveMenu('users');
-        fetchUsers();
+        fetchMyInquiries();
       }
     }
-  }, [user]);
+  }, [user, activeMenu]);
 
   // When isFirstLogin changes, load appropriate data
   useEffect(() => {
@@ -463,6 +529,89 @@ const Master = () => {
     }
   }, [user, setupNotifications]);
 
+  // Add a safety effect to redirect non-admins who try to access admin-only menus
+  useEffect(() => {
+    // List of admin-only menus
+    const adminOnlyMenus = ['users', 'addUser', 'userDetails', 'reports'];
+    
+    // List of menus not accessible by staff
+    const nonStaffMenus = ['inquiries', 'dashboard', 'clients', 'addClient', 'responseInquiry'];
+    
+    // If current menu is admin-only but user is not admin, redirect
+    if (adminOnlyMenus.includes(activeMenu) && !isAdmin) {
+      console.log('Non-admin attempted to access admin-only menu:', activeMenu);
+      setActiveMenu(user?.accessLevel === 'staff' ? 'createdByMe' : 'dashboard');
+    }
+    
+    // If current menu is not allowed for staff and user is staff, redirect
+    if (user?.accessLevel === 'staff' && nonStaffMenus.includes(activeMenu)) {
+      console.log('Staff attempted to access restricted menu:', activeMenu);
+      setActiveMenu('createdByMe');
+    }
+  }, [activeMenu, isAdmin, user]);
+
+  // Modify the notifications setup in Master.jsx to avoid duplicate connections
+  useEffect(() => {
+    console.log("Current user in dashboard:", user);
+    
+    // Additional check to prevent inactive users from accessing the dashboard
+    if (user?.status === 'inactive') {
+      console.log('Inactive user detected, redirecting to login');
+      logout(); // Force logout
+      navigate('/login');
+    }
+    
+    // Simply log that we're in Master component, but don't create a new SSE connection
+    // SSE connection is handled by AuthContext
+    console.log('In Master component - using global SSE connection');
+    
+    // Don't call startSSEConnection() here to avoid duplicate connections
+  }, [user, logout, navigate]);
+
+  // Handle response for created by me inquiries
+  const handleMyCreatedInquiryRespond = (inquiryId) => {
+    setCurrentInquiryId(inquiryId);
+    setActiveMenu('responseInquiry');
+  };
+
+  // Refresh my created inquiries after update
+  const handleMyCreatedInquiriesUpdated = () => {
+    console.log("Refreshing my created inquiries...");
+    setLoading(true);
+    
+    // Clear existing inquiries first to ensure UI updates
+    setMyCreatedInquiries([]);
+    
+    // Add a small delay to ensure the database has time to update
+    setTimeout(() => {
+      // Ensure token is included in this request
+      updateAxiosConfig();
+      // Then fetch fresh data
+      axios
+        .get('http://localhost:5555/inquiry', {
+          // Add cache-busting parameter to prevent stale data
+          params: { _t: new Date().getTime() }
+        })
+        .then((response) => {
+          // Filter inquiries created by the current user
+          const createdInquiries = response.data.data.filter(
+            inquiry => inquiry.createdBy && 
+            inquiry.createdBy.toLowerCase() === user.name.toLowerCase()
+          );
+          setMyCreatedInquiries(createdInquiries);
+          setLoading(false);
+        })
+        .catch((error) => {
+          console.error("Error refreshing my created inquiries:", error);
+          if (error.response && error.response.status === 401) {
+            logout();
+            navigate('/login');
+          }
+          setLoading(false);
+        });
+    }, 500); // 500ms delay
+  };
+
   if (!user) {
     return null;
   }
@@ -509,8 +658,8 @@ const Master = () => {
             </div>
           )}
           <ul>
-            {/* Only show My Inquiries if user has myInquiries permission - this is the default */}
-            {hasPermission('myInquiries') && (
+            {/* Only show My Inquiries if user has myInquiries permission - hide for staff */}
+            {checkPermission('myInquiries') && (
               <li className='px-3'>
                 <button 
                   className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
@@ -527,8 +676,24 @@ const Master = () => {
               </li>
             )}
 
-            {/* Only show All Inquiries if user has inquiries permission */}
-            {hasPermission('inquiries') && (
+            {/* Created By Me - Always show for all users */}
+            <li className='px-3'>
+              <button 
+                className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                  ${activeMenu === 'createdByMe' 
+                    ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                    : 'text-sky-100 hover:bg-sky-600/30'}
+                  ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                onClick={() => setActiveMenu('createdByMe')}
+                title="Created By Me"
+              >
+                <MdPerson className={`text-lg ${activeMenu === 'createdByMe' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                {sidebarOpen && <span className="ml-3">Created By Me</span>}
+              </button>
+            </li>
+
+            {/* Only show All Inquiries if user has inquiries permission - hide for staff */}
+            {checkPermission('inquiries') && (
               <li className='px-3'>
                 <button 
                   className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
@@ -545,28 +710,25 @@ const Master = () => {
               </li>
             )}
 
-            {/* Only show Add Inquiry if user has addInquiry permission */}
-            {hasPermission('addInquiry') && (
-              <li className='px-3'>
-                <button 
-                  className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
-                    ${activeMenu === 'createInquiry' 
-                      ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
-                      : 'text-sky-100 hover:bg-sky-600/30'}
-                    ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
-                  onClick={() => setActiveMenu('createInquiry')}
-                  title="Add Inquiry"
-                >
-                  <MdOutlineAddBox className={`text-lg ${activeMenu === 'createInquiry' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
-                  {sidebarOpen && <span className="ml-3">Add Inquiry</span>}
-                </button>
-              </li>
-            )}
+            {/* Always show Add Inquiry for all users including staff */}
+            <li className='px-3'>
+              <button 
+                className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                  ${activeMenu === 'createInquiry' 
+                    ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                    : 'text-sky-100 hover:bg-sky-600/30'}
+                  ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                onClick={() => setActiveMenu('createInquiry')}
+                title="Add Inquiry"
+              >
+                <MdOutlineAddBox className={`text-lg ${activeMenu === 'createInquiry' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                {sidebarOpen && <span className="ml-3">Add Inquiry</span>}
+              </button>
+            </li>
             
-            {/* Admin section remains unchanged */}
-            {isAdmin && (
+            {/* Client Management Section - Hide from staff users */}
+            {user?.accessLevel !== 'staff' && (
               <>
-                {/* Client Management Section */}
                 {sidebarOpen && (
                   <div className='px-4 mt-6 mb-3'>
                     <p className='text-xs font-semibold text-sky-100 uppercase tracking-wider'>Client Management</p>
@@ -602,8 +764,12 @@ const Master = () => {
                     {sidebarOpen && <span className="ml-3">Add Client</span>}
                   </button>
                 </li>
-                
-                {/* User Management Section */}
+              </>
+            )}
+            
+            {/* User Management Section - Only for admins */}
+            {isAdmin && (
+              <>
                 {sidebarOpen && (
                   <div className='px-4 mt-6 mb-3'>
                     <p className='text-xs font-semibold text-sky-100 uppercase tracking-wider'>User Management</p>
@@ -653,7 +819,6 @@ const Master = () => {
                     {sidebarOpen && <span className="ml-3">Reports</span>}
                   </button>
                 </li>
-                {/* Settings button removed */}
               </>
             )}
           </ul>
@@ -732,7 +897,7 @@ const Master = () => {
       {/* Main content - adjust padding based on sidebar state */}
       <div className='flex-1 overflow-auto relative transition-all duration-300'>
         {/* Restrict access to createInquiry based on permission */}
-        {activeMenu === 'createInquiry' && hasPermission('addInquiry') && (
+        {activeMenu === 'createInquiry' && checkPermission('addInquiry') && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3'>
               <h1 className='text-2xl font-bold text-gray-800'>Create New Inquiry</h1>
@@ -756,7 +921,7 @@ const Master = () => {
         )}
         
         {/* Restrict access to inquiries based on permission */}
-        {activeMenu === 'inquiries' && hasPermission('inquiries') && (
+        {activeMenu === 'inquiries' && checkPermission('inquiries') && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
               <h1 className='text-2xl font-bold text-gray-800'>Inquiry Management</h1>
@@ -799,14 +964,14 @@ const Master = () => {
                   inquiries={inquiries} 
                   onRespond={handleRespond} 
                   onInquiriesUpdated={handleInquiriesUpdated}
-                  canAssign={hasPermission('assignInquiries')}
+                  canAssign={checkPermission('assignInquiries')}
                 />
               ) : (
                 <InquiryCard 
                   inquiries={inquiries} 
                   onRespond={handleRespond}
                   onInquiriesUpdated={handleInquiriesUpdated}
-                  canAssign={hasPermission('assignInquiries')} // Pass assignment permission
+                  canAssign={checkPermission('assignInquiries')} // Pass assignment permission
                 />
               )}
             </div>
@@ -864,7 +1029,7 @@ const Master = () => {
           </>
         )}
         
-        {activeMenu === 'dashboard' && hasPermission('myInquiries') && (
+        {activeMenu === 'dashboard' && checkPermission('myInquiries') && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
               <h1 className='text-2xl font-bold text-gray-800'>My Assigned Inquiries</h1>
@@ -913,14 +1078,14 @@ const Master = () => {
                   inquiries={myInquiries} 
                   onRespond={handleMyInquiryRespond}
                   onInquiriesUpdated={handleMyInquiriesUpdated}
-                  canAssign={hasPermission('assignInquiries')}
+                  canAssign={checkPermission('assignInquiries')}
                 />
               ) : (
                 <InquiryCard 
                   inquiries={myInquiries} 
                   onRespond={handleMyInquiryRespond}
                   onInquiriesUpdated={handleMyInquiriesUpdated}
-                  hideAssignButton={!hasPermission('assignInquiries')} // Show assign button only if user has permission
+                  hideAssignButton={!checkPermission('assignInquiries')} // Show assign button only if user has permission
                 />
               )}
             </div>
@@ -934,7 +1099,7 @@ const Master = () => {
           </div>
         )}
         
-        {activeMenu === 'userDetails' && selectedUserForDetails && (
+        {activeMenu === 'userDetails' && selectedUserForDetails && isAdmin && (
           <UserDetail 
             user={selectedUserForDetails}
             onBack={() => setActiveMenu('users')}
@@ -952,7 +1117,7 @@ const Master = () => {
           />
         )}
 
-        {activeMenu === 'clients' && isAdmin && (
+        {activeMenu === 'clients' && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
               <h1 className='text-2xl font-bold text-gray-800'>Client Management</h1>
@@ -978,7 +1143,7 @@ const Master = () => {
           </>
         )}
         
-        {activeMenu === 'addClient' && isAdmin && (
+        {activeMenu === 'addClient' && (
           <>
             <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-10 py-3 px-6'>
               <h1 className='text-2xl font-bold text-gray-800'>Add New Client</h1>
@@ -997,6 +1162,70 @@ const Master = () => {
                   setActiveMenu('clients');
                 }}
               />
+            </div>
+          </>
+        )}
+
+        {/* New section to display inquiries created by the current user */}
+        {activeMenu === 'createdByMe' && (
+          <>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>
+              <h1 className='text-2xl font-bold text-gray-800'>Inquiries Created By Me</h1>
+              <div className='flex items-center gap-4'>
+                <div className='bg-white rounded-lg shadow-sm border border-gray-100 p-1 flex'>
+                  <button
+                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                      myCreatedInquiriesShowType === 'table'
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'bg-white text-gray-500 hover:bg-sky-50 hover:text-sky-600'
+                    }`}
+                    onClick={() => setMyCreatedInquiriesShowType('table')}
+                    title="Show as table"
+                  >
+                    <BsTable className={`mr-2 ${myCreatedInquiriesShowType === 'table' ? 'text-white' : 'text-gray-400'}`} />
+                    Table
+                  </button>
+                  <button
+                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                      myCreatedInquiriesShowType === 'card'
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'bg-white text-gray-500 hover:bg-sky-50 hover:text-sky-600'
+                    }`}
+                    onClick={() => setMyCreatedInquiriesShowType('card')}
+                    title="Show as cards"
+                  >
+                    <BsGrid3X3Gap className={`mr-2 ${myCreatedInquiriesShowType === 'card' ? 'text-white' : 'text-gray-400'}`} />
+                    Cards
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-0 mb-0 flex-1 h-[calc(100vh-110px)]'>
+              {loading ? (
+                <Spinner />
+              ) : myCreatedInquiries.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <div className="text-gray-500">
+                    <p className="text-xl font-medium mb-2">You haven't created any inquiries yet</p>
+                    <p className="text-sm">When you create inquiries, they will appear here.</p>
+                  </div>
+                </div>
+              ) : myCreatedInquiriesShowType === 'table' ? (
+                <InquiryTable 
+                  inquiries={myCreatedInquiries} 
+                  onRespond={handleMyCreatedInquiryRespond}
+                  onInquiriesUpdated={handleMyCreatedInquiriesUpdated}
+                  canAssign={checkPermission('assignInquiries')}
+                />
+              ) : (
+                <InquiryCard 
+                  inquiries={myCreatedInquiries} 
+                  onRespond={handleMyCreatedInquiryRespond}
+                  onInquiriesUpdated={handleMyCreatedInquiriesUpdated}
+                  hideAssignButton={!checkPermission('assignInquiries')}
+                />
+              )}
             </div>
           </>
         )}

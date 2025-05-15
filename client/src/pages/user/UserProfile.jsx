@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { MdArrowBack, MdPerson, MdSecurity, MdAccessTime, MdLock, MdEmail, MdPhone } from 'react-icons/md';
+import { MdArrowBack, MdPerson, MdAccessTime, MdLock, MdEmail, MdPhone, MdBusiness, MdSecurity } from 'react-icons/md';
 import AuthContext from '../../context/AuthContext';
 
 const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
@@ -186,10 +186,18 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
       console.log("Created date value:", user.createdAt);
       console.log("Updated date type:", typeof user.updatedAt);
       console.log("Updated date value:", user.updatedAt);
-      console.log("Permissions type:", typeof user.permissions);
-      console.log("Permissions value:", user.permissions);
     }
   }, [user]);
+
+  // Function to get access level display name
+  const getAccessLevelName = (level) => {
+    switch (level) {
+      case 'admin': return 'Administrator';
+      case 'manager': return 'Department Manager';
+      case 'staff': return 'Staff Member';
+      default: return 'Staff Member';
+    }
+  };
 
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6 m-0">
@@ -229,9 +237,6 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
             )}
           </div>
           <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-            <span className="px-3 py-1 bg-sky-100 text-sky-800 text-sm rounded-full font-medium border border-sky-200 shadow-sm">
-              {user.accessLevel}
-            </span>
             <span className={`px-3 py-1 rounded-full text-sm font-medium shadow-sm ${
               user.status === 'active' 
                 ? 'bg-green-100 text-green-800 border border-green-200' 
@@ -239,12 +244,16 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
             }`}>
               {user.status === 'active' ? '● Active' : '● Inactive'}
             </span>
+            {/* Add access level badge */}
+            <span className="px-3 py-1 rounded-full text-sm font-medium shadow-sm bg-blue-100 text-blue-800 border border-blue-200">
+              {getAccessLevelName(user.accessLevel)}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Enhanced content grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Column 1: User Details */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transform transition-transform hover:scale-[1.02] hover:shadow-md">
           <div className="flex items-center mb-4">
@@ -264,65 +273,18 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
               <p className="text-xs text-gray-500">Phone Number</p>
               <p className="text-sm font-medium">{user.phone || 'Not specified'}</p>
             </div>
-          </div>
-        </div>
-        
-        {/* Column 2: Account Info */}
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transform transition-transform hover:scale-[1.02] hover:shadow-md">
-          <div className="flex items-center mb-4">
-            <MdSecurity className="text-sky-500 text-xl mr-2" />
-            <h3 className="text-md font-semibold text-gray-700">Access & Permissions</h3>
-          </div>
-          <div className="space-y-4">
+            <div className="border-l-2 border-sky-200 pl-3">
+              <p className="text-xs text-gray-500">Department</p>
+              <p className="text-sm font-medium">{user.department || 'Not assigned'}</p>
+            </div>
             <div className="border-l-2 border-sky-200 pl-3">
               <p className="text-xs text-gray-500">Access Level</p>
-              <p className="text-sm font-medium">{user.accessLevel}</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {user.accessLevel === 'Administrator' 
-                  ? 'Has full system access' 
-                  : user.accessLevel === 'Manager' 
-                    ? 'Can manage most system functions' 
-                    : 'Has limited system access'}
-              </p>
-            </div>
-            <div className="border-l-2 border-sky-200 pl-3">
-              <p className="text-xs text-gray-500">Account Status</p>
-              <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-              }`}>
-                {user.status === 'active' ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-            <div className="border-l-2 border-sky-200 pl-3">
-              <p className="text-xs text-gray-500">Permissions</p>
-              {user.accessLevel === 'Administrator' ? (
-                <div>
-                  <p className="text-sm font-medium text-gray-700">All permissions</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Administrator has full system access</p>
-                </div>
-              ) : (
-                <div className="mt-1">
-                  {user.permissions && Array.isArray(user.permissions) && user.permissions.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {user.permissions.map((permission, index) => (
-                        <span 
-                          key={index} 
-                          className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-md border border-blue-200"
-                        >
-                          {permission}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-600 italic">No specific permissions</p>
-                  )}
-                </div>
-              )}
+              <p className="text-sm font-medium">{getAccessLevelName(user.accessLevel)}</p>
             </div>
           </div>
         </div>
         
-        {/* Column 3: Timeline */}
+        {/* Column 2: Timeline */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transform transition-transform hover:scale-[1.02] hover:shadow-md">
           <div className="flex items-center mb-4">
             <MdAccessTime className="text-sky-500 text-xl mr-2" />
