@@ -3,6 +3,7 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import { MdArrowBack, MdPerson, MdAccessTime, MdLock, MdEmail, MdPhone, MdBusiness, MdSecurity } from 'react-icons/md';
 import AuthContext from '../../context/AuthContext';
+import TwoFactorSettings from '../../components/security/TwoFactorSettings';
 
 const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -421,6 +422,11 @@ const UserProfile = ({ user: initialUser, onBack, onProfileUpdate }) => {
             </form>
           </div>
         )}
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold mb-4">Security Settings</h2>
+        <TwoFactorSettings />
       </div>
     </div>
   );

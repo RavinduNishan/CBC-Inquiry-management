@@ -16,7 +16,10 @@ import {
   checkApiStatus,
   forgotPassword,
   verifyOTP,
-  resetPasswordWithToken
+  resetPasswordWithToken,
+  verifyLoginOTP,
+  resendLoginOTP,
+  toggleTwoFactor
 } from "../controllers/userController.js";
 
 const router = express.Router();  
@@ -27,8 +30,13 @@ router.get("/check", checkApiStatus);
 // Add SSE endpoint to receive notifications
 router.get("/notifications", protect, getUserNotifications);
 
-// Login user
+// Login user (two steps)
 router.post("/login", login);
+router.post("/verify-login", verifyLoginOTP);
+router.post("/resend-login-otp", resendLoginOTP);
+
+// Two-factor authentication settings
+router.post("/two-factor", protect, toggleTwoFactor);
 
 // Add forgot password routes (public routes)
 router.post("/forgot-password", forgotPassword);

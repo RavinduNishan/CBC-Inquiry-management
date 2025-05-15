@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Spinner from '../../../pages/user/Spinner';
@@ -27,6 +27,18 @@ const Master = () => {
   const { user, logout, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications, isAdmin } = useContext(AuthContext);
   const navigate = useNavigate();
   
+  // Add a ref to track renders and detect infinite loops
+  const renderCountRef = useRef(0);
+  const notificationsSetupRef = useRef(false);
+  
+  // DEBUG: Add this to detect infinite loops
+  useEffect(() => {
+    renderCountRef.current += 1;
+    if (renderCountRef.current > 50) {
+      console.warn('⚠️ Possible render loop detected in Master component - exceeded 50 renders');
+    }
+  });
+  
   const [inquiries, setInquiries] = useState([]);
   const [myInquiries, setMyInquiries] = useState([]);
   // New state for inquiries created by the current user
@@ -42,6 +54,7 @@ const Master = () => {
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
   const [selectedUserForDetails, setSelectedUserForDetails] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false); // Changed from true to false to start with closed sidebar
+  const [dashboardReady, setDashboardReady] = useState(false); // Add dashboard ready state
 
   // Add authorization headers to axios requests
   const updateAxiosConfig = () => {
@@ -63,7 +76,7 @@ const Master = () => {
   };
 
   // Check if user has a specific permission - Improved implementation with staff restrictions
-  const checkPermission = (permissionName) => {
+  const checkPermission = useCallback((permissionName) => {
     // Staff members have very limited permissions
     if (user?.accessLevel === 'staff') {
       // Staff can only access these permissions
@@ -82,7 +95,7 @@ const Master = () => {
     // For non-staff users (admin/manager) or other permissions
     console.log(`Checking permission: ${permissionName}, granted`);
     return true;
-  };
+  }, [user?.accessLevel]);
 
   // Initialize axios with auth headers
   useEffect(() => {
@@ -611,6 +624,75 @@ const Master = () => {
         });
     }, 500); // 500ms delay
   };
+
+  // Add async loading optimization
+  useEffect(() => {
+    if (!user) return;
+    
+    // Show dashboard skeleton immediately for better UX
+    setTimeout(() => setDashboardReady(true), 100);
+    
+    // Optimize initial data loading
+    const loadInitialData = async () => {
+      try {
+        // Start all fetch operations in parallel rather than sequentially
+        const activeMenu = window.sessionStorage.getItem('activeMenu') || 'dashboard';
+        
+        // Load default data based on user role
+        if (user.accessLevel === 'staff') {
+          // For staff, load created inquiries as default
+          fetchMyCreatedInquiries();
+        } else {
+          // For managers and admins, load assigned inquiries
+          fetchMyInquiries();
+        }
+        
+        // Warm up API connections in background after primary data loads
+        setTimeout(() => {
+          if (isAdmin) {
+            // Pre-fetch admin data in background
+            axios.get('http://localhost:5555/user', { params: { limit: 5 } })
+              .catch(err => console.log('Background users prefetch (non-critical):', err));
+          }
+        }, 2000);
+        
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      }
+    };
+    
+    loadInitialData();
+    
+    // Cleanup
+    return () => {
+      setDashboardReady(false);
+    };
+  }, [user, isAdmin]);
+
+  if (!dashboardReady || !user) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        {/* Sidebar skeleton */}
+        <div className="w-64 bg-gradient-to-b from-blue-700 via-sky-600 to-sky-500 shadow-lg animate-pulse">
+          <div className="h-full"></div>
+        </div>
+        
+        {/* Main content skeleton */}
+        <div className="flex-1 p-8">
+          <div className="h-10 bg-gray-200 rounded-md w-1/4 mb-6 animate-pulse"></div>
+          <div className="h-64 bg-gray-200 rounded-lg w-full animate-pulse"></div>
+          <div className="mt-8 space-y-4">
+            <div className="h-8 bg-gray-200 rounded-md w-3/4 animate-pulse"></div>
+            <div className="h-8 bg-gray-200 rounded-md w-2/3 animate-pulse"></div>
+            <div className="h-8 bg-gray-200 rounded-md w-1/2 animate-pulse"></div>
+          </div>
+          <div className="absolute bottom-10 right-10 text-gray-400">
+            Loading dashboard...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return null;

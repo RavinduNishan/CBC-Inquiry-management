@@ -15,7 +15,18 @@ class EventSourceWithAuth {
     this.timeoutDuration = options.timeoutDuration || 30000; // Increased from 15000
     this.connectionLostRetries = 0;
     this.maxConnectionLostRetries = 3;
+    this.userId = null; // Track which user this connection belongs to
     this.init();
+
+    // Set connected flag when connection opens
+    this.addEventListener('open', () => {
+      this.isConnected = true;
+    });
+    
+    // Reset connected flag when connection closes
+    this.addEventListener('error', () => {
+      this.isConnected = false;
+    });
   }
 
   init() {
@@ -258,6 +269,8 @@ class EventSourceWithAuth {
     
     // Clear listeners
     this.listeners = {};
+
+    this.isConnected = false;
   }
 
   // Add a ping method to help keep the connection alive

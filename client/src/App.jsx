@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import AuthContext from './context/AuthContext'; 
@@ -10,15 +10,24 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Create a component that uses the auth context
 const AuthedApp = () => {
-  const { setupNotifications, isAuthenticated } = React.useContext(AuthContext);
+  const { isAuthenticated, user, startSSEConnection } = useContext(AuthContext);
   
-  // Set up notifications when authenticated
+  // Add a ref to prevent multiple calls
+  const setupRef = useRef(false);
+  
   useEffect(() => {
-    if (isAuthenticated) {
+    // Only set up notifications once per session
+    if (isAuthenticated && user && !setupRef.current) {
       console.log('Setting up notifications in AuthedApp');
-      setupNotifications();
+      startSSEConnection();
+      setupRef.current = true;
     }
-  }, [isAuthenticated, setupNotifications]);
+    
+    return () => {
+      // Reset setup state when component unmounts
+      setupRef.current = false;
+    };
+  }, [isAuthenticated, user, startSSEConnection]);
   
   return (
     <Routes>

@@ -58,6 +58,7 @@ function CreateUser({ onUserAdded }) {
     confirmPassword: '',
     status: 'active', // Default status is active
     accessLevel: 'staff', // Default access level is staff
+    twoFactorEnabled: true // Always set to true for new users
   });
   const [error, setError] = useState('');
 
@@ -141,7 +142,8 @@ function CreateUser({ onUserAdded }) {
         department: userData.department,
         password: userData.password,
         status: userData.status,
-        accessLevel: userData.accessLevel
+        accessLevel: userData.accessLevel,
+        twoFactorEnabled: true // Always set to true
       });
       
       const response = await axios.post('http://localhost:5555/user', {
@@ -151,7 +153,8 @@ function CreateUser({ onUserAdded }) {
         department: userData.department,
         password: userData.password,
         status: userData.status,
-        accessLevel: userData.accessLevel // Send access level to backend
+        accessLevel: userData.accessLevel,
+        twoFactorEnabled: true // Always set to true
       });
       
       setLoading(false);

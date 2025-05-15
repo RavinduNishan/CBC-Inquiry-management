@@ -4,6 +4,21 @@ import EventSourceWithAuth from '../utils/EventSourceWithAuth';
 
 const AuthContext = createContext();
 
+// Cache the authentication state in sessionStorage to prevent flashes on page reloads
+const cacheAuthState = (userData) => {
+  try {
+    // Store a temporary session flag to prevent flashing unauthenticated state
+    sessionStorage.setItem('authInProgress', 'true');
+    
+    // Clear this flag after authentication is complete
+    setTimeout(() => {
+      sessionStorage.removeItem('authInProgress');
+    }, 5000);
+  } catch (error) {
+    console.warn('Unable to use sessionStorage for auth caching:', error);
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,9 +70,11 @@ export const AuthProvider = ({ children }) => {
   const setupNotifications = useCallback(() => {
     if (!isAuthenticated || !user || !user._id) return;
     
-    // Skip if we already have an active connection
-    if (eventSourceRef.current && eventSourceRef.current.isConnected) {
-      console.log('SSE connection already exists, skipping setup');
+    // Skip if we already have an active connection with the same user ID
+    if (eventSourceRef.current && 
+        eventSourceRef.current.isConnected && 
+        eventSourceRef.current.userId === user._id) {
+      console.log('SSE connection already exists and is valid, skipping setup');
       return;
     }
     
@@ -83,6 +100,9 @@ export const AuthProvider = ({ children }) => {
         maxReconnectAttempts: 5,  // Increase reconnect attempts
         reconnectInterval: 5000   // Longer interval between reconnects
       });
+      
+      // Store the user ID to prevent unnecessary reconnections
+      es.userId = user._id;
       
       // Set up message handler
       es.onmessage = (event) => {
@@ -187,6 +207,7 @@ export const AuthProvider = ({ children }) => {
     // Check for user data in localStorage on mount
     const loadUser = async () => {
       try {
+        console.log('AuthContext: Loading user from localStorage');
         const storedUser = localStorage.getItem('user');
         const token = localStorage.getItem('token');
         const localProfileVersion = localStorage.getItem('profileVersion');
@@ -200,9 +221,18 @@ export const AuthProvider = ({ children }) => {
         }
         
         if (storedUser && token) {
+          console.log('AuthContext: Found stored user data, validating...');
           const userData = JSON.parse(storedUser);
           
-          // Verify token is valid by making a profile request
+          // Update auth headers immediately to ensure subsequent requests work
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          // Set authenticated state immediately based on localStorage
+          // This prevents flickering between authenticated/unauthenticated states
+          setUser(userData);
+          setIsAuthenticated(true);
+          
+          // Then verify token is valid by making a profile request
           try {
             const config = {
               headers: {
@@ -224,7 +254,7 @@ export const AuthProvider = ({ children }) => {
               return;
             }
             
-            // If profile is still valid, update user data
+            // If profile is still valid, update user data with latest from server
             setUser({
               ...userData,
               ...res.data, // This ensures we have the latest data including permissions
@@ -232,21 +262,21 @@ export const AuthProvider = ({ children }) => {
             
             // Store the latest profile version
             localStorage.setItem('profileVersion', serverProfileVersion.toString());
-            setIsAuthenticated(true);
           } catch (err) {
             console.error('Error verifying token:', err.response?.data?.message || err.message);
+            
             // Only logout if we have a 401 Unauthorized or other clear auth failure
-            // (Network errors shouldn't automatically logout the user)
             if (err.response && [401, 403].includes(err.response.status)) {
               logout("Your session has expired. Please log in again.");
             } else {
-              // For other errors, we'll consider the user authenticated based on local storage
-              // but will update the UI to reflect the error status
-              setUser(userData);
-              setIsAuthenticated(true);
+              // For other errors (like network issues), keep the user logged in based on localStorage
+              // This is important to prevent logout loops during temporary API unavailability
+              console.log('Non-critical error during profile check, maintaining authentication');
               setError("Couldn't refresh your profile. Some features may be limited.");
             }
           }
+        } else {
+          console.log('AuthContext: No stored user credentials found');
         }
         
         setLoading(false);
@@ -259,6 +289,23 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, [logout]);
   
+  // Add optimized setter for user and auth state
+  const setAuthState = useCallback((userData, isAuth = true) => {
+    setLoading(true);
+    
+    // Use a microtask to speed up state updates
+    queueMicrotask(() => {
+      setUser(userData);
+      setIsAuthenticated(isAuth);
+      cacheAuthState(userData);
+      
+      // Use RAF to ensure UI updates before stopping loading state
+      requestAnimationFrame(() => {
+        setLoading(false);
+      });
+    });
+  }, []);
+  
   // Login user
   const login = async (email, password) => {
     try {
@@ -268,51 +315,67 @@ export const AuthProvider = ({ children }) => {
       // Clear any previous profile update flags
       localStorage.removeItem('justLoggedOut');
       
-      const res = await axios.post('http://localhost:5555/user/login', {
-        email,
-        password
-      });
-      
-      if (!res.data || !res.data.token) {
-        throw new Error('Invalid response from server - missing token');
+      try {
+        // Make the initial login request
+        const res = await axios.post('http://localhost:5555/user/login', {
+          email,
+          password
+        });
+        
+        // Add mandatory 2FA check - the login response should ALWAYS indicate requiresVerification
+        if (!res.data.requiresVerification) {
+          console.error('Security warning: Login successful without 2FA verification');
+        }
+        
+        // If 2FA is required, return early with verification data
+        if (res.data && res.data.requiresVerification) {
+          console.log('Two-factor authentication required');
+          setLoading(false);
+          return { 
+            success: false, 
+            requiresVerification: true,
+            verificationData: res.data
+          };
+        }
+        
+        // Normal login flow without 2FA
+        if (!res.data || !res.data.token) {
+          throw new Error('Invalid response from server - missing token');
+        }
+        
+        // Store user data and token
+        localStorage.setItem('user', JSON.stringify(res.data));
+        localStorage.setItem('token', res.data.token);
+        localStorage.removeItem('loggedOut');
+        
+        // Store profile version to track changes
+        if (res.data.profileVersion) {
+          localStorage.setItem('profileVersion', res.data.profileVersion.toString());
+        }
+        
+        // Update auth headers
+        axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+        
+        // Set user context
+        setUser(res.data);
+        setIsAuthenticated(true);
+        setIsFirstLogin(true);
+        
+        console.log('Login successful');
+        setLoading(false);
+        return { success: true };
+        
+      } catch (err) {
+        console.error('Login error:', err);
+        const message = err.response?.data?.message || 'Login failed. Please check your credentials.';
+        setError(message);
+        setLoading(false);
+        return { success: false, message };
       }
-      
-      // Ensure permissions are properly formatted
-      const userData = {
-        ...res.data,
-        permissions: res.data.permissions || [] // Ensure permissions is an array
-      };
-      
-      // Store user data and token in localStorage
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('token', res.data.token);
-      localStorage.removeItem('loggedOut');
-      
-      // Store profile version to track changes
-      if (res.data.profileVersion) {
-        localStorage.setItem('profileVersion', res.data.profileVersion.toString());
-      } else {
-        localStorage.setItem('profileVersion', "1"); // Default if not provided
-      }
-      
-      // Set first login flag to trigger initial data load
-      setIsFirstLogin(true);
-      
-      // Set user context with ensured permissions
-      setUser(userData);
-      setIsAuthenticated(true);
-      
-      console.log('User logged in, permissions:', userData.permissions);
-      
-      setLoading(false);
-      return { success: true };
     } catch (err) {
       setLoading(false);
-      console.error('Login error:', err);
-      
-      const message = err.response?.data?.message || 'Login failed. Please check your credentials or try again later.';
-      setError(message);
-      return { success: false, message };
+      console.error('Login function error:', err);
+      return { success: false, message: 'An unexpected error occurred' };
     }
   };
   
@@ -382,10 +445,11 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       user,
-      setUser,
+      setUser, // Export this function
       loading,
       error,
       isAuthenticated,
+      setIsAuthenticated, // Export this function
       isAdmin,
       isFirstLogin,
       setIsFirstLogin,
@@ -394,7 +458,8 @@ export const AuthProvider = ({ children }) => {
       checkSecurityChanges,
       startSSEConnection,
       setupNotifications,
-      checkPermission
+      checkPermission,
+      setAuthState // Add the new optimized setter
     }}>
       {children}
     </AuthContext.Provider>

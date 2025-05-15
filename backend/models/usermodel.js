@@ -14,7 +14,8 @@ const userschema = mongoose.Schema(
             default: 'staff'
         },
         profileVersion: { type: Number, default: 1 },
-        lastSecurityUpdate: { type: Date }
+        lastSecurityUpdate: { type: Date },
+        twoFactorEnabled: { type: Boolean, default: true } // Changed default to true
     },
     { timestamps: true }
 );

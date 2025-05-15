@@ -104,7 +104,10 @@ export const getUserNotifications = (req, res) => {
   });
 };
 
-// Controller for user login
+// Map to store login verification sessions
+const loginVerificationStore = new Map();
+
+// Controller for user login - first step (password verification)
 export const login = async (req, res) => {
   try {
     console.log("Login attempt received:", JSON.stringify(req.body, null, 2));
@@ -154,26 +157,246 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Create token with a more reliable JWT_SECRET value
+    // ALWAYS require two-factor authentication regardless of user setting
+    // if (!userFound.twoFactorEnabled) {
+    //   // Create token with a more reliable JWT_SECRET value
+    //   const token = generateToken(userFound._id);
+      
+    //   console.log(`Login successful for user: ${email}`);
+  
+    //   // Return user data and token
+    //   return res.status(200).json({
+    //     _id: userFound._id,
+    //     name: userFound.name,
+    //     email: userFound.email,
+    //     phone: userFound.phone,
+    //     department: userFound.department,
+    //     status: userFound.status,
+    //     accessLevel: userFound.accessLevel || 'staff', 
+    //     profileVersion: userFound.profileVersion || 1,
+    //     twoFactorEnabled: !!userFound.twoFactorEnabled,
+    //     token: token
+    //   });
+    // }
+    
+    // Generate and send OTP for all users
+    const otp = generateOTP(6);
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+    
+    // Store login verification session
+    const verificationId = generateVerificationId();
+    loginVerificationStore.set(verificationId, {
+      userId: userFound._id,
+      email: normalizedEmail,
+      otp,
+      expiry: otpExpiry,
+      attempts: 0
+    });
+    
+    console.log(`Generated login OTP for ${normalizedEmail}: ${otp}`);
+    
+    // Send OTP via email
+    await sendOtpEmail({
+      email: normalizedEmail,
+      name: userFound.name,
+      otp,
+      expiryMinutes: 10,
+      subject: "Login Verification Code",
+      purpose: "login"
+    });
+    
+    // Return success with verification required flag
+    return res.status(200).json({
+      message: "Please verify your identity", 
+      requiresVerification: true,
+      verificationId: verificationId,
+      email: userFound.email,
+      name: userFound.name,
+      _id: userFound._id
+    });
+    
+  } catch (error) {
+    console.log("Login error:", error.message, error.stack);
+    return res.status(500).send({ message: error.message });
+  }
+};
+
+// Generate unique verification ID for 2FA sessions
+const generateVerificationId = () => {
+  return `verify_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+};
+
+// Controller for login verification (second step - OTP verification)
+export const verifyLoginOTP = async (req, res) => {
+  try {
+    const { verificationId, otp } = req.body;
+    
+    // Validate input
+    if (!verificationId || !otp) {
+      return res.status(400).json({ message: "Verification ID and OTP are required" });
+    }
+    
+    // Check if verification session exists
+    if (!loginVerificationStore.has(verificationId)) {
+      return res.status(400).json({ message: "Invalid or expired verification session. Please login again." });
+    }
+    
+    // Get verification data
+    const verificationData = loginVerificationStore.get(verificationId);
+    
+    // Check if OTP has expired
+    if (new Date() > verificationData.expiry) {
+      loginVerificationStore.delete(verificationId);
+      return res.status(400).json({ message: "Verification code has expired. Please login again." });
+    }
+    
+    // Increment attempts
+    verificationData.attempts += 1;
+    
+    // Check max attempts (5)
+    if (verificationData.attempts > 5) {
+      loginVerificationStore.delete(verificationId);
+      return res.status(400).json({ message: "Too many failed attempts. Please login again." });
+    }
+    
+    // Check if OTP matches
+    if (verificationData.otp !== otp) {
+      return res.status(400).json({ 
+        message: "Invalid verification code", 
+        attemptsLeft: 5 - verificationData.attempts 
+      });
+    }
+    
+    // OTP is valid! Get user data and generate token
+    const userFound = await users.findById(verificationData.userId);
+    if (!userFound) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Generate token
     const token = generateToken(userFound._id);
     
-    console.log(`Login successful for user: ${email}`);
-
+    // Clear verification data
+    loginVerificationStore.delete(verificationId);
+    
+    console.log(`Two-factor authentication successful for user: ${userFound.email}`);
+    
     // Return user data and token
-    res.status(200).json({
+    return res.status(200).json({
       _id: userFound._id,
       name: userFound.name,
       email: userFound.email,
       phone: userFound.phone,
       department: userFound.department,
       status: userFound.status,
-      accessLevel: userFound.accessLevel || 'staff', // Include access level in response
+      accessLevel: userFound.accessLevel || 'staff',
       profileVersion: userFound.profileVersion || 1,
+      twoFactorEnabled: true,
       token: token
     });
+    
   } catch (error) {
-    console.log("Login error:", error.message, error.stack);
-    return res.status(500).send({ message: error.message });
+    console.log("Login verification error:", error.message, error.stack);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+// Controller to resend login OTP
+export const resendLoginOTP = async (req, res) => {
+  try {
+    const { verificationId } = req.body;
+    
+    // Validate input
+    if (!verificationId) {
+      return res.status(400).json({ message: "Verification ID is required" });
+    }
+    
+    // Check if verification session exists
+    if (!loginVerificationStore.has(verificationId)) {
+      return res.status(400).json({ message: "Invalid or expired verification session. Please login again." });
+    }
+    
+    const verificationData = loginVerificationStore.get(verificationId);
+    
+    // Check if session has expired
+    if (new Date() > verificationData.expiry) {
+      loginVerificationStore.delete(verificationId);
+      return res.status(400).json({ message: "Verification session has expired. Please login again." });
+    }
+    
+    // Generate new OTP
+    const newOtp = generateOTP(6);
+    
+    // Update verification data
+    verificationData.otp = newOtp;
+    verificationData.expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    // Find user for name
+    const userFound = await users.findById(verificationData.userId);
+    if (!userFound) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Send new OTP via email
+    await sendOtpEmail({
+      email: verificationData.email,
+      name: userFound.name,
+      otp: newOtp,
+      expiryMinutes: 10,
+      subject: "Login Verification Code",
+      purpose: "login"
+    });
+    
+    return res.status(200).json({
+      message: "A new verification code has been sent to your email",
+      expiresIn: "10 minutes"
+    });
+    
+  } catch (error) {
+    console.log("Resend login OTP error:", error.message, error.stack);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+// Controller to enable/disable two-factor authentication
+export const toggleTwoFactor = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { enable, password } = req.body;
+    
+    // Validate input
+    if (enable === undefined || !password) {
+      return res.status(400).json({ message: "Enable flag and current password are required" });
+    }
+    
+    // Find the user
+    const userFound = await users.findById(userId);
+    if (!userFound) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Verify password
+    const isMatch = await bcrypt.compare(password, userFound.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+    
+    // Update two-factor status
+    userFound.twoFactorEnabled = !!enable;
+    userFound.profileVersion = (userFound.profileVersion || 0) + 1;
+    userFound.lastSecurityUpdate = new Date();
+    
+    await userFound.save();
+    
+    return res.status(200).json({
+      message: enable ? "Two-factor authentication enabled" : "Two-factor authentication disabled",
+      twoFactorEnabled: !!enable,
+      profileVersion: userFound.profileVersion
+    });
+    
+  } catch (error) {
+    console.log("Toggle two-factor error:", error.message, error.stack);
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };
 
@@ -546,7 +769,8 @@ export const forgotPassword = async (req, res) => {
       email: normalizedEmail,
       name: userFound.name,
       otp,
-      expiryMinutes: 15
+      expiryMinutes: 15,
+      purpose: "reset" // explicitly set purpose (though this is the default)
     });
     
     return res.status(200).json({

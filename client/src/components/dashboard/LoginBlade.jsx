@@ -4,6 +4,7 @@ import loginImg from '../../assets/loginImg.png';
 import AuthContext from '../../context/AuthContext';
 import axios from 'axios';
 import MongoDBStatus from './MongoDBStatus';
+import TwoFactorVerification from '../auth/TwoFactorVerification';
 
 export const LoginBlade = () => {
   const [formData, setFormData] = useState({
@@ -14,10 +15,14 @@ export const LoginBlade = () => {
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [serverStatus, setServerStatus] = useState(null); // null=unknown, true=online, false=offline
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, loading, isAuthenticated, user, error: contextError, isFirstLogin } = useContext(AuthContext);
+  const { login, loading, isAuthenticated, user, error: contextError, isFirstLogin, setUser, setIsAuthenticated } = useContext(AuthContext);
   const navigate = useNavigate();
   const [mongoError, setMongoError] = useState(false);
   const [logoutMessage, setLogoutMessage] = useState('');
+  
+  // Add state for two-factor authentication
+  const [requiresVerification, setRequiresVerification] = useState(false);
+  const [verificationData, setVerificationData] = useState(null);
 
   // Check if user is already authenticated and redirect
   useEffect(() => {
@@ -133,7 +138,30 @@ export const LoginBlade = () => {
       // Count connection attempt
       setConnectionAttempts(prev => prev + 1);
       
-      // Use the context's login function with normalized email
+      console.log('Making login request to backend with email:', email);
+      
+      // First step: Make a direct API call to login endpoint
+      const response = await axios.post('http://localhost:5555/user/login', { 
+        email, 
+        password 
+      });
+      
+      console.log('Login response received:', response.data);
+      
+      // Check if two-factor verification is required
+      if (response.data.requiresVerification) {
+        console.log('Two-factor authentication required, showing verification screen');
+        // Store verification data and show 2FA screen
+        setVerificationData(response.data);
+        setRequiresVerification(true);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Should never reach here with mandatory 2FA, but handle it just in case
+      console.warn('Warning: Login succeeded without 2FA verification');
+      
+      // If not, proceed with normal login using context
       const result = await login(email, password);
       
       if (result.success) {
@@ -173,6 +201,67 @@ export const LoginBlade = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Handle two-factor verification success
+  const handleVerificationSuccess = (userData) => {
+    console.log('OTP verification successful, user data:', userData);
+  
+    try {
+      // Create a synchronous block to ensure all operations complete before navigation
+      (async () => {
+        // First, ensure we update localStorage
+        localStorage.removeItem('loggedOut'); // Clear any logged out state
+        localStorage.setItem('token', userData.token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        // Store profile version to track changes
+        if (userData.profileVersion) {
+          localStorage.setItem('profileVersion', userData.profileVersion.toString());
+        }
+        
+        // Update axios defaults for future requests
+        axios.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
+        
+        // IMPORTANT: Update the auth context state before navigating
+        // This ensures the context state is correctly set
+        setUser(userData);
+        setIsAuthenticated(true);
+        
+        console.log('Auth state updated after OTP verification, preparing to navigate...');
+        
+        // Add a small delay to ensure state changes are processed
+        setTimeout(() => {
+          console.log('Navigating to dashboard after state update');
+          // Use window.location for a full page reload to ensure clean state
+          window.location.href = '/dashboard';
+        }, 100);
+      })();
+    } catch (error) {
+      console.error('Error during post-verification process:', error);
+      // Fallback navigation if something goes wrong
+      window.location.href = '/dashboard';
+    }
+  };
+  
+  // Handle two-factor verification cancel
+  const handleVerificationCancel = () => {
+    // Reset states to go back to login form
+    setRequiresVerification(false);
+    setVerificationData(null);
+  };
+
+  // If we're in verification mode, show the two-factor component
+  if (requiresVerification && verificationData) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-indigo-50 to-gray-100 px-4">
+        <TwoFactorVerification
+          verificationData={verificationData}
+          onSuccess={handleVerificationSuccess}
+          onCancel={handleVerificationCancel}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-indigo-50 to-gray-100 px-4">
