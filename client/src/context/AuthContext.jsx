@@ -55,6 +55,12 @@ export const AuthProvider = ({ children }) => {
   const setupNotifications = useCallback(() => {
     if (!isAuthenticated || !user || !user._id) return;
     
+    // Skip if we already have an active connection
+    if (eventSourceRef.current && eventSourceRef.current.isConnected) {
+      console.log('SSE connection already exists, skipping setup');
+      return;
+    }
+    
     // Clean up any existing connection
     if (eventSourceRef.current) {
       console.log('Closing existing SSE connection before creating new one');
@@ -70,8 +76,13 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('Setting up SSE notifications for user:', user._id);
       
-      // Create new EventSourceWithAuth instance
-      const es = new EventSourceWithAuth('http://localhost:5555/user/notifications');
+      // Create new EventSourceWithAuth instance with improved options
+      const es = new EventSourceWithAuth('http://localhost:5555/user/notifications', {
+        debug: true,
+        timeoutDuration: 30000, // Increase timeout to 30 seconds
+        maxReconnectAttempts: 5,  // Increase reconnect attempts
+        reconnectInterval: 5000   // Longer interval between reconnects
+      });
       
       // Set up message handler
       es.onmessage = (event) => {
@@ -332,11 +343,23 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, logout]);
   
-  // Modify the hasPermission function to temporarily allow all permissions
-  const hasPermission = useCallback((permissionName) => {
-    console.log(`Permission check for: ${permissionName}, user:`, user);
-    // Temporarily return true for all permissions to ensure dashboard works
-    return true;
+  // Replace the permission check function with a more efficient version
+  const checkPermission = useCallback((permission) => {
+    if (!user) return false;
+    
+    // Only log in development environment and with a DEBUG flag
+    const shouldLog = process.env.NODE_ENV === 'development' && localStorage.getItem('DEBUG_PERMISSIONS') === 'true';
+    
+    // Check if the user has the required permission
+    const hasPermission = user.role?.permissions?.includes(permission) || 
+                          user.role?.name === 'admin' || 
+                          false;
+    
+    if (shouldLog) {
+      console.log('Permission check for:', permission, 'user:', user);
+    }
+    
+    return hasPermission;
   }, [user]);
   
   // Define isAdmin based on the user's actual access level - add more debugging
@@ -371,7 +394,7 @@ export const AuthProvider = ({ children }) => {
       checkSecurityChanges,
       startSSEConnection,
       setupNotifications,
-      hasPermission
+      checkPermission
     }}>
       {children}
     </AuthContext.Provider>

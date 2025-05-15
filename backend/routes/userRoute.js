@@ -1,6 +1,7 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
 import { adminOnly } from "../middleware/adminMiddleware.js";
+import { adminOrManagerOnly } from "../middleware/adminOrManagerMiddleware.js";
 import {
   getUserNotifications,
   login,
@@ -38,8 +39,8 @@ router.post("/:id/set-password", protect, adminOnly, adminSetPassword);
 // Create a new user - admin only
 router.post("/", protect, adminOnly, createUser);
 
-// Get all users - admin only
-router.get("/", protect, adminOnly, getAllUsers);
+// Get all users - UPDATED: allow both admins and managers
+router.get("/", protect, adminOrManagerOnly, getAllUsers);
 
 // Get user by id - admin only
 router.get("/:id", protect, adminOnly, getUserById);

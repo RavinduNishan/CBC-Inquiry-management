@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Fragment, useContext } from 'react';
 import axios from 'axios';
 import { Dialog, Transition } from '@headlessui/react';
-import { FiSearch, FiUser, FiMail, FiPhone, FiBriefcase } from 'react-icons/fi';
+import { FiSearch, FiUser, FiMail, FiPhone, FiBriefcase, FiShield } from 'react-icons/fi';
 import Spinner from '../user/Spinner';
 import { useSnackbar } from 'notistack';
 import AuthContext from '../../context/AuthContext';
@@ -16,55 +16,56 @@ const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee, inquiryD
   const { enqueueSnackbar } = useSnackbar();
   const { user: currentUser } = useContext(AuthContext);
 
-  // Fetch users with improved error handling
+  // Fetch users with improved department-based filtering
   useEffect(() => {
     const fetchUsers = async () => {
       if (!isOpen) return;
       
       setLoading(true);
       try {
-        // If not admin, use department filtering by default
-        const params = {};
-        if (currentUser && !currentUser.isAdmin && inquiryDepartment) {
-          params.department = inquiryDepartment;
+        const response = await axios.get('http://localhost:5555/user');
+        const allUsers = response.data.data;
+        
+        // Check if current user is admin or department manager
+        const isCurrentUserAdmin = currentUser?.accessLevel === 'admin';
+        const isCurrentUserManager = currentUser?.accessLevel === 'manager';
+        
+        // Apply department-based filtering based on role:
+        let eligibleUsers = [];
+        
+        if (isCurrentUserAdmin || isCurrentUserManager) {
+          eligibleUsers = allUsers.filter(user => 
+            // Include all admins
+            user.accessLevel === 'admin' || 
+            // Include department managers from the inquiry's department
+            (user.accessLevel === 'manager' && user.department === inquiryDepartment)
+          );
+        } else {
+          console.warn("User without sufficient permissions attempting to assign inquiry");
+          // Return empty list for users without assign permissions as fallback
+          eligibleUsers = [];
         }
         
-        const response = await axios.get('http://localhost:5555/user', { params });
-        
-        // Filter out current assignee and set users
-        const filteredUsers = response.data.data.filter(
+        // Filter out current assignee if already assigned
+        const availableUsers = eligibleUsers.filter(
           user => !currentAssignee || user._id !== currentAssignee
         );
         
-        setUsers(filteredUsers);
-        setFilteredUsers(filteredUsers);
+        console.log(`Filtered users for department ${inquiryDepartment}:`, availableUsers);
+        
+        setUsers(availableUsers);
+        setFilteredUsers(availableUsers);
         setLoading(false);
       } catch (error) {
         console.log('Error fetching users for assignment - handling gracefully');
-        
-        // Try department-specific API if available and access is denied
-        if (error.response?.status === 403 && inquiryDepartment) {
-          try {
-            // This is a fallback API endpoint that might exist - if it doesn't, it will be caught
-            const deptResponse = await axios.get(`http://localhost:5555/user/department/${inquiryDepartment}`);
-            setUsers(deptResponse.data.data || []);
-            setFilteredUsers(deptResponse.data.data || []);
-          } catch (depError) {
-            // If both fail, just show empty list
-            setUsers([]);
-            setFilteredUsers([]);
-            enqueueSnackbar('Limited user data available', { variant: 'warning' });
-          }
-        } else {
-          setUsers([]);
-          setFilteredUsers([]);
-        }
+        setUsers([]);
+        setFilteredUsers([]);
         setLoading(false);
       }
     };
 
     fetchUsers();
-  }, [isOpen, enqueueSnackbar, currentUser, inquiryDepartment, currentAssignee]);
+  }, [isOpen, inquiryDepartment, currentAssignee, currentUser]);
 
   // Filter users based on search term
   useEffect(() => {
@@ -77,7 +78,8 @@ const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee, inquiryD
     const filtered = users.filter(
       user => 
         user.name.toLowerCase().includes(term) || 
-        user.email.toLowerCase().includes(term)
+        user.email.toLowerCase().includes(term) ||
+        user.department.toLowerCase().includes(term)
     );
     setFilteredUsers(filtered);
   }, [searchTerm, users]);
@@ -174,14 +176,18 @@ const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee, inquiryD
                   Assign Inquiry to User
                 </Dialog.Title>
                 
-                {!currentUser?.isAdmin && inquiryDepartment && (
+                {inquiryDepartment && (
                   <div className="mb-4 rounded-md bg-blue-50 p-3 border border-blue-100">
                     <div className="flex">
                       <FiBriefcase className="h-5 w-5 text-blue-400" />
                       <div className="ml-3">
                         <h3 className="text-sm font-medium text-blue-800">Department Filter Applied</h3>
                         <div className="text-xs text-blue-700 mt-1">
-                          Showing users from: {inquiryDepartment}
+                          <p>Showing users who can be assigned to this inquiry:</p>
+                          <ul className="list-disc ml-5 mt-1">
+                            <li>All administrators</li>
+                            <li>Department managers from {inquiryDepartment}</li>
+                          </ul>
                         </div>
                       </div>
                     </div>
@@ -219,21 +225,32 @@ const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee, inquiryD
                         >
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <FiUser className="text-blue-600" />
+                              {user.accessLevel === 'admin' ? (
+                                <FiShield className="text-blue-600" />
+                              ) : (
+                                <FiUser className="text-blue-600" />
+                              )}
                             </div>
                             <div className="ml-4 flex-1">
-                              <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm font-medium text-gray-900 flex items-center">
+                                {user.name}
+                                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                                  user.accessLevel === 'admin' 
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {user.accessLevel}
+                                </span>
+                              </div>
                               <div className="flex text-xs text-gray-500 mt-1">
                                 <div className="flex items-center mr-4">
                                   <FiMail className="mr-1" />
                                   {user.email}
                                 </div>
-                                {user.phone && (
-                                  <div className="flex items-center">
-                                    <FiPhone className="mr-1" />
-                                    {user.phone}
-                                  </div>
-                                )}
+                                <div className="flex items-center">
+                                  <FiBriefcase className="mr-1" />
+                                  {user.department}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -241,7 +258,7 @@ const AssignUserModal = ({ isOpen, onClose, inquiryId, currentAssignee, inquiryD
                       ))
                     ) : (
                       <div className="p-4 text-center text-sm text-gray-500">
-                        No users found matching your search
+                        No eligible users found for assignment
                       </div>
                     )}
                   </div>

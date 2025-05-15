@@ -67,6 +67,20 @@ export const createInquiry = async (req, res) => {
                 console.error('Client not found with ID:', req.body.client);
                 return res.status(404).send({ message: "Selected client not found." });
             }
+            
+            // Department-based access control:
+            // 1. Admins can create inquiries for any client
+            // 2. Department managers/staff can only create inquiries for clients in their department
+            const isAdmin = req.user?.accessLevel === 'admin';
+            
+            // Make sure we have user data before performing this check
+            if (req.user && !isAdmin && req.user.department && req.user.department !== clientData.department) {
+                console.error('Permission denied: User from department', req.user.department, 
+                    'tried to create inquiry for client from department', clientData.department);
+                return res.status(403).send({ 
+                    message: "You can only create inquiries for clients in your department." 
+                });
+            }
         } catch (clientErr) {
             console.error('Error validating client:', clientErr);
             return res.status(400).send({ message: "Invalid client ID format or client not found." });

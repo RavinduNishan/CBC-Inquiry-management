@@ -50,6 +50,9 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
     // Simple check - only admins can fetch all users
     const isAdmin = user?.isAdmin === true; // Strict check for true
 
+    // Add proper check for assignment permission
+    const canUserAssign = user?.accessLevel === 'admin' || user?.accessLevel === 'manager' || !hideAssignButton;
+
     // Filter input states
     const [inputSearchTerm, setInputSearchTerm] = useState('');
     const [inputPriorityFilter, setInputPriorityFilter] = useState('');
@@ -373,8 +376,8 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
     };
 
     const handleAssignClick = (inquiry) => {
-        // Don't process if the inquiry is closed
-        if (inquiry.status.toLowerCase() === 'closed') return;
+        // Don't process if the inquiry is closed or user can't assign
+        if (inquiry.status.toLowerCase() === 'closed' || !canUserAssign) return;
         
         setCurrentInquiryId(inquiry._id);
         setCurrentAssignee(inquiry.assigned?.userId || null);
@@ -691,7 +694,7 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                                     )}
                                 </div>
                                 <div className="flex space-x-1">
-                                    {!hideAssignButton && (
+                                    {!hideAssignButton && canUserAssign && (
                                         <button
                                             onClick={() => handleAssignClick(inquiry)}
                                             className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${

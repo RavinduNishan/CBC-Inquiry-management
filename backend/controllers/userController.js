@@ -309,10 +309,34 @@ export const createUser = async (req, res) => {
   }
 };
 
-// Controller for get all users
+// Controller for get all users - Updated to filter results for managers
 export const getAllUsers = async (req, res) => {
   try {
-    const allUsers = await users.find({});
+    // Check if requesting user is admin or manager
+    const isAdmin = req.user.accessLevel === 'admin';
+    const isManager = req.user.accessLevel === 'manager';
+    const userDepartment = req.user.department;
+    
+    let allUsers;
+    
+    if (isAdmin) {
+      // Admins can see all users
+      allUsers = await users.find({});
+    } else if (isManager && userDepartment) {
+      // Managers can only see:
+      // 1. All admins
+      // 2. Other managers and staff from their own department
+      allUsers = await users.find({
+        $or: [
+          { accessLevel: 'admin' },
+          { department: userDepartment }
+        ]
+      });
+    } else {
+      // Fallback - shouldn't normally happen due to middleware
+      return res.status(403).json({ message: "Insufficient permissions to view users" });
+    }
+    
     return res.status(200).json({
       success: true,
       count: allUsers.length,

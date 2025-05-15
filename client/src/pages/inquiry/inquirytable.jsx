@@ -58,9 +58,6 @@ const priorityBadge = (priority) => {
 };
 
 const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = true }) => {
-  // Set canAssign to always be true
-  canAssign = true; // Override any passed parameter, everyone can assign
-  
   const { user } = useContext(AuthContext);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [currentInquiryId, setCurrentInquiryId] = useState(null);
@@ -405,9 +402,12 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     document.body.removeChild(link);
   };
 
+  // Add proper check for assignment permission
+  const canUserAssign = user?.accessLevel === 'admin' || user?.accessLevel === 'manager' || canAssign;
+
   const handleAssignClick = (inquiry) => {
-    // Don't process if the inquiry is closed
-    if (inquiry.status.toLowerCase() === 'closed') return;
+    // Don't process if the inquiry is closed or user can't assign
+    if (inquiry.status.toLowerCase() === 'closed' || !canUserAssign) return;
     
     setCurrentInquiryId(inquiry._id);
     setCurrentAssignee(inquiry.assigned?.userId || null);
@@ -785,11 +785,11 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
                           <button
                             onClick={() => handleAssignClick(inquiry)}
                             className={`inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md ${
-                              inquiry.status.toLowerCase() === 'closed'
+                              inquiry.status.toLowerCase() === 'closed' || !canUserAssign
                               ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
                               : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500'
                             }`}
-                            disabled={inquiry.status.toLowerCase() === 'closed'}
+                            disabled={inquiry.status.toLowerCase() === 'closed' || !canUserAssign}
                           >
                             <FiUserPlus className="mr-1" />
                             Assign

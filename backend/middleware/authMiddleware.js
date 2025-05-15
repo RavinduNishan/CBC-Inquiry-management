@@ -2,54 +2,67 @@ import jwt from 'jsonwebtoken';
 import User from '../models/usermodel.js';
 import { JWT_SECRET } from '../config.js';
 
-const protect = async (req, res, next) => {
+export const protect = async (req, res, next) => {
   let token;
+  const isSSERequest = req.headers.accept && req.headers.accept.includes('text/event-stream');
   
   try {
-    // Check for token in Authorization header
+    // Get token from headers
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      // Get token from header
+      // Extract token from Bearer token string
       token = req.headers.authorization.split(' ')[1];
-      
-      // Verify token exists
-      if (!token) {
-        console.log("No token found in request headers");
-        return res.status(401).json({ message: 'Not authorized, token missing' });
+    }
+
+    // Check if token exists
+    if (!token) {
+      if (isSSERequest) {
+        // For SSE requests, send a properly formatted SSE error message
+        res.writeHead(401, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        });
+        res.write(`data: ${JSON.stringify({ type: 'error', message: 'Not authorized, no token' })}\n\n`);
+        res.end();
+        return;
       }
-      
-      try {
-        // Verify token
-        const decoded = jwt.verify(token, JWT_SECRET);
-        
-        // Find the user
-        const foundUser = await User.findById(decoded.id).select('-password');
-        
-        if (!foundUser) {
-          console.log(`User not found for ID: ${decoded.id}`);
-          return res.status(401).json({ message: 'User not found' });
-        }
-        
-        // Check if user is active
-        if (foundUser.status === 'inactive') {
-          console.log(`Inactive user attempted access: ${foundUser._id}`);
-          return res.status(401).json({ message: 'Your account has been deactivated' });
-        }
-        
-        // Add user to request object
-        req.user = foundUser;
-        next();
-      } catch (error) {
-        console.log("Token verification error:", error.message);
-        return res.status(401).json({ message: 'Not authorized, invalid token' });
-      }
-    } else {
-      console.log("No Authorization header or Bearer token");
       return res.status(401).json({ message: 'Not authorized, no token' });
     }
+
+    // Verify token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Get user from token
+    req.user = await User.findById(decoded.id).select('-password');
+    if (!req.user) {
+      if (isSSERequest) {
+        res.writeHead(401, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        });
+        res.write(`data: ${JSON.stringify({ type: 'error', message: 'User not found' })}\n\n`);
+        res.end();
+        return;
+      }
+      return res.status(401).json({ message: 'User not found' });
+    }
+    
+    next();
   } catch (error) {
-    console.error("Auth middleware error:", error);
-    return res.status(500).json({ message: 'Server error in authentication' });
+    console.error('Auth middleware error:', error.message);
+    if (isSSERequest) {
+      res.writeHead(401, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      });
+      res.write(`data: ${JSON.stringify({ type: 'error', message: 'Not authorized, token invalid' })}\n\n`);
+      res.end();
+      return;
+    }
+    return res.status(401).json({ message: 'Not authorized, token invalid' });
   }
 };
 
-export { protect };
+export default protect;
