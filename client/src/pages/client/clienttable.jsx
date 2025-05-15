@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { MdEdit, MdDelete, MdBusiness } from 'react-icons/md';
+import { BsSearch } from 'react-icons/bs';
 import { useSnackbar } from 'notistack';
 import axios from 'axios';
 import EditClient from './editclient';
@@ -27,6 +28,47 @@ function ClientTable({ clients, fetchClients }) {
       setFilteredClients(clients || []);
     }
   }, [clients, user]);
+  
+  // Add state for search and filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [filteredClients, setFilteredClients] = useState([]);
+
+  // Initialize filtered clients with all clients on component mount
+  useEffect(() => {
+    setFilteredClients(clients);
+  }, [clients]);
+
+  // Apply filters whenever filter criteria change
+  useEffect(() => {
+    applyFilters();
+  }, [searchTerm, departmentFilter, clients]);
+
+  const applyFilters = () => {
+    if (!clients) return;
+    
+    const filtered = clients.filter(client => {
+      const matchesSearch = !searchTerm || 
+        client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesDepartment = !departmentFilter || client.department === departmentFilter;
+      
+      return matchesSearch && matchesDepartment;
+    });
+    
+    setFilteredClients(filtered);
+  };
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setDepartmentFilter('');
+  };
   
   // Function to handle deleting a client
   const handleDeleteClient = async (clientId, clientName) => {
@@ -99,6 +141,7 @@ function ClientTable({ clients, fetchClients }) {
 
   // Otherwise show the client table
   return (
+
     <div className="overflow-x-auto h-full">
       <div className="relative overflow-x-auto rounded-lg">
         <table className="w-full text-sm text-left text-gray-500">
@@ -124,6 +167,7 @@ function ClientTable({ clients, fetchClients }) {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredClients && filteredClients.length > 0 ? (
               filteredClients.map((client) => (
+
                 <tr key={client._id} className="border-b hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="font-medium text-gray-800">{client.name}</div>
@@ -164,16 +208,22 @@ function ClientTable({ clients, fetchClients }) {
                     </div>
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
-                  No clients found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="text-center py-8 bg-white h-full flex items-center justify-center">
+            <div>
+              <p className="text-gray-500 text-lg">No clients found matching your search criteria</p>
+              <button
+                onClick={clearFilters}
+                className="mt-2 text-sky-600 hover:text-sky-800 underline"
+              >
+                Clear filters
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
