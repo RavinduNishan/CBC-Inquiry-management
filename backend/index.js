@@ -4,6 +4,7 @@ import cors from 'cors';
 import inquiryRoutes from './routes/inquiryRoute.js';
 import userRoutes from './routes/userRoute.js';
 import clientRoutes from './routes/clientRoute.js';
+import userLogRoute from './routes/userLogRoute.js'; // New import for user logs
 import { PORT, MONGODBURL } from './config.js';
 
 const app = express();
@@ -122,6 +123,7 @@ const connectDB = async (retryCount = 5) => {
 app.use('/inquiry', inquiryRoutes);
 app.use('/user', userRoutes);
 app.use('/client', clientRoutes);
+app.use('/userlog', userLogRoute); // New route for user logs
 
 // Expose MongoDB connection status via API
 app.get('/api/mongodb/status', (req, res) => {
