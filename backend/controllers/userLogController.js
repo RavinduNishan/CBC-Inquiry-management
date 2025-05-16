@@ -206,3 +206,121 @@ export const logPasswordRecovery = async (userEmail, department) => {
     return null;
   }
 };
+
+// Log client creation
+export const logClientCreation = async (userEmail, clientEmail, department) => {
+  try {
+    const macAddress = await getMacAddress();
+    return await logUserAction({
+      userEmail,
+      department,
+      description: `Client created: ${clientEmail}`,
+      macAddress
+    });
+  } catch (error) {
+    console.error("Failed to log client creation:", error.message);
+    return null;
+  }
+};
+
+// Log client update
+export const logClientUpdate = async (userEmail, clientEmail, department) => {
+  try {
+    const macAddress = await getMacAddress();
+    return await logUserAction({
+      userEmail,
+      department,
+      description: `Client updated: ${clientEmail}`,
+      macAddress
+    });
+  } catch (error) {
+    console.error("Failed to log client update:", error.message);
+    return null;
+  }
+};
+
+// Log client deletion
+export const logClientDeletion = async (userEmail, clientEmail, department) => {
+  try {
+    const macAddress = await getMacAddress();
+    return await logUserAction({
+      userEmail,
+      department,
+      description: `Client deleted: ${clientEmail}`,
+      macAddress
+    });
+  } catch (error) {
+    console.error("Failed to log client deletion:", error.message);
+    return null;
+  }
+};
+
+// Log inquiry creation
+export const logInquiryCreation = async (userEmail, clientEmail, inquiryId, department, assignedUserEmail = null) => {
+  try {
+    const macAddress = await getMacAddress();
+    let description = `Inquiry ${inquiryId} created for ${clientEmail}`;
+    
+    if (assignedUserEmail) {
+      description += ` - assigned to ${assignedUserEmail}`;
+    }
+    
+    return await logUserAction({
+      userEmail,
+      department,
+      description,
+      macAddress
+    });
+  } catch (error) {
+    console.error("Failed to log inquiry creation:", error.message);
+    return null;
+  }
+};
+
+// Log inquiry assignment
+export const logInquiryAssignment = async (userEmail, inquiryId, department, assignedUserEmail) => {
+  try {
+    const macAddress = await getMacAddress();
+    return await logUserAction({
+      userEmail,
+      department,
+      description: `User ${assignedUserEmail} assigned to inquiry ${inquiryId}`,
+      macAddress
+    });
+  } catch (error) {
+    console.error("Failed to log inquiry assignment:", error.message);
+    return null;
+  }
+};
+
+// Log inquiry comment
+export const logInquiryComment = async (userEmail, inquiryId, department) => {
+  try {
+    const macAddress = await getMacAddress();
+    return await logUserAction({
+      userEmail,
+      department,
+      description: `Commented on inquiry ${inquiryId}`,
+      macAddress
+    });
+  } catch (error) {
+    console.error("Failed to log inquiry comment:", error.message);
+    return null;
+  }
+};
+
+// Log inquiry closure
+export const logInquiryClosure = async (userEmail, inquiryId, department) => {
+  try {
+    const macAddress = await getMacAddress();
+    return await logUserAction({
+      userEmail,
+      department,
+      description: `Inquiry ${inquiryId} closed`,
+      macAddress
+    });
+  } catch (error) {
+    console.error("Failed to log inquiry closure:", error.message);
+    return null;
+  }
+};
