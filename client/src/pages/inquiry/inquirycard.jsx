@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AiOutlineEdit } from 'react-icons/ai';
-import { FiUser, FiMail, FiPhone, FiBriefcase, FiTag, FiMessageSquare, FiFile, FiClock, FiRefreshCw, FiSend, FiUserPlus, FiHash } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiBriefcase, FiTag, FiMessageSquare, FiFile, FiClock, FiRefreshCw, FiSend, FiUserPlus, FiHash, FiEye } from 'react-icons/fi';
 import { BsSearch, BsDownload, BsFilePdf } from 'react-icons/bs';
 import AssignUserModal from './AssignUserModal';
 import axios from 'axios';
@@ -398,6 +398,16 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
         }
     };
 
+    // Add the missing handleViewDetails function
+    const handleViewDetails = (inquiry) => {
+        if (onRespond) {
+            onRespond(inquiry._id);
+        } else {
+            // Navigate to response page if onRespond is not provided
+            window.location.href = `/inquiry/response/${inquiry._id}`;
+        }
+    };
+
     const renderCard = (inquiry) => {
         return (
             <div key={inquiry._id} className={`bg-white rounded-lg border-2 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300`}>
@@ -463,9 +473,9 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                     <div className="mb-2">
                         <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Message</div>
                         <p className="text-xs text-gray-700 line-clamp-2">
-                            {inquiry.message.length > 80 
+                            {inquiry.message && inquiry.message.length > 80 
                                 ? `${inquiry.message.substring(0, 80)}...` 
-                                : inquiry.message}
+                                : inquiry.message || 'No message content'}
                         </p>
                     </div>
 
@@ -475,19 +485,9 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
                             <FiClock className="inline mr-1" />
                             {formatDate(inquiry.createdAt).split(',')[0]}
                         </span>
-                        {inquiry.comments && (
-                            <span className="italic">
-                                {Array.isArray(inquiry.comments)
-                                    ? inquiry.comments.length > 0
-                                        ? inquiry.comments[0].text.length > 20 
-                                            ? `${inquiry.comments[0].text.substring(0, 20)}...` 
-                                            : inquiry.comments[0].text
-                                        : ""
-                                    : inquiry.comments.length > 20 
-                                        ? `${inquiry.comments.substring(0, 20)}...` 
-                                        : inquiry.comments}
-                            </span>
-                        )}
+                        <span className="italic">
+                            {/* Note: No comments shown */}
+                        </span>
                     </div>
                 </div>
 
@@ -728,21 +728,20 @@ const InquiryCard = ({ inquiries, onRespond, onInquiriesUpdated, hideAssignButto
 
             {/* Inquiry Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-2">
-                {filteredInquiries.map(renderCard)}
+                {filteredInquiries.length > 0 ? (
+                    filteredInquiries.map(renderCard)
+                ) : (
+                    <div className="col-span-full text-center py-8">
+                        <p className="text-gray-500 text-lg">No inquiries found matching your search criteria</p>
+                        <button
+                            onClick={clearFilters}
+                            className="mt-2 text-sky-600 hover:text-sky-800 underline"
+                        >
+                            Clear filters
+                        </button>
+                    </div>
+                )}
             </div>
-
-            {/* Display "No inquiries found" message when filters return empty results */}
-            {filteredInquiries.length === 0 && (
-                <div className="text-center py-8">
-                    <p className="text-gray-500 text-lg">No inquiries found matching your search criteria</p>
-                    <button
-                        onClick={clearFilters}
-                        className="mt-2 text-sky-600 hover:text-sky-800 underline"
-                    >
-                        Clear filters
-                    </button>
-                </div>
-            )}
 
             {/* Don't render the modal for staff users */}
             {!isStaffUser && (

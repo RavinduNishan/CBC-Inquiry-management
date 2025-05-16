@@ -20,14 +20,12 @@ const formatDate = (dateString) => {
   });
 };
 
-// Format date for input fields
 const formatDateForInput = (dateString) => {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toISOString().split('T')[0];
 };
 
-// Status badge component
 const statusBadge = (status) => {
   const baseClasses = "px-2 py-1 rounded-full text-xs font-semibold";
   switch (status.toLowerCase()) {
@@ -42,7 +40,6 @@ const statusBadge = (status) => {
   }
 };
 
-// Priority badge component
 const priorityBadge = (priority) => {
   const baseClasses = "px-2 py-1 rounded-full text-xs font-semibold";
   switch (priority.toLowerCase()) {
@@ -66,15 +63,12 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   
-  // Add the missing userDropdownRef
   const userDropdownRef = useRef(null);
   
-  // Updated to avoid using checkPermission which is not available
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const isAdmin = user?.isAdmin === true; // Strict check for true
+  const isAdmin = user?.isAdmin === true;
   
-  // Filter input states
   const [inputSearchTerm, setInputSearchTerm] = useState('');
   const [inputPriorityFilter, setInputPriorityFilter] = useState('');
   const [inputStatusFilter, setInputStatusFilter] = useState('');
@@ -85,7 +79,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
   const [inputInquiryIdFrom, setInputInquiryIdFrom] = useState('');
   const [inputInquiryIdTo, setInputInquiryIdTo] = useState('');
 
-  // Applied filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -96,12 +89,9 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
   const [inquiryIdFrom, setInquiryIdFrom] = useState('');
   const [inquiryIdTo, setInquiryIdTo] = useState('');
 
-  // Filtered inquiries
   const [filteredInquiries, setFilteredInquiries] = useState([]);
 
-  // Fetch users for the filter dropdown, with error handling
   const fetchUsers = async () => {
-    // Skip the request entirely if user isn't admin
     if (!isAdmin) {
       console.log('Non-admin user, skipping user fetch request');
       return;
@@ -113,31 +103,26 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
       setUsers(response.data.data);
       setLoading(false);
     } catch (error) {
-      // More graceful error handling
       console.log('Error fetching users for filter - handling gracefully');
       setUsers([]);
       setLoading(false);
     }
   };
 
-  // Modified useEffect to only fetch for admin users
   useEffect(() => {
     if (isAdmin) {
       fetchUsers();
     } else {
-      // Clear users array for non-admins
       setUsers([]);
     }
-  }, [isAdmin]); // Only depend on isAdmin
+  }, [isAdmin]);
 
-  // Initialize filtered inquiries with all inquiries on component mount
   useEffect(() => {
     if (inquiries && inquiries.length > 0) {
-      // Sort inquiries by creation date (newest first)
       const sortedInquiries = [...inquiries].sort((a, b) => {
         const dateA = new Date(a.createdAt || 0);
         const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA; // Reverse chronological: newest first
+        return dateB - dateA;
       });
       setFilteredInquiries(sortedInquiries);
     } else {
@@ -145,7 +130,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     }
   }, [inquiries]);
 
-  // Handle clicks outside the dropdown to close it
   useEffect(() => {
     function handleClickOutside(event) {
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
@@ -159,16 +143,13 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     };
   }, [userDropdownRef]);
 
-  // Filter users based on search term
   const filteredUsers = users.filter(user => 
     user.name.toLowerCase().includes(userSearchTerm.toLowerCase())
   );
 
-  // Handle search button click
   const handleSearch = (e) => {
     e && e.preventDefault();
     
-    // Update the actual filter values from the input values
     setSearchTerm(inputSearchTerm);
     setPriorityFilter(inputPriorityFilter);
     setStatusFilter(inputStatusFilter);
@@ -191,9 +172,7 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
       inquiryIdTo: inputInquiryIdTo
     });
     
-    // Apply filters
     const result = inquiries.filter(inquiry => {
-      // Text search (client info, subject, message)
       const matchesSearchTerm = !inputSearchTerm || 
         inquiry.client?.name?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
         inquiry.client?.email?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
@@ -201,22 +180,17 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
         inquiry.subject?.toLowerCase().includes(inputSearchTerm.toLowerCase()) ||
         inquiry.message?.toLowerCase().includes(inputSearchTerm.toLowerCase());
       
-      // Priority filter
       const matchesPriority = !inputPriorityFilter || inquiry.priority?.toLowerCase() === inputPriorityFilter.toLowerCase();
       
-      // Status filter
       const matchesStatus = !inputStatusFilter || inquiry.status?.toLowerCase() === inputStatusFilter.toLowerCase();
       
-      // Assignment filter
       const matchesAssigned = !inputAssignedFilter || 
         (inputAssignedFilter === 'unassigned' && (!inquiry.assigned || !inquiry.assigned.userId)) ||
         (inputAssignedFilter !== 'unassigned' && inquiry.assigned?.userId === inputAssignedFilter);
       
-      // Date range filter - FIXED
       let matchesDateRange = true;
       if (inputDateFrom || inputDateTo) {
         try {
-          // Make sure we have a valid date field to filter on
           if (inquiry[inputDateField]) {
             const inquiryDate = new Date(inquiry[inputDateField]);
             
@@ -232,12 +206,11 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
               matchesDateRange = matchesDateRange && inquiryDate <= toDate;
             }
             
-            // Debug log for date comparison
             if (!matchesDateRange && (inputDateFrom || inputDateTo)) {
               console.debug(`Inquiry ${inquiry.inquiryID} date ${inquiryDate} outside of range ${inputDateFrom ? new Date(inputDateFrom) : 'any'} - ${inputDateTo ? new Date(inputDateTo) : 'any'}`);
             }
           } else {
-            matchesDateRange = false; // If the date field doesn't exist, don't include it
+            matchesDateRange = false;
             console.debug(`Inquiry ${inquiry.inquiryID} missing date field ${inputDateField}`);
           }
         } catch (err) {
@@ -246,13 +219,10 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
         }
       }
       
-      // Inquiry ID range filter - FIXED
       let matchesInquiryIdRange = true;
       if (inputInquiryIdFrom || inputInquiryIdTo) {
         try {
-          // Extract numeric part from inquiry ID (assuming format like "2304120001")
           const idText = inquiry.inquiryID || '';
-          // Try to extract all digits from the inquiry ID
           const idNumberStr = idText.match(/\d+/g)?.join('') || '';
           const idNumber = idNumberStr ? parseInt(idNumberStr) : 0;
           
@@ -270,7 +240,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
             }
           }
           
-          // Debug log for ID comparison
           if (!matchesInquiryIdRange && (inputInquiryIdFrom || inputInquiryIdTo)) {
             console.debug(`Inquiry ${inquiry.inquiryID} ID number ${idNumber} outside of range ${inputInquiryIdFrom || 'any'} - ${inputInquiryIdTo || 'any'}`);
           }
@@ -285,19 +254,16 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     
     console.log(`Filtered from ${inquiries.length} to ${result.length} inquiries`);
 
-    // Sort inquiries in reverse chronological order (newest first)
     const sortedResults = [...result].sort((a, b) => {
       const dateA = new Date(a.createdAt || 0);
       const dateB = new Date(b.createdAt || 0);
-      return dateB - dateA; // Reverse chronological: newest first
+      return dateB - dateA;
     });
     
     setFilteredInquiries(sortedResults);
   };
 
-  // Clear all filters
   const clearFilters = () => {
-    // Clear input values
     setInputSearchTerm('');
     setInputPriorityFilter('');
     setInputStatusFilter('');
@@ -308,7 +274,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     setInputInquiryIdFrom('');
     setInputInquiryIdTo('');
     
-    // Clear applied filters
     setSearchTerm('');
     setPriorityFilter('');
     setStatusFilter('');
@@ -319,12 +284,11 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     setInquiryIdFrom('');
     setInquiryIdTo('');
     
-    // Reset to show all inquiries sorted newest first
     if (inquiries && inquiries.length > 0) {
       const sortedInquiries = [...inquiries].sort((a, b) => {
         const dateA = new Date(a.createdAt || 0);
         const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA; // Reverse chronological: newest first
+        return dateB - dateA;
       });
       setFilteredInquiries(sortedInquiries);
     } else {
@@ -332,34 +296,26 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     }
   };
 
-  // Generate CSV data from filtered inquiries
   const generateCSV = () => {
-    // Define the headers
     const headers = [
       'Inquiry ID', 'Client Name', 'Client Email', 'Client Phone', 'Client Department', 'Subject', 
       'Category', 'Priority', 'Status', 'Message', 'Comments', 
       'Assigned To', 'Created By', 'Created At', 'Updated At'
     ];
     
-    // Create the CSV content
     let csvContent = headers.join(',') + '\n';
     
-    // Add data for each inquiry
     filteredInquiries.forEach(inquiry => {
-      // Format dates for better readability
       const createdDate = inquiry.createdAt ? formatDate(inquiry.createdAt) : 'N/A';
       const updatedDate = inquiry.updatedAt ? formatDate(inquiry.updatedAt) : 'N/A';
       
-      // Format assigned user
       const assignedTo = inquiry.assigned && inquiry.assigned.name ? inquiry.assigned.name : 'Unassigned';
       
-      // Get client information safely
       const clientName = inquiry.client?.name || 'N/A';
       const clientEmail = inquiry.client?.email || 'N/A';
       const clientPhone = inquiry.client?.phone || 'N/A';
       const clientDepartment = inquiry.client?.department || 'N/A';
       
-      // Create CSV row and escape values that might contain commas
       const row = [
         `"${inquiry.inquiryID || ''}"`,
         `"${clientName}"`,
@@ -384,13 +340,11 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     return csvContent;
   };
   
-  // Download CSV file
   const downloadCSV = () => {
     const csvData = generateCSV();
     const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
-    // Create a link and trigger the download
     const link = document.createElement('a');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     link.setAttribute('href', url);
@@ -402,17 +356,14 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     document.body.removeChild(link);
   };
 
-  // Add proper check for assignment permission
   const canUserAssign = user?.accessLevel === 'admin' || user?.accessLevel === 'manager' || canAssign;
 
   const handleAssignClick = (inquiry) => {
-    // Don't process if the inquiry is closed or user can't assign
     if (inquiry.status.toLowerCase() === 'closed' || !canUserAssign) return;
     
     setCurrentInquiryId(inquiry._id);
     setCurrentAssignee(inquiry.assigned?.userId || null);
     
-    // Set the department of the selected inquiry for filtering users
     setCurrentInquiryDepartment(inquiry.client?.department || user?.department);
     
     setAssignModalOpen(true);
@@ -425,16 +376,13 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
     }
   };
 
-  // Check if user is staff to hide actions column
   const isStaffUser = user?.accessLevel === 'staff';
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Sticky Search and Filter Controls */}
       <div className="sticky top-0 z-30 bg-white backdrop-blur-sm shadow-md">
         <div className="bg-white rounded-t-lg border border-gray-200 p-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 items-end">
-            {/* Search Input */}
             <div className="relative col-span-1">
               <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                 <BsSearch className="text-gray-400 text-sm" />
@@ -448,7 +396,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
               />
             </div>
             
-            {/* Main Filters */}
             <div className="flex space-x-1 flex-wrap">
               <select
                 value={inputPriorityFilter}
@@ -474,7 +421,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
                 <option value="closed">Closed</option>
               </select>
               
-              {/* Custom Assigned Users Dropdown with Search */}
               {isAdmin ? (
                 <div className="relative inline-block text-left">
                   <button
@@ -561,7 +507,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
               )}
             </div>
             
-            {/* Action Buttons */}
             <div className="flex justify-end space-x-1">
               <button
                 onClick={handleSearch}
@@ -584,9 +529,7 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
             </div>
           </div>
           
-          {/* Secondary Filters Row */}
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            {/* Date Range */}
             <div className="flex items-center space-x-1">
               <select
                 value={inputDateField}
@@ -611,7 +554,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
               />
             </div>
             
-            {/* ID Range */}
             <div className="flex items-center">
               <span className="text-xs text-gray-500 mr-1">ID Range:</span>
               <input
@@ -619,7 +561,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
                 placeholder="From ID"
                 value={inputInquiryIdFrom}
                 onChange={(e) => {
-                  // Only allow numbers
                   const value = e.target.value.replace(/\D/g, '');
                   setInputInquiryIdFrom(value);
                 }}
@@ -634,7 +575,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
                 placeholder="To ID"
                 value={inputInquiryIdTo}
                 onChange={(e) => {
-                  // Only allow numbers
                   const value = e.target.value.replace(/\D/g, '');
                   setInputInquiryIdTo(value);
                 }}
@@ -654,7 +594,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
         </div>
       </div>
 
-      {/* Single scrollable container for the entire table - increased height */}
       <div className="flex-1 overflow-auto border border-gray-200 rounded-b-lg" style={{ height: 'calc(100% - 120px)' }}>
         {filteredInquiries.length === 0 ? (
           <div className="text-center py-8 bg-white h-full flex items-center justify-center">
@@ -671,7 +610,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
         ) : (
           <div className="relative">
             <table className="min-w-full divide-y divide-gray-200">
-              {/* Table header - sticky relative to the scrollable container */}
               <thead className="bg-gray-50 sticky top-0 z-20">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Inquiry ID</th>
@@ -687,21 +625,18 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Message</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Comments</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">Last Update</th>
-                  {/* Only show Actions column if user is not staff */}
                   {!isStaffUser && (
                     <th style={{position: 'sticky', top: 0, right: 0, zIndex: 40}} className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200 shadow-lg">Actions</th>
                   )}
                 </tr>
               </thead>
               
-              {/* Table body */}
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredInquiries.map((inquiry) => {
-                  // Determine row style based on status and priority
                   let rowStyle = '';
                   
                   if (inquiry.status.toLowerCase() === 'closed') {
-                    rowStyle = 'bg-white'; // Changed from bg-gray-100 to bg-white for closed inquiries
+                    rowStyle = 'bg-white';
                   } else {
                     switch (inquiry.priority.toLowerCase()) {
                       case 'high':
@@ -719,7 +654,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
                     }
                   }
                   
-                  // Safely access client data with optional chaining
                   const clientName = inquiry.client?.name || 'Unknown';
                   const clientEmail = inquiry.client?.email || 'No email';
                   const clientPhone = inquiry.client?.phone || 'No phone';
@@ -736,7 +670,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
                             <span className="text-blue-600 font-medium">{clientName.charAt(0).toUpperCase()}</span>
                           </div>
                           <div className="ml-3">
-                            {/* Client name made more prominent */}
                             <div className="text-sm font-bold text-sky-700">{clientName}</div>
                             <div className="text-xs text-gray-500">{clientDepartment}</div>
                           </div>
@@ -786,7 +719,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
                       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                         {formatDate(inquiry.updatedAt)}
                       </td>
-                      {/* Only show Actions column if user is not staff */}
                       {!isStaffUser && (
                         <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-medium sticky right-0 bg-white shadow-l z-10 border-l border-gray-100">
                           <div className="flex justify-end space-x-1">
@@ -831,7 +763,6 @@ const InquiryTable = ({ inquiries, onRespond, onInquiriesUpdated, canAssign = tr
         )}
       </div>
 
-      {/* Only render the modal if user is not staff */}
       {!isStaffUser && (
         <AssignUserModal
           isOpen={assignModalOpen}

@@ -6,7 +6,8 @@ import { BsInfoCircle } from 'react-icons/bs';
 import { MdOutlineDelete } from 'react-icons/md';
 import { useState } from 'react';
 
-const inquiryinglecard = ({ inquiry }) => {
+// Fix the component name to start with a capital letter (important for React)
+const InquirySingleCard = ({ inquiry }) => {
   const [showModal, setShowModal] = useState(false);
 
   return (
@@ -16,7 +17,8 @@ const inquiryinglecard = ({ inquiry }) => {
       </h2>
       <h4 className='my-2 text-gray-500'>{inquiry.subject}</h4>
       <div className='flex justify-start items-center gap-x-2'>
-        <PiinquiryOpenTextLight className='text-red-300 text-2xl' />
+        {/* Fix the icon reference from PiinquiryOpenTextLight to PiBookOpenTextLight */}
+        <PiBookOpenTextLight className='text-red-300 text-2xl' />
         <h2 className='my-1'>{inquiry.message}</h2>
       </div>
       <div className='flex justify-start items-center gap-x-2'>
@@ -39,10 +41,24 @@ const inquiryinglecard = ({ inquiry }) => {
         </Link>
       </div>
       {showModal && (
-        <inquiryModal inquiry={inquiry} onClose={() => setShowModal(false)} />
+        // Fix the missing InquiryModal component reference
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-2xl max-h-[80vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">{inquiry.subject}</h2>
+            <p className="mb-4">{inquiry.message}</p>
+            <div className="mt-4 flex justify-end">
+              <button 
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
 };
 
-export default inquiryinglecard;
+export default InquirySingleCard;
