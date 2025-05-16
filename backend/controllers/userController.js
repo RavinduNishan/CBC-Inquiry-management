@@ -5,6 +5,8 @@ import { JWT_SECRET } from "../config.js";
 import { format } from 'date-fns';
 // Import email service to send OTP emails
 import { sendOtpEmail } from "../utils/emailService.js";
+import { logUserAction, logLoginAction, logPasswordChange, logUserUpdate, logUserDeletion } from "./userLogController.js";
+import { getMacAddress } from "../utils/networkUtils.js";
 
 // Map to store SSE clients for each user ID
 const userConnections = new Map();
@@ -281,6 +283,9 @@ export const verifyLoginOTP = async (req, res) => {
     
     console.log(`Two-factor authentication successful for user: ${userFound.email}`);
     
+    // Log the user login event using the centralized function
+    await logLoginAction(userFound);
+    
     // Return user data and token
     return res.status(200).json({
       _id: userFound._id,
@@ -447,6 +452,9 @@ export const resetPassword = async (req, res) => {
     
     await userFound.save();
     
+    // Log the password change using the centralized function
+    await logPasswordChange(userFound.email, userFound.department);
+    
     res.status(200).json({ 
       message: "Password updated successfully",
       requiresRelogin: true,
@@ -489,6 +497,9 @@ export const adminSetPassword = async (req, res) => {
     userToUpdate.lastSecurityUpdate = new Date();
     
     await userToUpdate.save();
+    
+    // Log the password change using the centralized function
+    await logPasswordChange(userToUpdate.email, userToUpdate.department, true, req.user.email);
     
     // Send immediate logout notification if the user is currently logged in
     const notificationSent = notifyUserOfAccountChange(
@@ -603,7 +614,7 @@ export const getUserById = async (req, res) => {
   }
 };
 
-// Controller for update user
+// Controller for update user - update to add logging
 export const updateUser = async (req, res) => {
   try {
     const userId = req.params.id;
@@ -618,7 +629,7 @@ export const updateUser = async (req, res) => {
       name: req.body.name && req.body.name !== existingUser.name,
       department: req.body.department && req.body.department !== existingUser.department,
       status: req.body.status && req.body.status !== existingUser.status,
-      accessLevel: req.body.accessLevel && req.body.accessLevel !== existingUser.accessLevel // Add access level to critical fields
+      accessLevel: req.body.accessLevel && req.body.accessLevel !== existingUser.accessLevel
     };
     
     // If any critical fields changed, increment profileVersion
@@ -636,6 +647,20 @@ export const updateUser = async (req, res) => {
       req.body,
       { new: true }
     );
+
+    // Log the user update action using the dedicated function
+    const changedFields = Object.entries(criticalFieldsChanged)
+      .filter(([_, changed]) => changed)
+      .map(([field]) => field);
+    
+    if (changedFields.length > 0) {
+      await logUserUpdate(
+        req.user.email,
+        updatedUser.email,
+        updatedUser.department,
+        updatedUser.accessLevel
+      );
+    }
 
     // Send immediate logout notification if security was changed 
     // and the user being updated is not the current user
@@ -659,9 +684,7 @@ export const updateUser = async (req, res) => {
       profileVersion: updatedUser.profileVersion,
       notificationSent: true,
       // Include which fields changed to help client decide what to do
-      changedFields: Object.entries(criticalFieldsChanged)
-        .filter(([_, changed]) => changed)
-        .map(([field]) => field)
+      changedFields: changedFields
     });
   } catch (error) {
     console.log(error.message);
@@ -669,12 +692,20 @@ export const updateUser = async (req, res) => {
   }
 };
 
-// Controller for delete user
+// Controller for delete user - update to add logging
 export const deleteUser = async (req, res) => {
   try {
     const userToDelete = await users.findById(req.params.id);
 
     if (!userToDelete) return res.status(404).json({ message: "user not found" });
+
+    // Log the user deletion using the dedicated function
+    await logUserDeletion(
+      req.user.email,
+      userToDelete.email,
+      userToDelete.department,
+      userToDelete.accessLevel
+    );
 
     // Send a notification to force logout before deletion if the user is currently logged in
     notifyUserOfAccountChange(
@@ -882,6 +913,9 @@ export const resetPasswordWithToken = async (req, res) => {
     userFound.lastSecurityUpdate = new Date();
     
     await userFound.save();
+    
+    // Log the password reset using the centralized function
+    await logPasswordChange(userFound.email, userFound.department);
     
     // Notify user of password change if they're logged in
     notifyUserOfAccountChange(

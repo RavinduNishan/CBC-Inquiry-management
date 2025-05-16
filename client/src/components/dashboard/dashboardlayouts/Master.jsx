@@ -22,6 +22,9 @@ import UserDetail from '../../../pages/user/UserDetail';
 import UserProfile from '../../../pages/user/UserProfile';
 // Fix import by replacing DashboardResponseInquiry with ResponseInquiry
 import ResponseInquiry from '../../../pages/inquiry/responseinquiry';
+// Update import to point to userLogsTable instead of userLogs
+import UserLogs from '../../../pages/userlog/userLogsTable';
+import { FiActivity } from 'react-icons/fi';
 
 const Master = () => {
   const { user, logout, isFirstLogin, setIsFirstLogin, checkSecurityChanges, setupNotifications, isAdmin } = useContext(AuthContext);
@@ -545,7 +548,7 @@ const Master = () => {
   // Add a safety effect to redirect non-admins who try to access admin-only menus
   useEffect(() => {
     // List of admin-only menus
-    const adminOnlyMenus = ['users', 'addUser', 'userDetails', 'reports'];
+    const adminOnlyMenus = ['users', 'addUser', 'userDetails', 'reports', 'userLogs'];
     
     // List of menus not accessible by staff
     const nonStaffMenus = ['inquiries', 'dashboard', 'clients', 'addClient', 'responseInquiry'];
@@ -898,6 +901,22 @@ const Master = () => {
                   >
                     <FaChartBar className={`text-lg ${activeMenu === 'reports' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
                     {sidebarOpen && <span className="ml-3">Reports</span>}
+                  </button>
+                </li>
+                
+                {/* Add User Logs menu item */}
+                <li className='px-3'>
+                  <button 
+                    className={`flex items-center w-full rounded-lg text-sm transition-colors duration-200 
+                      ${activeMenu === 'userLogs' 
+                        ? 'bg-white/20 text-white font-medium backdrop-blur-sm' 
+                        : 'text-sky-100 hover:bg-sky-600/30'}
+                      ${sidebarOpen ? 'p-3 justify-start' : 'p-2 justify-center h-10'}`}
+                    onClick={() => setActiveMenu('userLogs')}
+                    title="User Logs"
+                  >
+                    <FiActivity className={`text-lg ${activeMenu === 'userLogs' ? 'text-white' : 'text-sky-100'} ${!sidebarOpen && 'mx-auto'}`} />
+                    {sidebarOpen && <span className="ml-3">User Logs</span>}
                   </button>
                 </li>
               </>
@@ -1307,6 +1326,21 @@ const Master = () => {
                   hideAssignButton={!checkPermission('assignInquiries')}
                 />
               )}
+            </div>
+          </>
+        )}
+
+        {/* New section for User Logs - Only for admins */}
+        {activeMenu === 'userLogs' && isAdmin && (
+          <>
+            <div className='flex justify-between items-center sticky top-0 bg-gray-50 z-20 p-6 pb-3 shadow-sm'>  
+            <div className="flex items-center">
+            <FiActivity className="text-sky-600 mr-2" size={20} />
+          <h2 className="text-xl font-bold text-gray-800">User Activity Logs</h2>
+        </div>            </div>
+            
+            <div className='bg-white rounded-lg shadow-sm border border-gray-100 mx-4 mb-4 p-4 flex-1 h-[calc(100vh-120px)]'>
+              <UserLogs />
             </div>
           </>
         )}

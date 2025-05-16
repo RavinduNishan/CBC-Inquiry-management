@@ -2,6 +2,13 @@ import Inquiry from "../models/inquirymodel.js";
 import Client from "../models/clientmodel.js";
 import mongoose from "mongoose";
 import { sendInquiryConfirmation, sendInquiryClosure } from "../utils/emailService.js";
+import { 
+    logInquiryCreation, 
+    logInquiryAssignment, 
+    logInquiryComment, 
+    logInquiryClosure 
+} from "./userLogController.js";
+import users from "../models/usermodel.js";  // Add this import to fetch user emails
 
 // Helper function to generate the next inquiry ID
 export async function generateInquiryID() {
@@ -107,6 +114,34 @@ export const createInquiry = async (req, res) => {
             createdBy: req.body.createdBy
         });
 
+        // Get assigned user email if there is one
+        let assignedUserEmail = null;
+        if (req.body.assigned?.userId) {
+            try {
+                // Look up the assigned user's email from the database
+                const assignedUser = await users.findById(req.body.assigned.userId);
+                if (assignedUser) {
+                    assignedUserEmail = assignedUser.email;
+                } else {
+                    // Fallback to name if user can't be found
+                    assignedUserEmail = req.body.assigned.name;
+                }
+            } catch (error) {
+                console.error("Error looking up assigned user:", error);
+                // Fallback to name if there was an error
+                assignedUserEmail = req.body.assigned.name;
+            }
+        }
+
+        // Log the inquiry creation with the correct assigned user email
+        await logInquiryCreation(
+            req.user.email,
+            clientData.email,
+            inquiryID,
+            clientData.department,
+            assignedUserEmail
+        );
+
         // Send email confirmation to the inquiry submitter
         let emailSent = false;
         try {
@@ -179,6 +214,16 @@ export const updateInquiry = async (req, res) => {
         console.log("Updating inquiry:", req.params.id);
         console.log("Received update data:", JSON.stringify(req.body));
         
+        // Find the current inquiry to get existing information
+        const currentInquiry = await Inquiry.findById(req.params.id).populate('client');
+        if (!currentInquiry) {
+            return res.status(404).json({ message: "Inquiry not found" });
+        }
+
+        // Store client data for logging
+        const clientEmail = currentInquiry.client.email;
+        const clientDepartment = currentInquiry.client.department;
+        
         // Create a clean update object
         const updateData = {};
         
@@ -187,12 +232,6 @@ export const updateInquiry = async (req, res) => {
         
         // Handle new comment addition
         if (req.body.newComment) {
-            // Find the current inquiry to get existing comments
-            const currentInquiry = await Inquiry.findById(req.params.id);
-            if (!currentInquiry) {
-                return res.status(404).json({ message: "Inquiry not found" });
-            }
-            
             // Initialize comments array if it doesn't exist
             const existingComments = Array.isArray(currentInquiry.comments) ? currentInquiry.comments : [];
             
@@ -206,33 +245,70 @@ export const updateInquiry = async (req, res) => {
             
             updateData.comments = [...existingComments, newComment];
             console.log("Adding new comment:", newComment);
+            
+            // Log the comment action
+            await logInquiryComment(
+                req.user.email,
+                currentInquiry.inquiryID,
+                clientDepartment
+            );
         }
         
         // Handle assigned user data
-        if (req.body.assigned) {
-            if (req.body.assigned.userId) {
-                try {
-                    // Validate the ObjectId format
-                    if (!mongoose.Types.ObjectId.isValid(req.body.assigned.userId)) {
-                        return res.status(400).json({ 
-                            message: "Invalid user ID format",
-                            details: `Received: ${req.body.assigned.userId}`
-                        });
+        if (req.body.assigned && req.body.assigned.userId) {
+            try {
+                // Validate the ObjectId format
+                if (!mongoose.Types.ObjectId.isValid(req.body.assigned.userId)) {
+                    return res.status(400).json({ 
+                        message: "Invalid user ID format",
+                        details: `Received: ${req.body.assigned.userId}`
+                    });
+                }
+                
+                // Check if assignment is new or changed
+                const isNewAssignment = !currentInquiry.assigned?.userId || 
+                    currentInquiry.assigned.userId.toString() !== req.body.assigned.userId.toString();
+                
+                if (isNewAssignment) {
+                    // Get the assigned user's email
+                    let assignedUserEmail = null;
+                    try {
+                        const assignedUser = await users.findById(req.body.assigned.userId);
+                        if (assignedUser) {
+                            assignedUserEmail = assignedUser.email;
+                        } else {
+                            assignedUserEmail = req.body.assigned.name;
+                        }
+                    } catch (err) {
+                        console.error("Error looking up assigned user email:", err);
+                        assignedUserEmail = req.body.assigned.name;
                     }
                     
                     // Set the entire assigned object
                     updateData.assigned = {
                         userId: req.body.assigned.userId,
-                        name: req.body.assigned.name || "Unknown User"
+                        name: req.body.assigned.name || "Unknown User",
+                        email: assignedUserEmail || "unknown@email.com"
                     };
                     
                     console.log("Storing assigned user:", updateData.assigned);
-                } catch (error) {
-                    console.error("Error processing assigned userId:", error.message);
-                    return res.status(400).json({ message: "Invalid user ID", details: error.message });
+                    
+                    // Log the assignment action with the correct email
+                    await logInquiryAssignment(
+                        req.user.email,
+                        currentInquiry.inquiryID,
+                        clientDepartment,
+                        assignedUserEmail || req.body.assigned.name
+                    );
                 }
+            } catch (error) {
+                console.error("Error processing assigned userId:", error.message);
+                return res.status(400).json({ message: "Invalid user ID", details: error.message });
             }
         }
+        
+        // Check if status is changing to closed
+        const isClosingInquiry = req.body.status === 'closed' && currentInquiry.status !== 'closed';
         
         console.log("Final update data:", JSON.stringify(updateData));
         
@@ -247,19 +323,25 @@ export const updateInquiry = async (req, res) => {
 
         console.log("Updated inquiry result:", inquiry);
         
+        // Log if inquiry is being closed
+        if (isClosingInquiry) {
+            await logInquiryClosure(
+                req.user.email,
+                inquiry.inquiryID,
+                clientDepartment
+            );
+        }
+        
         // Check if inquiry is closed and email notification is requested
         let emailSent = false;
-        if (updateData.status === 'closed' && req.body.sendClosureEmail) {
+        if (isClosingInquiry && req.body.sendClosureEmail) {
             try {
                 console.log('Sending closure email notification...');
                 
-                // First, find the updated inquiry and populate client information
-                const updatedInquiry = await Inquiry.findById(req.params.id).populate('client');
-                
-                if (!updatedInquiry.client) {
+                if (!currentInquiry.client) {
                     console.error('Cannot send closure email: Client information not found');
                 } else {
-                    await sendInquiryClosure(updatedInquiry);
+                    await sendInquiryClosure(currentInquiry);
                     emailSent = true;
                     console.log('Inquiry closure email sent successfully');
                 }

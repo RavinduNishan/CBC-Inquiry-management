@@ -1,4 +1,5 @@
 import Client from "../models/clientmodel.js";
+import { logClientCreation, logClientUpdate, logClientDeletion } from "./userLogController.js";
 
 // Controller for creating a new client
 export const createClient = async (req, res) => {
@@ -37,6 +38,13 @@ export const createClient = async (req, res) => {
             phone: req.body.phone,
             department: req.body.department
         });
+
+        // Log client creation
+        await logClientCreation(
+            req.user.email,
+            newClient.email,
+            newClient.department
+        );
 
         return res.status(201).json({
             message: `Client created successfully`,
@@ -147,6 +155,13 @@ export const updateClient = async (req, res) => {
 
         if (!client) return res.status(404).json({ message: "Client not found" });
 
+        // Log client update
+        await logClientUpdate(
+            req.user.email,
+            client.email,
+            client.department
+        );
+
         return res.status(200).json({
             message: "Client updated successfully",
             client: client
@@ -178,6 +193,13 @@ export const deleteClient = async (req, res) => {
                 message: "You can only delete clients from your own department." 
             });
         }
+
+        // Log client deletion before deleting the client
+        await logClientDeletion(
+            req.user.email,
+            existingClient.email,
+            existingClient.department
+        );
         
         const client = await Client.findByIdAndDelete(req.params.id);
 
